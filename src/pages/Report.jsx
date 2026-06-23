@@ -1,9 +1,13 @@
 import { useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { analyzeIssueImage } from "../lib/gemini";
+import { useAuth } from "../context/AuthContext";
+import { collection, addDoc } from "firebase/firestore";
+import { db } from "../lib/firebase";
 
 export default function Report() {
   const fileInputRef = useRef(null);
+  const { user } = useAuth();
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState("");
   const [loading, setLoading] = useState(false);
@@ -118,10 +122,15 @@ export default function Report() {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.location.trim()) {
       alert("Location is required.");
+      return;
+    }
+
+    if (!user) {
+      alert("You must be logged in to submit an issue.");
       return;
     }
 
@@ -138,18 +147,25 @@ export default function Report() {
       status: "Pending",
       upvotes: 0,
       date: new Date().toISOString().split("T")[0],
-      estimated_resolution_days: formData.estimated_resolution_days,
+      estimated_resolution_days: Number(formData.estimated_resolution_days),
+      userId: user.uid,
+      userEmail: user.email,
     };
 
     try {
+      // 1. Save to Firestore
+      await addDoc(collection(db, "issues"), newIssue);
+
+      // 2. Save to localStorage as fallback
       const stored = localStorage.getItem("civicpulse_issues");
       const issues = stored ? JSON.parse(stored) : [];
-      issues.unshift(newIssue); // Newest first
+      issues.unshift(newIssue);
       localStorage.setItem("civicpulse_issues", JSON.stringify(issues));
+
       setSubmitted(true);
     } catch (err) {
       console.error("Failed to save report:", err);
-      alert("Error saving issue to local storage.");
+      alert("Failed to save report: " + err.message);
     }
   };
 
@@ -205,7 +221,7 @@ export default function Report() {
         </div>
       )}
 
-      {/* 2. UPLOAD AREA (No file selected, not loading, no analysis) */}
+      {/* 2. UPLOAD AREA */}
       {!submitted && !file && !loading && !analysis && (
         <div
           onClick={handleDivClick}
@@ -228,7 +244,7 @@ export default function Report() {
         </div>
       )}
 
-      {/* 3. LOADING STATE (After upload, before analysis) */}
+      {/* 3. LOADING STATE */}
       {!submitted && file && loading && (
         <div className="flex flex-col items-center">
           {preview && (
@@ -248,7 +264,7 @@ export default function Report() {
         </div>
       )}
 
-      {/* 4. INVALID ISSUE STATE (Analysis completed but is_valid_issue is false) */}
+      {/* 4. INVALID ISSUE STATE */}
       {!submitted && !loading && analysis && !analysis.is_valid_issue && (
         <div className="flex flex-col items-center bg-red-500/10 border border-red-500/30 rounded-2xl p-10 text-center">
           <span className="text-4xl mb-3">⚠️</span>
@@ -265,10 +281,10 @@ export default function Report() {
         </div>
       )}
 
-      {/* 5. ANALYSIS FORM (Analysis completed and is_valid_issue is true) */}
+      {/* 5. ANALYSIS FORM */}
       {!submitted && !loading && analysis && analysis.is_valid_issue && (
         <div className="flex flex-col md:flex-row gap-8">
-          {/* Left Column: Image preview & AI Summary Box */}
+          {/* Left Column */}
           <div className="w-full md:w-1/3 flex flex-col">
             {preview && (
               <img
@@ -278,7 +294,6 @@ export default function Report() {
               />
             )}
 
-            {/* AI Analysis Summary Box */}
             <div className="bg-[#1F2937] rounded-xl p-4 border border-[#374151]">
               <h4 className="text-xs font-bold text-[#9CA3AF] uppercase tracking-wider mb-3">
                 AI Detection Results
@@ -312,9 +327,8 @@ export default function Report() {
             </div>
           </div>
 
-          {/* Right Column: Interactive Form */}
+          {/* Right Column */}
           <div className="w-full md:w-2/3">
-            {/* Success Banner */}
             <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-3 mb-6 flex items-center gap-2">
               <span className="text-green-400 text-sm">
                 ✅ AI Analysis Complete — Review and submit below
