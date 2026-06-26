@@ -55,6 +55,13 @@ export default function OfficerDashboard() {
 
   const messagesEndRef = useRef(null);
 
+  // Live clock
+  const [liveTime, setLiveTime] = useState(new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setLiveTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [allChats, selectedChat]);
@@ -394,8 +401,25 @@ export default function OfficerDashboard() {
       {/* Sidebar */}
       <div className={`fixed left-0 top-0 w-64 h-screen ${bgSidebar} border-r ${borderSidebar} pt-20 flex flex-col z-30 transition-colors duration-300`}>
         {/* App Logo */}
-        <div className="text-blue-400 font-bold text-xl px-6 mb-8 mt-4">
+        <div className="text-blue-400 font-bold text-xl px-6 mb-4 mt-4">
           CivicPulse
+        </div>
+
+        {/* Officer Info */}
+        <div className="px-6 mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center text-white font-black text-base shrink-0">
+              {(userProfile?.name || "O")[0].toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <div className={`text-sm font-bold ${textTheme} truncate`}>{userProfile?.name || "Officer"}</div>
+              <div className="mt-1">
+                <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-full px-2.5 py-0.5 text-[10px] font-bold">
+                  {officerDepartment} Dept
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Navigation Items */}
@@ -443,73 +467,211 @@ export default function OfficerDashboard() {
         ) : (
           <>
             {/* 1. DASHBOARD TAB */}
-            {activeTab === "Dashboard" && (
-              <div className="space-y-8 max-w-4xl mx-auto animate-fadeIn">
-                <div>
-                  <h1 className={`text-3xl font-bold ${textTheme} tracking-tight`}>
-                    Officer Control Panel
-                  </h1>
-                  <p className={`${textMuted} mt-1 text-sm`}>
-                    Welcome back, {userProfile?.name || "Officer"} - {officerDepartment} Department
-                  </p>
+            {activeTab === "Dashboard" && (() => {
+              // Derived analytics
+              const resolvedPercent = totalAssigned > 0 ? Math.round((resolvedCount / totalAssigned) * 100) : 0;
+              const totalUpvotes = assignedIssues.reduce((acc, i) => acc + (i.upvotes || 0), 0);
+              const categories = ['Pothole', 'Water Leak', 'Broken Streetlight', 'Garbage Dumping', 'Other'];
+              const categoryCounts = categories.map(cat => ({
+                name: cat,
+                count: assignedIssues.filter(i =>
+                  cat === 'Other'
+                    ? !['Pothole','Water Leak','Broken Streetlight','Garbage Dumping'].includes(i.category)
+                    : i.category === cat
+                ).length
+              }));
+              const recentIssues = [...assignedIssues].slice(0, 5);
+
+              return (
+                <div className="max-w-6xl mx-auto animate-fadeIn">
+
+                  {/* ── HEADER ── */}
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center text-white font-black text-base shrink-0">
+                        {(userProfile?.name || "O")[0].toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="text-xl font-bold text-white leading-tight">{userProfile?.name || "Officer"}</div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[#9CA3AF] text-sm">{officerDepartment} Department</span>
+                          <span className="flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
+                            <span className="text-green-400 text-xs font-semibold">Live</span>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-white text-sm font-semibold">
+                        {liveTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                      </div>
+                      <div className="text-[#9CA3AF] text-xs mt-0.5">
+                        {liveTime.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── STATS CARDS ── */}
+                  <div className="grid grid-cols-4 gap-4 mb-6">
+                    {[
+                      { icon: '📋', label: 'Total Assigned', count: totalAssigned,    color: 'bg-blue-500/20 text-blue-400',   bar: 'bg-blue-500',   pct: 100 },
+                      { icon: '⏳', label: 'Pending',        count: pendingCount,      color: 'bg-gray-500/20 text-gray-400',   bar: 'bg-gray-400',   pct: totalAssigned > 0 ? (pendingCount / totalAssigned) * 100 : 0 },
+                      { icon: '⚡', label: 'In Progress',    count: inProgressCount,   color: 'bg-yellow-500/20 text-yellow-400',bar: 'bg-yellow-500', pct: totalAssigned > 0 ? (inProgressCount / totalAssigned) * 100 : 0 },
+                      { icon: '✅', label: 'Resolved',       count: resolvedCount,     color: 'bg-green-500/20 text-green-400', bar: 'bg-green-500',  pct: totalAssigned > 0 ? (resolvedCount / totalAssigned) * 100 : 0 },
+                    ].map(({ icon, label, count, color, bar, pct }) => (
+                      <div key={label} className="bg-[#111827] rounded-xl border border-[#1F2937] p-4 hover:border-blue-500/20 transition-all">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-xl ${color} flex items-center justify-center text-lg shrink-0`}>{icon}</div>
+                          <div className="min-w-0">
+                            <div className="text-2xl font-black text-white leading-none">{count}</div>
+                            <div className="text-[#9CA3AF] text-xs mt-0.5">{label}</div>
+                          </div>
+                        </div>
+                        <div className="mt-3 bg-[#1F2937] rounded-full h-1 overflow-hidden">
+                          <div className={`${bar} h-1 rounded-full transition-all duration-700`} style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* ── QUICK ACTIONS ── */}
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <div className="relative shrink-0">
+                          <span className="block w-2.5 h-2.5 bg-red-500 rounded-full"></span>
+                          <span className="absolute inset-0 w-2.5 h-2.5 bg-red-500 rounded-full animate-ping opacity-75"></span>
+                        </div>
+                        <div>
+                          <div className="text-white font-semibold text-sm">{pendingCount} Action{pendingCount !== 1 ? 's' : ''} Required</div>
+                          <div className="text-red-400/70 text-xs">Awaiting officer review</div>
+                        </div>
+                      </div>
+                      <button onClick={() => { setActiveTab('submit'); setSubTab('Pending'); }}
+                        className="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition cursor-pointer shrink-0">
+                        Review →
+                      </button>
+                    </div>
+                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center text-base shrink-0">💬</div>
+                        <div>
+                          <div className="text-white font-semibold text-sm">{allChats.length} Conversation{allChats.length !== 1 ? 's' : ''}</div>
+                          <div className="text-blue-400/70 text-xs">Messages from citizens</div>
+                        </div>
+                      </div>
+                      <button onClick={() => setActiveTab('messages')}
+                        className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition cursor-pointer shrink-0">
+                        Open →
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* ── BOTTOM GRID: Activity + Charts ── */}
+                  <div className="grid grid-cols-5 gap-4">
+
+                    {/* RECENT ACTIVITY (col-span-3) */}
+                    <div className="col-span-3 bg-[#111827] rounded-xl border border-[#1F2937] overflow-hidden">
+                      <div className="flex items-center justify-between px-4 py-3 border-b border-[#1F2937]">
+                        <span className="text-base font-bold text-white">Recent Activity</span>
+                        <span className="text-[#6B7280] text-xs">{recentIssues.length} issues</span>
+                      </div>
+                      {recentIssues.length === 0 ? (
+                        <div className="px-4 py-10 text-center text-[#9CA3AF] text-sm">No activity yet.</div>
+                      ) : (
+                        recentIssues.map((issue, idx) => (
+                          <div
+                            key={issue.docId || issue.id}
+                            className={`flex items-center gap-3 px-4 py-3 hover:bg-[#1F2937] transition ${
+                              idx < recentIssues.length - 1 ? 'border-b border-[#1F2937]/50' : ''
+                            }`}
+                          >
+                            {/* Status icon */}
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0 ${
+                              issue.status === 'Resolved' ? 'bg-green-500/20 text-green-400' :
+                              issue.status === 'In Progress' ? 'bg-yellow-500/20 text-yellow-400' :
+                              'bg-gray-500/20 text-gray-400'
+                            }`}>
+                              {issue.status === 'Resolved' ? '✅' : issue.status === 'In Progress' ? '🔄' : '⏳'}
+                            </div>
+                            {/* Info */}
+                            <div className="flex-1 min-w-0">
+                              <div className="text-white text-sm font-medium truncate">
+                                {issue.category} · {issue.location}
+                              </div>
+                              <div className="text-[#6B7280] text-xs truncate">{issue.userEmail || 'Anonymous'}</div>
+                            </div>
+                            {/* Status + date */}
+                            <div className="text-right shrink-0">
+                              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                                issue.status === 'Resolved' ? 'bg-green-500/10 text-green-400' :
+                                issue.status === 'In Progress' ? 'bg-yellow-500/10 text-yellow-400' :
+                                'bg-gray-500/10 text-gray-400'
+                              }`}>{issue.status}</span>
+                              <div className="text-[#6B7280] text-xs mt-1">{issue.date || '—'}</div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    {/* RIGHT COLUMN (col-span-2): Category Heatmap + Performance */}
+                    <div className="col-span-2 flex flex-col gap-4">
+
+                      {/* Issue Breakdown */}
+                      <div className="bg-[#111827] rounded-xl border border-[#1F2937] p-4">
+                        <div className="text-base font-bold text-white mb-4">Issue Breakdown</div>
+                        {categoryCounts.map(({ name, count }) => (
+                          <div key={name} className="flex items-center gap-3 mb-3">
+                            <span className="text-[#9CA3AF] text-xs w-32 truncate shrink-0">{name}</span>
+                            <div className="flex-1 bg-[#1F2937] rounded-full h-2 overflow-hidden">
+                              <div
+                                className="bg-blue-500 rounded-full h-2 transition-all duration-700"
+                                style={{ width: `${totalAssigned > 0 ? (count / totalAssigned) * 100 : 0}%` }}
+                              />
+                            </div>
+                            <span className="text-white text-xs w-5 text-right shrink-0">{count}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Department Performance */}
+                      <div className="grid grid-cols-1 gap-3">
+                        {/* Avg Resolution Time */}
+                        <div className="bg-[#111827] rounded-xl border border-[#1F2937] p-4">
+                          <div className="text-3xl font-black text-blue-400">4.2</div>
+                          <div className="text-[#9CA3AF] text-xs mt-0.5">days average</div>
+                          <div className="text-[#6B7280] text-xs mt-1">Based on resolved issues</div>
+                          <div className="mt-2 bg-[#1F2937] rounded-full h-1 overflow-hidden">
+                            <div className="bg-blue-500 h-1 rounded-full" style={{ width: '42%' }} />
+                          </div>
+                        </div>
+
+                        {/* Resolution Rate + Upvotes side by side */}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="bg-[#111827] rounded-xl border border-[#1F2937] p-4">
+                            <div className="text-2xl font-black text-green-400">{resolvedPercent}%</div>
+                            <div className="text-[#9CA3AF] text-xs mt-0.5">resolved</div>
+                            <div className="mt-2 bg-[#1F2937] rounded-full h-1 overflow-hidden">
+                              <div className="bg-green-500 h-1 rounded-full transition-all duration-700" style={{ width: `${resolvedPercent}%` }} />
+                            </div>
+                          </div>
+                          <div className="bg-[#111827] rounded-xl border border-[#1F2937] p-4">
+                            <div className="text-2xl font-black text-amber-400">{totalUpvotes}</div>
+                            <div className="text-[#9CA3AF] text-xs mt-0.5">upvotes</div>
+                            <div className="text-[#6B7280] text-xs mt-1">Community</div>
+                          </div>
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+
                 </div>
+              );
+            })()}
 
-                {/* Stats Row */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-                  {/* Total Assigned */}
-                  <div className={`${bgSurface} rounded-2xl p-6 border ${borderTheme} flex flex-col justify-between hover:border-blue-500/20 transition duration-200`}>
-                    <span className="text-2xl"></span>
-                    <div className="mt-4">
-                      <div className="text-3xl font-black text-blue-400">{totalAssigned}</div>
-                      <div className={`${textMuted} text-xs font-semibold mt-1`}>Total Assigned</div>
-                    </div>
-                  </div>
-
-                  {/* Pending Action */}
-                  <div className={`${bgSurface} rounded-2xl p-6 border ${borderTheme} flex flex-col justify-between hover:border-red-500/20 transition duration-200`}>
-                    <span className="text-2xl"></span>
-                    <div className="mt-4">
-                      <div className="text-3xl font-black text-red-400">{pendingCount}</div>
-                      <div className={`${textMuted} text-xs font-semibold mt-1`}>Pending Action</div>
-                    </div>
-                  </div>
-
-                  {/* In Progress */}
-                  <div className={`${bgSurface} rounded-2xl p-6 border ${borderTheme} flex flex-col justify-between hover:border-yellow-500/20 transition duration-200`}>
-                    <span className="text-2xl"></span>
-                    <div className="mt-4">
-                      <div className="text-3xl font-black text-yellow-400">{inProgressCount}</div>
-                      <div className={`${textMuted} text-xs font-semibold mt-1`}>In Progress</div>
-                    </div>
-                  </div>
-
-                  {/* Resolved */}
-                  <div className={`${bgSurface} rounded-2xl p-6 border ${borderTheme} flex flex-col justify-between hover:border-green-500/20 transition duration-200`}>
-                    <span className="text-2xl"></span>
-                    <div className="mt-4">
-                      <div className="text-3xl font-black text-green-400">{resolvedCount}</div>
-                      <div className={`${textMuted} text-xs font-semibold mt-1`}>Resolved</div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Shortcut Card */}
-                <div className={`${bgSurface} border ${borderTheme} rounded-2xl p-6 flex flex-col md:flex-row justify-between items-center gap-6`}>
-                  <div>
-                    <h2 className={`text-xl font-bold ${textTheme} mb-2`}>Manage Assigned Incidents</h2>
-                    <p className={`${textMuted} text-sm leading-relaxed max-w-xl`}>
-                      Access the full list of complaints lodged under the {officerDepartment} department. Check details, write update notes, and manage resolutions.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setActiveTab("analyze")}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl transition duration-200 text-sm shadow-md shadow-blue-500/10 cursor-pointer shrink-0"
-                  >
-                    Analyze Reports &rarr;
-                  </button>
-                </div>
-              </div>
-            )}
 
             {/* 2. ANALYZE REPORTS TAB */}
             {activeTab === "analyze" && (
@@ -519,6 +681,22 @@ export default function OfficerDashboard() {
                   <p className={`${textMuted} text-sm mt-1`}>
                     View all reported civic issues assigned to {officerDepartment}
                   </p>
+                </div>
+
+                {/* Premium Filter Tabs */}
+                <div className={`${bgSurface} rounded-2xl p-1 flex gap-1 w-fit`}>
+                  {['All', 'Critical', 'High', 'Medium', 'Low'].map((f) => (
+                    <button
+                      key={f}
+                      className={`px-5 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
+                        f === 'All'
+                          ? 'bg-blue-600 text-white shadow-lg'
+                          : `${textMuted} hover:text-white hover:${bgSurface2}`
+                      }`}
+                    >
+                      {f}
+                    </button>
+                  ))}
                 </div>
 
                 <div className="space-y-4">
@@ -533,7 +711,12 @@ export default function OfficerDashboard() {
                     assignedIssues.map((issue) => (
                       <div
                         key={issue.docId || issue.id}
-                        className={`${bgSurface} rounded-2xl border ${borderTheme} p-5 mb-4 max-w-4xl mx-auto flex flex-col gap-4 transition-colors duration-300`}
+                        className={`${bgSurface} rounded-2xl border ${borderTheme} p-5 mb-4 max-w-4xl mx-auto flex flex-col gap-4 transition-colors duration-300 ${
+                          issue.severity === 'Critical' ? 'border-l-4 border-l-red-500' :
+                          issue.severity === 'High' ? 'border-l-4 border-l-orange-500' :
+                          issue.severity === 'Medium' ? 'border-l-4 border-l-yellow-500' :
+                          'border-l-4 border-l-green-500'
+                        }`}
                       >
                         {/* TOP Section */}
                         <div className="flex gap-4">
@@ -742,20 +925,27 @@ export default function OfficerDashboard() {
                 </div>
 
                 {/* Sub-tabs header */}
-                <div className={`flex border-b ${borderTheme} gap-6`}>
-                  {["Pending", "In Progress", "Resolved"].map((tabName) => {
+                <div className={`flex border-b ${borderTheme} gap-2`}>
+                  {[
+                    { name: "Pending", count: pendingCount, color: "bg-red-500" },
+                    { name: "In Progress", count: inProgressCount, color: "bg-yellow-500" },
+                    { name: "Resolved", count: resolvedCount, color: "bg-green-500" },
+                  ].map(({ name: tabName, count, color }) => {
                     const isActive = subTab === tabName;
                     return (
                       <button
                         key={tabName}
                         onClick={() => setSubTab(tabName)}
-                        className={`py-3 px-1 text-sm font-semibold cursor-pointer border-b-2 transition duration-200 ${
+                        className={`flex items-center gap-2 py-3 px-3 text-sm font-semibold cursor-pointer border-b-2 transition duration-200 ${
                           isActive
                             ? "border-blue-500 text-white"
                             : `border-transparent ${textMuted} hover:text-white`
                         }`}
                       >
                         {tabName}
+                        <span className={`${color} text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[1.1rem] text-center`}>
+                          {count}
+                        </span>
                       </button>
                     );
                   })}
@@ -1050,51 +1240,56 @@ export default function OfficerDashboard() {
                               </div>
 
                               {/* Before & After section */}
-                              <div className="grid grid-cols-2 gap-4 mt-4">
-                                {/* Left: Work Started */}
-                                <div className={`rounded-xl p-3 border ${borderTheme} flex flex-col gap-2 ${isDark ? 'bg-[#0A0F1E]/30' : 'bg-[#F8FAFC]'}`}>
-                                  <div className={`text-xs font-semibold ${textMuted}`}>
-                                    Work Started
+                              <div className="mt-4">
+                                <div className="text-xs font-bold uppercase tracking-wider text-[#9CA3AF] mb-2">Before &amp; After</div>
+                                <div className="grid grid-cols-2 gap-4">
+                                  {/* Left: Before (Work Started) */}
+                                  <div className={`rounded-xl p-3 border-2 border-yellow-500/30 flex flex-col gap-2 ${isDark ? 'bg-[#0A0F1E]/30' : 'bg-[#F8FAFC]'}`}>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="w-2 h-2 bg-yellow-400 rounded-full"></span>
+                                      <span className="text-xs font-bold text-yellow-400">Before</span>
+                                    </div>
+                                    {issue.workPhotos?.[0] ? (
+                                      <img
+                                        src={issue.workPhotos[0]}
+                                        alt="Work Started Proof"
+                                        className={`w-full h-36 object-cover rounded-xl border ${borderTheme} bg-gray-900`}
+                                      />
+                                    ) : (
+                                      <div className="w-full h-36 bg-gray-900 rounded-xl border border-[#374151]/30 flex items-center justify-center text-xs text-gray-500">
+                                        No Image
+                                      </div>
+                                    )}
+                                    {issue.workStartedNote && (
+                                      <div className={`text-xs ${textMuted} leading-relaxed italic`}>
+                                        "{issue.workStartedNote}"
+                                      </div>
+                                    )}
                                   </div>
-                                  {issue.workPhotos?.[0] ? (
-                                    <img
-                                      src={issue.workPhotos[0]}
-                                      alt="Work Started Proof"
-                                      className={`w-full h-32 object-cover rounded-xl border ${borderTheme} bg-gray-900`}
-                                    />
-                                  ) : (
-                                    <div className="w-full h-32 bg-gray-900 rounded-xl border border-[#374151]/30 flex items-center justify-center text-xs text-gray-500">
-                                      No Image
-                                    </div>
-                                  )}
-                                  {issue.workStartedNote && (
-                                    <div className={`text-xs ${textMuted} leading-relaxed italic`}>
-                                      "{issue.workStartedNote}"
-                                    </div>
-                                  )}
-                                </div>
 
-                                {/* Right: Completed */}
-                                <div className={`rounded-xl p-3 border ${borderTheme} flex flex-col gap-2 ${isDark ? 'bg-[#0A0F1E]/30' : 'bg-[#F8FAFC]'}`}>
-                                  <div className={`text-xs font-semibold ${textMuted}`}>
-                                    Completed
+                                  {/* Right: After (Completed) */}
+                                  <div className={`rounded-xl p-3 border-2 border-green-500/30 flex flex-col gap-2 ${isDark ? 'bg-[#0A0F1E]/30' : 'bg-[#F8FAFC]'}`}>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="w-2 h-2 bg-green-400 rounded-full"></span>
+                                      <span className="text-xs font-bold text-green-400">After</span>
+                                    </div>
+                                    {issue.workPhotos?.[1] ? (
+                                      <img
+                                        src={issue.workPhotos[1]}
+                                        alt="Completion Proof"
+                                        className={`w-full h-36 object-cover rounded-xl border ${borderTheme} bg-gray-900`}
+                                      />
+                                    ) : (
+                                      <div className="w-full h-36 bg-gray-900 rounded-xl border border-[#374151]/30 flex items-center justify-center text-xs text-gray-500">
+                                        No Image
+                                      </div>
+                                    )}
+                                    {issue.completionNote && (
+                                      <div className={`text-xs ${textMuted} leading-relaxed italic`}>
+                                        "{issue.completionNote}"
+                                      </div>
+                                    )}
                                   </div>
-                                  {issue.workPhotos?.[1] ? (
-                                    <img
-                                      src={issue.workPhotos[1]}
-                                      alt="Completion Proof"
-                                      className={`w-full h-32 object-cover rounded-xl border ${borderTheme} bg-gray-900`}
-                                    />
-                                  ) : (
-                                    <div className="w-full h-32 bg-gray-900 rounded-xl border border-[#374151]/30 flex items-center justify-center text-xs text-gray-500">
-                                      No Image
-                                    </div>
-                                  )}
-                                  {issue.completionNote && (
-                                    <div className={`text-xs ${textMuted} leading-relaxed italic`}>
-                                      "{issue.completionNote}"
-                                    </div>
-                                  )}
                                 </div>
                               </div>
 
@@ -1128,15 +1323,18 @@ export default function OfficerDashboard() {
                   </p>
                 </div>
 
-                <div className="bg-[#111827] border border-[#374151] rounded-2xl overflow-hidden flex h-[500px]">
+                <div className="bg-[#111827] border border-[#374151] rounded-2xl overflow-hidden flex h-[540px]">
                   {/* LEFT PANEL */}
                   <div className="w-1/3 border-r border-[#374151] flex flex-col h-full bg-[#0D1117]/50">
-                    <div className="p-4 border-b border-[#374151]">
-                      <span className="text-xs font-bold uppercase tracking-wider text-[#9CA3AF]">
-                        Active Chats
-                      </span>
+                    <div className="p-4 border-b border-[#374151] flex items-center justify-between">
+                      <span className="text-xs font-bold uppercase tracking-wider text-[#9CA3AF]">Active Chats</span>
+                      {allChats.length > 0 && (
+                        <span className="bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                          {allChats.length}
+                        </span>
+                      )}
                     </div>
-                    <div className="flex-1 overflow-y-auto">
+                    <div className="flex-1 overflow-y-auto p-2">
                       {allChats.length === 0 ? (
                         <div className="p-8 text-center text-[#9CA3AF] text-sm">
                           No active chats.
@@ -1153,28 +1351,35 @@ export default function OfficerDashboard() {
                             <div
                               key={chat.docId}
                               onClick={() => setSelectedChat(chat)}
-                              className={`p-4 border-b border-[#374151]/50 cursor-pointer transition flex items-center justify-between ${
-                                isSelected ? "bg-blue-500/10 border-l-4 border-blue-500" : "hover:bg-[#1F2937]/50"
+                              className={`rounded-xl p-3 mb-2 cursor-pointer transition border ${
+                                isSelected
+                                  ? 'border-blue-500 bg-blue-500/10'
+                                  : 'border-transparent bg-[#1F2937] hover:border-blue-500/40'
                               }`}
                             >
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-white font-semibold text-xs truncate">
-                                    {category}
-                                  </span>
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="bg-blue-500/10 text-blue-400 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
+                                  {category}
+                                </span>
+                                <div className="flex items-center gap-1.5">
                                   {isUnread && (
-                                    <span className="w-2 h-2 bg-blue-500 rounded-full shrink-0"></span>
+                                    <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                                  )}
+                                  {lastMsg && (
+                                    <span className="text-[#6B7280] text-[9px]">
+                                      {new Date(lastMsg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
                                   )}
                                 </div>
-                                <div className="text-[10px] text-[#9CA3AF] truncate mt-0.5">
-                                  {chat.citizenEmail}
-                                </div>
-                                {lastMsg && (
-                                  <div className="text-xs text-[#9CA3AF] truncate mt-1">
-                                    {lastMsg.text}
-                                  </div>
-                                )}
                               </div>
+                              <div className="text-[10px] text-[#9CA3AF] truncate">
+                                {chat.citizenEmail}
+                              </div>
+                              {lastMsg && (
+                                <div className="text-xs text-white truncate mt-1 line-clamp-1">
+                                  {lastMsg.text}
+                                </div>
+                              )}
                             </div>
                           );
                         })
