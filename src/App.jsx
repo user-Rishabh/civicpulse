@@ -4,17 +4,67 @@ import Navbar from "./components/Navbar";
 import Home from "./pages/Home";
 import Report from "./pages/Report";
 import Feed from "./pages/Feed";
-import Dashboard from "./pages/Dashboard";
+import CitizenDashboard from "./pages/CitizenDashboard";
+import OfficerDashboard from "./pages/OfficerDashboard";
 import Login from "./pages/Login";
 
-function ProtectedRoute({ children }) {
-  const { user } = useAuth();
-  return user ? children : <Navigate to="/login" replace />;
+function ProtectedRoute({ children, allowedRoles }) {
+  const { user, userProfile, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-[#0A0F1E]">
+        <div className="animate-spin border-4 border-blue-500 border-t-transparent rounded-full w-10 h-10 mb-4"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (allowedRoles) {
+    if (!userProfile) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-[#0A0F1E]">
+          <div className="animate-spin border-4 border-blue-500 border-t-transparent rounded-full w-10 h-10 mb-4"></div>
+        </div>
+      );
+    }
+
+    if (!allowedRoles.includes(userProfile.role)) {
+      if (userProfile.role === "officer") {
+        return <Navigate to="/officer-dashboard" replace />;
+      } else {
+        return <Navigate to="/citizen-dashboard" replace />;
+      }
+    }
+  }
+
+  return children;
 }
 
 function PublicRoute({ children }) {
   const { user } = useAuth();
-  return user ? <Navigate to="/" replace /> : children;
+  return user ? <Navigate to="/dashboard" replace /> : children;
+}
+
+function DashboardRedirect() {
+  const { userProfile } = useAuth();
+
+  if (!userProfile) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-[#0A0F1E]">
+        <div className="animate-spin border-4 border-blue-500 border-t-transparent rounded-full w-10 h-10 mb-4"></div>
+      </div>
+    );
+  }
+
+  if (userProfile.role === "officer") {
+    return <Navigate to="/officer-dashboard" replace />;
+  } else {
+    return <Navigate to="/citizen-dashboard" replace />;
+  }
 }
 
 function App() {
@@ -36,7 +86,7 @@ function App() {
             <Route
               path="/report"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={["citizen"]}>
                   <Report />
                 </ProtectedRoute>
               }
@@ -44,7 +94,7 @@ function App() {
             <Route
               path="/feed"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={["citizen", "officer"]}>
                   <Feed />
                 </ProtectedRoute>
               }
@@ -53,7 +103,23 @@ function App() {
               path="/dashboard"
               element={
                 <ProtectedRoute>
-                  <Dashboard />
+                  <DashboardRedirect />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/citizen-dashboard"
+              element={
+                <ProtectedRoute allowedRoles={["citizen"]}>
+                  <CitizenDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/officer-dashboard"
+              element={
+                <ProtectedRoute allowedRoles={["officer"]}>
+                  <OfficerDashboard />
                 </ProtectedRoute>
               }
             />
