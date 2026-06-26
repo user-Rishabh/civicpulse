@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { motion } from "framer-motion";
 
 export default function Navbar() {
   const location = useLocation();
@@ -36,63 +37,78 @@ export default function Navbar() {
   };
 
   const filteredNavItems = getNavItems();
+  const firstLetter = user?.email ? user.email.charAt(0).toUpperCase() : "";
 
   return (
-    <nav className="fixed top-0 left-0 w-full z-50 bg-[#0A0F1E]/90 backdrop-blur-md border-b border-[#374151] px-8 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
-      {/* Left side: Brand logo + Tabular nav links */}
-      <div className="flex flex-col md:flex-row items-center gap-8 w-full md:w-auto">
-        <Link to="/" className="flex items-center gap-1 group shrink-0">
-          <span className="text-white font-bold text-xl tracking-tight transition group-hover:scale-105 duration-200">
-            ⚡ Civic
-          </span>
-          <span className="text-blue-400 font-bold text-xl tracking-tight transition group-hover:scale-105 duration-200">
-            Pulse
-          </span>
-        </Link>
-        
-        {/* Nav Links - Tabular format */}
-        <div className="flex items-center gap-6 md:gap-8 flex-wrap justify-center">
-          {filteredNavItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`text-sm transition-all duration-200 ${
-                isActive(item.path)
-                  ? "text-blue-400 font-semibold"
-                  : "text-[#9CA3AF] hover:text-white font-medium"
-              }`}
-            >
-              {item.name}
-            </Link>
-          ))}
-        </div>
-      </div>
-
-      {/* Right side: Auth section */}
-      <div className="flex items-center gap-4 shrink-0 mt-4 md:mt-0">
-        {user ? (
-          <div className="flex items-center gap-4">
-            <span
-              className="text-[#9CA3AF] text-sm font-medium"
-              title={user.email}
-            >
-              {truncateEmail(user.email)}
-            </span>
-            <button
-              onClick={logout}
-              className="text-[#9CA3AF] hover:text-red-400 text-sm font-medium cursor-pointer transition-colors duration-200 border-none bg-transparent outline-none"
-            >
-              Sign Out
-            </button>
+    <nav className="fixed top-0 left-0 w-full z-50 bg-[#0A0F1E]/80 backdrop-blur-xl border-b border-white/5">
+      <div className="max-w-7xl mx-auto px-8 py-4 flex justify-between items-center">
+        {/* LEFT Logo & Brand */}
+        <Link 
+          to="/" 
+          className="flex items-center gap-2 group shrink-0"
+          style={{ filter: "drop-shadow(0 0 8px rgba(59,130,246,0.5))" }}
+        >
+          <div className="bg-blue-600 rounded-lg w-8 h-8 flex items-center justify-center text-sm text-white font-bold">
+            ⚡
           </div>
-        ) : (
-          <Link
-            to="/login"
-            className="text-sm text-blue-400 hover:text-blue-300 font-semibold transition-colors duration-200"
-          >
-            Sign In
-          </Link>
+          <div className="flex">
+            <span className="text-white font-bold text-xl">Civic</span>
+            <span className="text-blue-400 font-bold text-xl">Pulse</span>
+          </div>
+        </Link>
+
+        {/* CENTER (when logged in): nav links */}
+        {user && (
+          <div className="hidden md:flex items-center gap-2">
+            {filteredNavItems.map((item) => (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`text-sm font-medium transition px-4 py-2 rounded-lg ${
+                  isActive(item.path)
+                    ? "text-white bg-white/5"
+                    : "text-[#9CA3AF] hover:text-white hover:bg-white/5"
+                }`}
+              >
+                {item.name}
+              </Link>
+            ))}
+          </div>
         )}
+
+        {/* RIGHT Auth actions */}
+        <div className="flex items-center gap-4 shrink-0">
+          {user ? (
+            <div className="flex items-center gap-4">
+              <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold" title={user.email}>
+                {firstLetter}
+              </div>
+              <span className="text-[#9CA3AF] text-sm font-medium hidden sm:inline" title={user.email}>
+                {truncateEmail(user.email)}
+              </span>
+              <button
+                onClick={logout}
+                className="text-[#9CA3AF] hover:text-red-400 text-sm font-medium transition cursor-pointer bg-transparent border-none outline-none"
+              >
+                Sign Out
+              </button>
+            </div>
+          ) : (
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <Link
+                to="/login"
+                className="relative overflow-hidden group flex items-center justify-center bg-gradient-to-r from-blue-600 to-blue-500 text-white font-semibold px-6 py-2.5 rounded-xl border border-blue-400/30 shadow-[0_0_20px_rgba(59,130,246,0.4)] hover:shadow-[0_0_40px_rgba(59,130,246,0.6)] transition-all duration-300"
+              >
+                {/* Shimmer sweep effect */}
+                <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 pointer-events-none" />
+                <span>Sign In</span>
+              </Link>
+            </motion.div>
+          )}
+        </div>
       </div>
     </nav>
   );
