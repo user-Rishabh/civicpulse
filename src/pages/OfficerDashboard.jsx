@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { collection, onSnapshot, doc, updateDoc } from "firebase/firestore";
+import { useEffect, useState, useRef } from "react";
+import { collection, onSnapshot, doc, updateDoc, getDoc, setDoc, arrayUnion } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
 import { verifyInProgressImage, verifyResolvedImage, analyzeWorkPhoto } from "../lib/gemini";
@@ -22,6 +22,70 @@ export default function OfficerDashboard() {
   const [cannotResolveReason, setCannotResolveReason] = useState("Budget Constraints");
   const [cannotResolveDetails, setCannotResolveDetails] = useState("");
   const [toastMsg, setToastMsg] = useState("");
+
+  // Chat States
+  const [allChats, setAllChats] = useState([]);
+  const [selectedChat, setSelectedChat] = useState(null);
+  const [officerChatMessage, setOfficerChatMessage] = useState("");
+
+  const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [allChats, selectedChat]);
+
+  useEffect(() => {
+    const chatsCollection = collection(db, "chats");
+    const unsubscribe = onSnapshot(chatsCollection, (snapshot) => {
+      const list = snapshot.docs.map((doc) => ({
+        docId: doc.id,
+        ...doc.data(),
+      }));
+      // Filter where messages array is not empty
+      const active = list.filter((chat) => chat.messages && chat.messages.length > 0);
+      setAllChats(active);
+    }, (error) => {
+      console.error("Error listening to chats:", error);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleSendOfficerMessage = async (e) => {
+    e.preventDefault();
+    if (!officerChatMessage.trim() || !selectedChat) return;
+
+    const messageId = Date.now();
+    const timestamp = new Date().toISOString();
+    const newMessage = {
+      id: messageId,
+      text: officerChatMessage,
+      senderEmail: userProfile?.email || "officer@example.com",
+      senderRole: "officer",
+      timestamp: timestamp,
+    };
+
+    const chatDocRef = doc(db, "chats", String(selectedChat.issueId));
+
+    try {
+      await updateDoc(chatDocRef, {
+        messages: arrayUnion(newMessage),
+      });
+
+      // Find the issue to get category
+      const chatIssue = issues.find(i => String(i.id) === String(selectedChat.issueId));
+      const category = chatIssue ? chatIssue.category : "issue";
+
+      createInAppNotification(
+        selectedChat.issueId,
+        `New message from department regarding your ${category} issue`,
+        "message"
+      );
+
+      setOfficerChatMessage("");
+    } catch (err) {
+      console.error("Failed to send officer chat message:", err);
+    }
+  };
 
   useEffect(() => {
     const issuesCollection = collection(db, "issues");
@@ -286,6 +350,7 @@ export default function OfficerDashboard() {
   const tabs = [
     { id: "Dashboard", label: "Dashboard" },
     { id: "analyze", label: "Analyze Reports" },
+    { id: "messages", label: "Messages" },
     { id: "submit", label: "Submit Review" },
   ];
 
@@ -309,17 +374,31 @@ export default function OfficerDashboard() {
         <nav className="flex-1 space-y-1">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
+            const isMessagesTab = tab.id === "messages";
+            const unreadCount = isMessagesTab
+              ? allChats.filter(chat => {
+                  if (!chat.messages || chat.messages.length === 0) return false;
+                  const lastMsg = chat.messages[chat.messages.length - 1];
+                  return lastMsg.senderRole === "citizen";
+                }).length
+              : 0;
+
             return (
               <div
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-6 py-3 flex items-center gap-3 cursor-pointer rounded-r-xl mr-3 font-semibold text-sm transition-all duration-200 ${
+                className={`px-6 py-3 flex items-center justify-between gap-3 cursor-pointer rounded-r-xl mr-3 font-semibold text-sm transition-all duration-200 ${
                   isActive
                     ? "bg-blue-600 text-white shadow-md shadow-blue-500/10"
                     : "text-[#9CA3AF] hover:text-white hover:bg-[#1F2937]"
                 }`}
               >
                 <span>{tab.label}</span>
+                {isMessagesTab && unreadCount > 0 && (
+                  <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0">
+                    {unreadCount}
+                  </span>
+                )}
               </div>
             );
           })}
@@ -1007,6 +1086,165 @@ export default function OfficerDashboard() {
                       )}
                     </div>
                   )}
+                </div>
+              </div>
+            )}
+
+            {/* 4. MESSAGES TAB */}
+            {activeTab === "messages" && (
+              <div className="max-w-6xl mx-auto space-y-6">
+                <div>
+                  <h1 className="text-2xl font-bold text-white">Department Messages</h1>
+                  <p className="text-[#9CA3AF] text-sm mt-1">
+                    Direct real-time chat with citizens regarding reported complaints
+                  </p>
+                </div>
+
+                <div className="bg-[#111827] border border-[#374151] rounded-2xl overflow-hidden flex h-[500px]">
+                  {/* LEFT PANEL */}
+                  <div className="w-1/3 border-r border-[#374151] flex flex-col h-full bg-[#0D1117]/50">
+                    <div className="p-4 border-b border-[#374151]">
+                      <span className="text-xs font-bold uppercase tracking-wider text-[#9CA3AF]">
+                        Active Chats
+                      </span>
+                    </div>
+                    <div className="flex-1 overflow-y-auto">
+                      {allChats.length === 0 ? (
+                        <div className="p-8 text-center text-[#9CA3AF] text-sm">
+                          No active chats.
+                        </div>
+                      ) : (
+                        allChats.map((chat) => {
+                          const lastMsg = chat.messages[chat.messages.length - 1];
+                          const isUnread = lastMsg && lastMsg.senderRole === "citizen";
+                          const chatIssue = issues.find(i => String(i.id) === String(chat.issueId));
+                          const category = chatIssue ? chatIssue.category : "Issue";
+                          const isSelected = selectedChat?.docId === chat.docId;
+
+                          return (
+                            <div
+                              key={chat.docId}
+                              onClick={() => setSelectedChat(chat)}
+                              className={`p-4 border-b border-[#374151]/50 cursor-pointer transition flex items-center justify-between ${
+                                isSelected ? "bg-blue-500/10 border-l-4 border-blue-500" : "hover:bg-[#1F2937]/50"
+                              }`}
+                            >
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-white font-semibold text-xs truncate">
+                                    {category}
+                                  </span>
+                                  {isUnread && (
+                                    <span className="w-2 h-2 bg-blue-500 rounded-full shrink-0"></span>
+                                  )}
+                                </div>
+                                <div className="text-[10px] text-[#9CA3AF] truncate mt-0.5">
+                                  {chat.citizenEmail}
+                                </div>
+                                {lastMsg && (
+                                  <div className="text-xs text-[#9CA3AF] truncate mt-1">
+                                    {lastMsg.text}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+
+                  {/* RIGHT PANEL */}
+                  <div className="w-2/3 flex flex-col h-full bg-[#0A0F1E]/20">
+                    {!selectedChat ? (
+                      <div className="flex-1 flex items-center justify-center text-[#9CA3AF] text-sm">
+                        Select a chat to communicate with the citizen
+                      </div>
+                    ) : (
+                      <>
+                        {/* Chat Header */}
+                        <div className="bg-[#1F2937] px-6 py-3 border-b border-[#374151] flex items-center justify-between">
+                          <div>
+                            <span className="bg-blue-500/10 text-blue-400 text-[10px] px-2 py-0.5 rounded-md border border-blue-500/20 font-bold uppercase">
+                              {(() => {
+                                const chatIssue = issues.find(i => String(i.id) === String(selectedChat.issueId));
+                                return chatIssue ? chatIssue.category : "Issue";
+                              })()}
+                            </span>
+                            <span className="text-[#9CA3AF] text-xs ml-3">
+                              {(() => {
+                                const chatIssue = issues.find(i => String(i.id) === String(selectedChat.issueId));
+                                return chatIssue ? `Location: ${chatIssue.location}` : "";
+                              })()}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            {(() => {
+                              const chatIssue = issues.find(i => String(i.id) === String(selectedChat.issueId));
+                              return chatIssue && chatIssue.department ? (
+                                <span className="bg-purple-500/10 text-purple-400 text-[9px] px-2 py-0.5 rounded-md border border-purple-500/20 font-bold uppercase">
+                                  🏢 {chatIssue.department}
+                                </span>
+                              ) : null;
+                            })()}
+                            <span className="text-[#6B7280] text-[10px] truncate max-w-[200px]">
+                              {selectedChat.citizenEmail}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Messages Area */}
+                        <div className="h-96 overflow-y-auto p-6 space-y-4 flex flex-col">
+                          {(() => {
+                            const currentChat = allChats.find(c => c.docId === selectedChat.docId) || selectedChat;
+                            return currentChat.messages?.map((msg) => {
+                              const isOfficer = msg.senderRole === "officer";
+                              return (
+                                <div
+                                  key={msg.id}
+                                  className={`flex flex-col ${isOfficer ? "items-end" : "items-start"}`}
+                                >
+                                  <div
+                                    className={`max-w-xs rounded-2xl px-4 py-2 text-sm leading-relaxed ${
+                                      isOfficer
+                                        ? "bg-blue-600 text-white rounded-br-sm ml-auto"
+                                        : "bg-[#1F2937] text-white rounded-bl-sm border border-[#374151]/50"
+                                    }`}
+                                  >
+                                    {msg.text}
+                                  </div>
+                                  <span className="text-xs text-[#6B7280] mt-1">
+                                    {new Date(msg.timestamp).toLocaleTimeString([], {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })}
+                                  </span>
+                                </div>
+                              );
+                            });
+                          })()}
+                          <div ref={messagesEndRef} />
+                        </div>
+
+                        {/* Chat Input */}
+                        <form onSubmit={handleSendOfficerMessage} className="p-4 border-t border-[#374151] bg-[#0A0F1E]/50 flex gap-3 mt-auto">
+                          <input
+                            type="text"
+                            placeholder="Type your reply..."
+                            value={officerChatMessage}
+                            onChange={(e) => setOfficerChatMessage(e.target.value)}
+                            className="flex-1 bg-[#1F2937] border border-[#374151] rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none transition text-sm"
+                          />
+                          <button
+                            type="submit"
+                            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl transition text-sm cursor-pointer shadow-md shadow-blue-500/10"
+                          >
+                            Send
+                          </button>
+                        </form>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
