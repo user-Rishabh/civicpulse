@@ -14,6 +14,12 @@ export default function CitizenDashboard() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("Dashboard");
 
+  // Notification bell state
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifications, setNotifications] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('civicpulse_notifications') || '[]'); } catch { return []; }
+  });
+
   // Mock message state
   const [chatMessage, setChatMessage] = useState("");
   const [chatHistory, setChatHistory] = useState([
@@ -201,7 +207,75 @@ export default function CitizenDashboard() {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 ml-64 pt-20 px-8 pb-20 min-w-0">
+      <div className="flex-1 ml-64 pt-20 px-8 pb-20 min-w-0 relative">
+        {/* NOTIFICATION BELL */}
+        {(() => {
+          const myIssueIds = new Set(myIssues.map(i => String(i.id)));
+          const myNotifs = notifications.filter(n => myIssueIds.has(String(n.issueId)));
+          const unreadCount = myNotifs.filter(n => !n.read).length;
+          const markAllRead = () => {
+            const updated = notifications.map(n =>
+              myIssueIds.has(String(n.issueId)) ? { ...n, read: true } : n
+            );
+            setNotifications(updated);
+            localStorage.setItem('civicpulse_notifications', JSON.stringify(updated));
+          };
+          const markOneRead = (id) => {
+            const updated = notifications.map(n => n.id === id ? { ...n, read: true } : n);
+            setNotifications(updated);
+            localStorage.setItem('civicpulse_notifications', JSON.stringify(updated));
+            setNotifOpen(false);
+            setActiveTab('track');
+          };
+          return (
+            <div className="fixed top-20 right-8 z-50">
+              <button
+                onClick={() => setNotifOpen(o => !o)}
+                className="relative w-10 h-10 flex items-center justify-center bg-[#111827] border border-[#374151] rounded-xl hover:border-blue-500/50 transition cursor-pointer"
+              >
+                <span className="text-lg">🔔</span>
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+              {notifOpen && (
+                <div className="absolute right-0 mt-2 w-80 bg-[#111827] border border-[#374151] rounded-2xl p-4 shadow-2xl shadow-black/50">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-white font-bold text-sm">Notifications</span>
+                    {unreadCount > 0 && (
+                      <button onClick={markAllRead} className="text-blue-400 text-xs font-semibold hover:text-blue-300 cursor-pointer">
+                        Mark all as read
+                      </button>
+                    )}
+                  </div>
+                  <div className="max-h-72 overflow-y-auto space-y-2">
+                    {myNotifs.length === 0 ? (
+                      <p className="text-[#9CA3AF] text-xs text-center py-4">No notifications yet</p>
+                    ) : (
+                      myNotifs.map(notif => (
+                        <div
+                          key={notif.id}
+                          onClick={() => markOneRead(notif.id)}
+                          className={`bg-[#1F2937] rounded-xl p-3 cursor-pointer hover:bg-[#374151]/50 transition ${
+                            !notif.read ? 'border-l-4 border-blue-500' : ''
+                          }`}
+                        >
+                          <p className="text-white text-xs leading-relaxed">{notif.message}</p>
+                          <p className="text-[#6B7280] text-[10px] mt-1">
+                            {new Date(notif.createdAt).toLocaleString()}
+                          </p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
         {loading ? (
           <div className="flex flex-col items-center justify-center py-32">
             <div className="animate-spin border-4 border-blue-500 border-t-transparent rounded-full w-10 h-10 mb-4"></div>
@@ -473,6 +547,23 @@ export default function CitizenDashboard() {
                         {(issue.estimatedDays !== undefined && issue.estimatedDays !== null) && (
                           <div className="mt-3 bg-amber-500/10 border border-amber-500/20 rounded-lg px-4 py-2 inline-flex items-center gap-2">
                             <span className="text-amber-400 text-sm">⏱️ Estimated Resolution: {issue.estimatedDays} days</span>
+                          </div>
+                        )}
+
+                        {/* RESOLVED CELEBRATION BANNER */}
+                        {issue.status === 'Resolved' && (
+                          <div className="mt-4 bg-green-500/10 border border-green-500/20 rounded-xl p-4">
+                            <p className="text-green-400 font-bold text-sm">🎉 This issue has been resolved! Thank you for making your city better.</p>
+                            {issue.workPhotos && issue.workPhotos[1] && (
+                              <div className="mt-3">
+                                <p className="text-[#9CA3AF] text-xs mb-1 font-semibold">Completion Proof Photo</p>
+                                <img
+                                  src={issue.workPhotos[1]}
+                                  alt="Resolved"
+                                  className="w-full max-w-xs h-36 object-cover rounded-xl border border-green-500/30"
+                                />
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
