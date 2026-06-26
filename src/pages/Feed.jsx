@@ -3,8 +3,22 @@ import { Link } from "react-router-dom";
 import { collection, onSnapshot, doc, updateDoc } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { verifyInProgressImage, verifyResolvedImage } from "../lib/gemini";
+import { useTheme } from "../context/ThemeContext";
 
 export default function Feed() {
+  const { isDark } = useTheme();
+
+  const t = {
+    bg: isDark ? 'bg-[#0A0F1E]' : 'bg-[#EEF2FF]',
+    surface: isDark ? 'bg-[#111827]' : 'bg-[#E8EFFE]',
+    surface2: isDark ? 'bg-[#1F2937]' : 'bg-[#DDE6FD]',
+    border: isDark ? 'border-[#374151]' : 'border-[#C7D7F9]',
+    text: isDark ? 'text-white' : 'text-[#1E293B]',
+    muted: isDark ? 'text-[#9CA3AF]' : 'text-[#475569]',
+    sidebar: isDark ? 'bg-[#0D1117]' : 'bg-[#E2EAFC]',
+    card: isDark ? 'bg-[#111827] border-[#374151]' : 'bg-[#EEF2FF] border-[#C7D7F9]',
+  };
+
   const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedFilter, setSelectedFilter] = useState("All");
@@ -230,7 +244,7 @@ export default function Feed() {
     <div className="pt-28 px-8 max-w-6xl mx-auto pb-20">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <h1 className="text-3xl font-bold text-white tracking-tight">Live Issue Feed</h1>
+        <h1 className={`text-3xl font-bold ${t.text} tracking-tight`}>Live Issue Feed</h1>
         {!loading && (
           <span className="bg-blue-500/20 text-blue-400 rounded-full px-3 py-1 text-sm font-semibold animate-fade-in">
             {filteredIssues.length} {filteredIssues.length === 1 ? "Issue" : "Issues"}
@@ -240,7 +254,7 @@ export default function Feed() {
 
       {/* Filter Bar */}
       <div className="mt-6 mb-8 flex gap-2 flex-wrap items-center">
-        <span className="text-[#6B7280] text-xs font-semibold uppercase tracking-wider mr-2">Filter By:</span>
+        <span className={`${t.muted} text-xs font-semibold uppercase tracking-wider mr-2`}>Filter By:</span>
         {filterButtons.map((btn) => (
           <button
             key={btn.value}
@@ -248,7 +262,7 @@ export default function Feed() {
             className={`rounded-lg px-4 py-2 text-xs font-medium transition duration-200 border ${
               selectedFilter === btn.value
                 ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20"
-                : "bg-[#111827] border-[#374151] text-[#9CA3AF] hover:text-white hover:border-[#4B5563]"
+                : `${t.surface} ${t.border} ${t.muted} hover:text-white hover:border-[#4B5563]`
             }`}
           >
             {btn.label}
@@ -260,13 +274,13 @@ export default function Feed() {
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20">
           <div className="animate-spin border-4 border-blue-500 border-t-transparent rounded-full w-10 h-10 mb-4"></div>
-          <span className="text-[#9CA3AF] text-sm font-medium">Syncing live reports from database...</span>
+          <span className={`${t.muted} text-sm font-medium`}>Syncing live reports from database...</span>
         </div>
       ) : filteredIssues.length === 0 ? (
-        <div className="text-center py-20 bg-[#111827]/40 border border-[#374151] rounded-2xl flex flex-col items-center justify-center p-8">
+        <div className={`text-center py-20 ${t.surface}/40 border ${t.border} rounded-2xl flex flex-col items-center justify-center p-8`}>
           <span className="text-6xl mb-4">📭</span>
-          <h2 className="text-white font-semibold text-xl">No Issues Reported Yet</h2>
-          <p className="text-[#9CA3AF] text-sm mt-2 max-w-sm">
+          <h2 className={`font-semibold text-xl ${t.text}`}>No Issues Reported Yet</h2>
+          <p className={`${t.muted} text-sm mt-2 max-w-sm`}>
             Be the first to report a civic issue in your area or try selecting a different filter.
           </p>
           <Link
@@ -286,7 +300,7 @@ export default function Feed() {
                 setVerifyError("");
                 setVerifySuccess("");
               }}
-              className="bg-[#111827] rounded-2xl border border-[#374151] overflow-hidden hover:border-blue-500/50 transition-all duration-300 flex flex-col group cursor-pointer"
+              className={`rounded-2xl border overflow-hidden hover:border-blue-500/50 transition-all duration-300 flex flex-col group cursor-pointer ${t.card}`}
             >
               {/* Top Image Area */}
               <div className="relative h-48 w-full overflow-hidden">
@@ -298,7 +312,7 @@ export default function Feed() {
                 <span className={`absolute top-3 right-3 shadow-md ${getSeverityBadgeClass(issue.severity)}`}>
                   {issue.severity}
                 </span>
-                <span className="absolute top-3 left-3 bg-[#0A0F1E]/80 backdrop-blur text-white text-xs px-2.5 py-1.5 rounded-lg border border-[#374151] font-semibold">
+                <span className={`absolute top-3 left-3 ${t.bg}/80 backdrop-blur ${t.text} text-xs px-2.5 py-1.5 rounded-lg border ${t.border} font-semibold`}>
                   {issue.category}
                 </span>
               </div>
@@ -309,12 +323,12 @@ export default function Feed() {
                   <div className="text-blue-400 text-xs font-semibold uppercase tracking-wider">
                     {issue.department}
                   </div>
-                  <h3 className="text-white text-sm mt-2 font-medium line-clamp-2 leading-relaxed">
+                  <h3 className={`text-sm mt-2 font-medium line-clamp-2 leading-relaxed ${t.text}`}>
                     {issue.description}
                   </h3>
                   
                   <div className="mt-4 space-y-2">
-                    <div className="flex items-center gap-1.5 text-[#9CA3AF] text-xs">
+                    <div className={`flex items-center gap-1.5 ${t.muted} text-xs`}>
                       <span>📍</span>
                       <span className="truncate font-medium">{issue.location}</span>
                     </div>
@@ -326,7 +340,7 @@ export default function Feed() {
                 </div>
 
                 {/* Card Footer */}
-                <div className="mt-5 pt-4 border-t border-[#374151] flex items-center justify-between gap-2">
+                <div className={`mt-5 pt-4 border-t ${t.border} flex items-center justify-between gap-2`}>
                   <div className="flex items-center gap-1">
                     <span
                       title="Click to cycle status"
@@ -341,13 +355,13 @@ export default function Feed() {
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <span className="text-[#6B7280] text-xs font-medium">{issue.date}</span>
+                    <span className={`${t.muted} text-xs font-medium`}>{issue.date}</span>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         handleUpvote(issue.docId || issue.id, issue.upvotes);
                       }}
-                      className="bg-[#1F2937] hover:bg-[#374151] border border-[#374151] text-white hover:text-blue-400 font-semibold px-3 py-1.5 rounded-lg text-xs transition duration-200 flex items-center gap-1.5 cursor-pointer"
+                      className={`hover:bg-opacity-80 border font-semibold px-3 py-1.5 rounded-lg text-xs transition duration-200 flex items-center gap-1.5 cursor-pointer ${t.surface2} ${t.border} ${t.text}`}
                     >
                       <span>👍</span>
                       <span>{issue.upvotes || 0}</span>
@@ -362,13 +376,15 @@ export default function Feed() {
 
       {/* 6. DETAIL MODAL */}
       {selectedIssue && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0A0F1E]/85 backdrop-blur-sm overflow-y-auto animate-fade-in">
-          <div className="bg-[#111827] border border-[#374151] rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col relative animate-scale-in">
+        <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto animate-fade-in ${
+          isDark ? 'bg-[#0A0F1E]/85' : 'bg-[#EEF2FF]/85'
+        }`}>
+          <div className={`border rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col relative animate-scale-in ${t.surface} ${t.border}`}>
             
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-5 border-b border-[#374151]">
+            <div className={`flex items-center justify-between px-6 py-5 border-b ${t.border}`}>
               <div className="flex items-center gap-3 flex-wrap">
-                <h2 className="text-xl font-bold text-white tracking-tight">Issue Details</h2>
+                <h2 className={`text-xl font-bold tracking-tight ${t.text}`}>Issue Details</h2>
                 <span className="bg-blue-500/20 text-blue-400 text-xs px-2.5 py-1 rounded-lg border border-blue-500/30 font-semibold uppercase tracking-wider">
                   {selectedIssue.category}
                 </span>
@@ -382,7 +398,7 @@ export default function Feed() {
                   setVerifyError("");
                   setVerifySuccess("");
                 }}
-                className="text-[#9CA3AF] hover:text-white bg-[#1F2937] hover:bg-[#374151] border border-[#374151] w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer"
+                className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${t.muted} hover:${t.text} ${t.surface2} hover:bg-opacity-85 border ${t.border}`}
               >
                 ✕
               </button>
@@ -393,43 +409,43 @@ export default function Feed() {
               
               {/* Left Column: Details */}
               <div className="space-y-6">
-                <div className="bg-[#1F2937]/50 rounded-2xl p-5 border border-[#374151] space-y-4">
+                <div className={`${t.surface2}/50 rounded-2xl p-5 border ${t.border} space-y-4`}>
                   <div>
-                    <span className="text-[#6B7280] text-xs font-semibold uppercase tracking-wider block">Description</span>
-                    <p className="text-white text-sm mt-1.5 leading-relaxed font-medium">{selectedIssue.description}</p>
+                    <span className={`${t.muted} text-xs font-semibold uppercase tracking-wider block`}>Description</span>
+                    <p className={`${t.text} text-sm mt-1.5 leading-relaxed font-medium`}>{selectedIssue.description}</p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 pt-2">
                     <div>
-                      <span className="text-[#6B7280] text-xs font-semibold uppercase tracking-wider block">Department</span>
+                      <span className={`${t.muted} text-xs font-semibold uppercase tracking-wider block`}>Department</span>
                       <span className="text-blue-400 text-sm font-semibold mt-1 block">{selectedIssue.department}</span>
                     </div>
                     <div>
-                      <span className="text-[#6B7280] text-xs font-semibold uppercase tracking-wider block">Est. Resolution</span>
-                      <span className="text-white text-sm font-semibold mt-1 block">{selectedIssue.estimated_resolution_days || 7} Days</span>
+                      <span className={`${t.muted} text-xs font-semibold uppercase tracking-wider block`}>Est. Resolution</span>
+                      <span className={`${t.text} text-sm font-semibold mt-1 block`}>{selectedIssue.estimated_resolution_days || 7} Days</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm text-[#9CA3AF]">
+                  <div className={`flex items-center gap-2 text-sm ${t.muted}`}>
                     <span className="text-lg">📍</span>
-                    <span className="font-semibold text-white">Location:</span>
+                    <span className={`font-semibold ${t.text}`}>Location:</span>
                     <span>{selectedIssue.location}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-[#9CA3AF]">
+                  <div className={`flex items-center gap-2 text-sm ${t.muted}`}>
                     <span className="text-lg">👤</span>
-                    <span className="font-semibold text-white">Reporter:</span>
+                    <span className={`font-semibold ${t.text}`}>Reporter:</span>
                     <span>{selectedIssue.reporter || "Anonymous"}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-[#9CA3AF]">
+                  <div className={`flex items-center gap-2 text-sm ${t.muted}`}>
                     <span className="text-lg">📅</span>
-                    <span className="font-semibold text-white">Reported Date:</span>
+                    <span className={`font-semibold ${t.text}`}>Reported Date:</span>
                     <span>{selectedIssue.date}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-[#9CA3AF]">
+                  <div className={`flex items-center gap-2 text-sm ${t.muted}`}>
                     <span className="text-lg">👍</span>
-                    <span className="font-semibold text-white">Upvotes:</span>
+                    <span className={`font-semibold ${t.text}`}>Upvotes:</span>
                     <span>{selectedIssue.upvotes || 0}</span>
                   </div>
                 </div>
@@ -438,27 +454,27 @@ export default function Feed() {
                   <h4 className="text-blue-400 font-semibold text-sm flex items-center gap-1.5">
                     <span>💡</span> AI Recommended Action Plan
                   </h4>
-                  <p className="text-gray-300 text-sm leading-relaxed">{selectedIssue.suggested_action}</p>
+                  <p className={`${isDark ? 'text-gray-300' : 'text-[#475569]'} text-sm leading-relaxed`}>{selectedIssue.suggested_action}</p>
                 </div>
               </div>
 
               {/* Right Column: Visual Timeline Progress */}
               <div className="space-y-6">
-                <h3 className="text-white font-bold text-lg tracking-tight mb-4">Resolution Timeline</h3>
+                <h3 className={`font-bold text-lg tracking-tight mb-4 ${t.text}`}>Resolution Timeline</h3>
                 
-                <div className="relative border-l-2 border-[#374151] ml-4 pl-6 space-y-8">
+                <div className={`relative border-l-2 ${t.border} ml-4 pl-6 space-y-8`}>
                   
                   {/* Timeline Stage 1: Reported */}
                   <div className="relative">
                     {/* Circle Pin */}
-                    <div className="absolute -left-[31px] top-1 bg-green-500 w-4 h-4 rounded-full border-4 border-[#111827]"></div>
+                    <div className={`absolute -left-[31px] top-1 bg-green-500 w-4 h-4 rounded-full border-4 ${isDark ? 'border-[#111827]' : 'border-[#E8EFFE]'}`}></div>
                     <div>
-                      <h4 className="text-white font-semibold text-sm flex items-center gap-2">
+                      <h4 className={`font-semibold text-sm flex items-center gap-2 ${t.text}`}>
                         <span>Phase 1: Issue Reported</span>
                         <span className="bg-green-500/10 text-green-400 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wide border border-green-500/20">Active</span>
                       </h4>
-                      <p className="text-[#9CA3AF] text-xs mt-1">Logged into CivicPulse database.</p>
-                      <div className="mt-3 relative rounded-xl overflow-hidden border border-[#374151] max-w-[240px]">
+                      <p className={`${t.muted} text-xs mt-1`}>Logged into CivicPulse database.</p>
+                      <div className={`mt-3 relative rounded-xl overflow-hidden border ${t.border} max-w-[240px]`}>
                         <img src={selectedIssue.imagePreview} alt="Original issue" className="w-full h-32 object-cover" />
                       </div>
                     </div>
@@ -467,11 +483,11 @@ export default function Feed() {
                   {/* Timeline Stage 2: Work Started */}
                   <div className="relative">
                     {/* Circle Pin */}
-                    <div className={`absolute -left-[31px] top-1 w-4 h-4 rounded-full border-4 border-[#111827] ${
+                    <div className={`absolute -left-[31px] top-1 w-4 h-4 rounded-full border-4 ${isDark ? 'border-[#111827]' : 'border-[#E8EFFE]'} ${
                       selectedIssue.status === "In Progress" || selectedIssue.status === "Resolved" ? "bg-blue-500" : "bg-[#374151]"
                     }`}></div>
                     <div>
-                      <h4 className="text-white font-semibold text-sm flex items-center gap-2">
+                      <h4 className={`font-semibold text-sm flex items-center gap-2 ${t.text}`}>
                         <span>Phase 2: Work Started</span>
                         {(selectedIssue.status === "In Progress" || selectedIssue.status === "Resolved") && (
                           <span className="bg-blue-500/10 text-blue-400 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wide border border-blue-500/20">Verified</span>
@@ -481,10 +497,10 @@ export default function Feed() {
                       {/* Upload Button or Image */}
                       {selectedIssue.inProgressImage ? (
                         <div className="mt-3 space-y-2">
-                          <div className="relative rounded-xl overflow-hidden border border-[#374151] max-w-[240px]">
+                          <div className={`relative rounded-xl overflow-hidden border ${t.border} max-w-[240px]`}>
                             <img src={selectedIssue.inProgressImage} alt="Work started" className="w-full h-32 object-cover" />
                           </div>
-                          <p className="text-[#9CA3AF] text-xs">Started: {selectedIssue.inProgressDate}</p>
+                          <p className={`${t.muted} text-xs`}>Started: {selectedIssue.inProgressDate}</p>
                           {selectedIssue.inProgressReason && (
                             <p className="text-blue-400/90 text-xs italic bg-blue-500/5 p-2 rounded-lg border border-blue-500/10 max-w-[280px]">
                               🤖 {selectedIssue.inProgressReason}
@@ -495,7 +511,7 @@ export default function Feed() {
                         <div className="mt-3">
                           {selectedIssue.status === "Pending" ? (
                             <div className="space-y-3">
-                              <p className="text-[#9CA3AF] text-xs">Municipal work started? Upload progress/construction photos to verify.</p>
+                              <p className={`${t.muted} text-xs`}>Municipal work started? Upload progress/construction photos to verify.</p>
                               
                               <label className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs px-4 py-2 rounded-xl cursor-pointer transition duration-200 shadow-md shadow-blue-500/10">
                                 📁 Upload Progress Photo
@@ -519,7 +535,7 @@ export default function Feed() {
                               )}
                             </div>
                           ) : (
-                            <p className="text-[#6B7280] text-xs">Waiting for Stage 1 completion.</p>
+                            <p className={`${t.muted} text-xs`}>Waiting for Stage 1 completion.</p>
                           )}
                         </div>
                       )}
@@ -529,11 +545,11 @@ export default function Feed() {
                   {/* Timeline Stage 3: Resolved */}
                   <div className="relative">
                     {/* Circle Pin */}
-                    <div className={`absolute -left-[31px] top-1 w-4 h-4 rounded-full border-4 border-[#111827] ${
+                    <div className={`absolute -left-[31px] top-1 w-4 h-4 rounded-full border-4 ${isDark ? 'border-[#111827]' : 'border-[#E8EFFE]'} ${
                       selectedIssue.status === "Resolved" ? "bg-green-500" : "bg-[#374151]"
                     }`}></div>
                     <div>
-                      <h4 className="text-white font-semibold text-sm flex items-center gap-2">
+                      <h4 className={`font-semibold text-sm flex items-center gap-2 ${t.text}`}>
                         <span>Phase 3: Work Completed</span>
                         {selectedIssue.status === "Resolved" && (
                           <span className="bg-green-500/10 text-green-400 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wide border border-green-500/20">Resolved</span>
@@ -543,10 +559,10 @@ export default function Feed() {
                       {/* Upload Button or Image */}
                       {selectedIssue.resolvedImage ? (
                         <div className="mt-3 space-y-2">
-                          <div className="relative rounded-xl overflow-hidden border border-[#374151] max-w-[240px]">
+                          <div className={`relative rounded-xl overflow-hidden border ${t.border} max-w-[240px]`}>
                             <img src={selectedIssue.resolvedImage} alt="Work completed" className="w-full h-32 object-cover" />
                           </div>
-                          <p className="text-[#9CA3AF] text-xs">Completed: {selectedIssue.resolvedDate}</p>
+                          <p className={`${t.muted} text-xs`}>Completed: {selectedIssue.resolvedDate}</p>
                           {selectedIssue.resolvedReason && (
                             <p className="text-green-400/90 text-xs italic bg-green-500/5 p-2 rounded-lg border border-green-500/10 max-w-[280px]">
                               🤖 {selectedIssue.resolvedReason}
@@ -557,7 +573,7 @@ export default function Feed() {
                         <div className="mt-3">
                           {selectedIssue.status === "In Progress" ? (
                             <div className="space-y-3">
-                              <p className="text-[#9CA3AF] text-xs">Municipal work completed? Upload final photo of the repaired area to resolve.</p>
+                              <p className={`${t.muted} text-xs`}>Municipal work completed? Upload final photo of the repaired area to resolve.</p>
                               
                               <label className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold text-xs px-4 py-2 rounded-xl cursor-pointer transition duration-200 shadow-md shadow-green-500/10">
                                 📁 Upload Completion Photo
@@ -581,7 +597,7 @@ export default function Feed() {
                               )}
                             </div>
                           ) : selectedIssue.status === "Resolved" ? null : (
-                            <p className="text-[#6B7280] text-xs">Awaiting work progression.</p>
+                            <p className={`${t.muted} text-xs`}>Awaiting work progression.</p>
                           )}
                         </div>
                       )}
@@ -594,14 +610,14 @@ export default function Feed() {
             </div>
 
             {/* Modal Footer */}
-            <div className="flex justify-end items-center px-6 py-4 border-t border-[#374151] bg-[#111827]">
+            <div className={`flex justify-end items-center px-6 py-4 border-t ${t.border} ${t.surface}`}>
               <button
                 onClick={() => {
                   setSelectedIssue(null);
                   setVerifyError("");
                   setVerifySuccess("");
                 }}
-                className="bg-[#1F2937] hover:bg-[#374151] text-[#9CA3AF] hover:text-white border border-[#374151] font-semibold px-5 py-2 rounded-xl transition text-sm cursor-pointer"
+                className={`font-semibold px-5 py-2 rounded-xl transition text-sm cursor-pointer ${t.surface2} hover:bg-opacity-80 ${t.muted} hover:${t.text} border ${t.border}`}
               >
                 Close
               </button>

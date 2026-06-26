@@ -1,7 +1,30 @@
 @import "tailwindcss";
 
 * { font-family: 'Inter', sans-serif; }
-body { background-color: #0A0F1E; color: #F9FAFB; margin: 0; }
+body {
+  background-color: var(--bg-primary, #0A0F1E);
+  color: var(--text-primary, #F9FAFB);
+  margin: 0;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+[data-theme="light"] {
+  --bg-primary: #F8FAFC;
+  --bg-surface: #FFFFFF;
+  --bg-surface2: #F1F5F9;
+  --border-color: #E2E8F0;
+  --text-primary: #0F172A;
+  --text-muted: #64748B;
+}
+
+[data-theme="dark"] {
+  --bg-primary: #0A0F1E;
+  --bg-surface: #111827;
+  --bg-surface2: #1F2937;
+  --border-color: #374151;
+  --text-primary: #F9FAFB;
+  --text-muted: #9CA3AF;
+}
 
 @keyframes fadeIn {
   from { opacity: 0; }

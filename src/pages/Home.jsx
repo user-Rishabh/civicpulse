@@ -2,19 +2,49 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { motion } from "framer-motion";
+import { useTheme } from "../context/ThemeContext";
+
+const phrases = [
+  "Upload a photo — AI categorizes it instantly.",
+  "Gemini assigns severity & department automatically.",
+  "Track resolution till your city is fixed."
+];
 
 export default function Home() {
   const { user } = useAuth();
+  const { isDark } = useTheme();
   const [particles, setParticles] = useState([]);
 
-  const phrases = [
-    "Upload a photo → AI categorizes instantly",
-    "Gemini Vision assigns severity automatically", 
-    "Municipal department gets notified in seconds"
-  ];
+  const t = {
+    bg: isDark ? 'bg-[#0A0F1E]' : 'bg-[#EEF2FF]',
+    surface: isDark ? 'bg-[#111827]' : 'bg-[#E8EFFE]',
+    surface2: isDark ? 'bg-[#1F2937]' : 'bg-[#DDE6FD]',
+    border: isDark ? 'border-[#374151]' : 'border-[#C7D7F9]',
+    text: isDark ? 'text-white' : 'text-[#1E293B]',
+    muted: isDark ? 'text-[#9CA3AF]' : 'text-[#475569]',
+    sidebar: isDark ? 'bg-[#0D1117]' : 'bg-[#E2EAFC]',
+    card: isDark ? 'bg-[#111827] border-[#374151]' : 'bg-[#EEF2FF] border-[#C7D7F9]',
+  };
   const [currentPhraseIdx, setCurrentPhraseIdx] = useState(0);
   const [displayedText, setDisplayedText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
+  const [stats, setStats] = useState({ total: 10, resolved: 3 });
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('civicpulse_issues');
+      if (stored) {
+        const issues = JSON.parse(stored);
+        if (Array.isArray(issues)) {
+          const total = Math.max(10, issues.length);
+          const resolved = Math.max(3, issues.filter(i => i.status === 'Resolved').length);
+          setStats({ total, resolved });
+        }
+      }
+    } catch (e) {
+      console.error("Failed to parse issues from localStorage:", e);
+    }
+  }, []);
 
   useEffect(() => {
     // Generate particles on the client side to avoid hydration mismatch
@@ -64,8 +94,17 @@ export default function Home() {
     cyan: "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20",
   };
 
+  const borderTopMap = {
+    blue: "border-t-2 border-t-blue-500",
+    yellow: "border-t-2 border-t-yellow-500",
+    green: "border-t-2 border-t-green-500",
+    purple: "border-t-2 border-t-purple-500",
+    red: "border-t-2 border-t-red-500",
+    cyan: "border-t-2 border-t-cyan-500",
+  };
+
   return (
-    <div className="bg-[#0A0F1E] min-h-screen text-[#F9FAFB] relative overflow-hidden flex flex-col">
+    <div className={`${t.bg} min-h-screen ${t.text} relative overflow-hidden flex flex-col`}>
       {/* PARTICLE SYSTEM */}
       <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
         {particles.map((p) => (
@@ -144,15 +183,9 @@ export default function Home() {
           transition={{ duration: 0.8, delay: 0.2 }}
           className="text-8xl font-black leading-none tracking-tight flex flex-col items-center"
         >
-          <span className="text-white">Report.</span>
-          <span className="text-white">Track.</span>
-          <span
-            className="text-transparent bg-clip-text animate-gradient"
-            style={{
-              backgroundImage:
-                "linear-gradient(90deg, #3B82F6, #06B6D4, #8B5CF6, #3B82F6)",
-            }}
-          >
+          <span className={t.text}>Report.</span>
+          <span className={t.text}>Track.</span>
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">
             Resolve.
           </span>
         </motion.h1>
@@ -162,7 +195,7 @@ export default function Home() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.4 }}
-          className="text-[#9CA3AF] text-xl max-w-2xl mt-8 leading-relaxed min-h-[3rem] flex items-center justify-center font-medium"
+          className={`${t.muted} text-xl max-w-2xl mt-8 leading-relaxed min-h-[3rem] flex items-center justify-center font-medium`}
         >
           <span className="after:content-['|'] after:text-blue-500 after:animate-pulse after:ml-0.5">
             {displayedText}
@@ -200,7 +233,7 @@ export default function Home() {
           >
             <Link
               to={user ? "/feed" : "/login"}
-              className="flex items-center justify-center w-full sm:w-auto border-2 border-[#374151] hover:border-blue-500 text-white px-10 py-4 rounded-2xl text-lg transition duration-200 font-semibold"
+              className={`flex items-center justify-center w-full sm:w-auto border-2 ${t.border} hover:border-blue-500 ${t.text} px-10 py-4 rounded-2xl text-lg transition duration-200 font-semibold`}
             >
               <span className="bg-white/10 rounded-full w-8 h-8 inline-flex items-center justify-center mr-2 text-xs">
                 ▶
@@ -218,7 +251,7 @@ export default function Home() {
           className="flex flex-wrap gap-6 mt-12 items-center justify-center"
         >
           {["Free to use", "AI Powered", "Real-time updates", "Secure"].map((text) => (
-            <div key={text} className="text-[#9CA3AF] text-sm flex items-center gap-1.5 font-medium">
+            <div key={text} className={`${t.muted} text-sm flex items-center gap-1.5 font-medium`}>
               <span className="text-green-400 font-bold">✓</span>
               <span>{text}</span>
             </div>
@@ -233,124 +266,113 @@ export default function Home() {
           className="mt-20 relative w-full max-w-xl mx-auto"
         >
           {/* Main card */}
-          <div className="animate-float bg-[#111827] rounded-3xl border border-[#374151] p-6 max-w-lg mx-auto shadow-[0_0_100px_rgba(59,130,246,0.2)]">
-            {/* Top bar with dots */}
-            <div className="flex items-center justify-between mb-4 border-b border-[#374151]/40 pb-3">
+          <div className="bg-[#111827] rounded-2xl border border-[#374151] p-5 max-w-md mx-auto shadow-2xl animate-float">
+            {/* Top bar */}
+            <div className="flex items-center gap-2 mb-4">
               <div className="flex gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-red-500"></span>
                 <span className="w-3 h-3 rounded-full bg-yellow-500"></span>
                 <span className="w-3 h-3 rounded-full bg-green-500"></span>
               </div>
-              <span className="text-white text-xs font-semibold tracking-wider uppercase opacity-80">
-                CivicPulse
-              </span>
-              <div className="w-12"></div>
+              <span className="text-[#6B7280] text-xs mx-auto">civicpulse.app</span>
             </div>
 
-            {/* Fake Image Area */}
-            <div className="bg-[#1F2937] rounded-xl h-32 flex items-center justify-center border border-[#374151]/50">
-              <span className="text-[#9CA3AF] text-sm font-medium flex items-center gap-2">
-                📸 Photo Uploaded
-              </span>
-            </div>
-
-            {/* Fake AI Analysis row */}
-            <div className="mt-4 flex gap-2 justify-center">
-              <span className="rounded-full px-3 py-1 text-xs font-bold text-blue-400 bg-blue-500/20 border border-blue-500/30">
-                Pothole
-              </span>
-              <span className="rounded-full px-3 py-1 text-xs font-bold text-red-400 bg-red-500/20 border border-red-500/30">
-                Critical
-              </span>
-              <span className="rounded-full px-3 py-1 text-xs font-bold text-green-400 bg-green-500/20 border border-green-500/30">
-                BMC
+            {/* Image area */}
+            <div className="bg-[#1F2937] rounded-xl h-36 w-full flex items-center justify-center overflow-hidden relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-900/50 to-[#1F2937]"></div>
+              <span className="text-[#9CA3AF] text-sm relative z-10 flex items-center gap-2 font-medium">
+                📸 Photo uploaded
               </span>
             </div>
 
-            {/* Fake Progress Bar */}
-            <div className="mt-4 bg-[#1F2937] rounded-full h-2 w-full border border-[#374151]/30">
-              <div className="w-2/3 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full h-full"></div>
+            {/* AI Analysis row */}
+            <div className="mt-3 bg-[#0A0F1E] rounded-xl p-3 text-left">
+              <div className="text-blue-400 text-xs font-semibold mb-2 flex items-center gap-1">
+                <span>🤖</span> Gemini Analysis
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {/* Category */}
+                <div className="bg-[#1F2937] rounded-lg p-2">
+                  <div className="text-[#6B7280] text-[10px] font-bold uppercase">CATEGORY</div>
+                  <div className="text-white text-sm font-medium">Pothole</div>
+                </div>
+                {/* Severity */}
+                <div className="bg-[#1F2937] rounded-lg p-2">
+                  <div className="text-[#6B7280] text-[10px] font-bold uppercase">SEVERITY</div>
+                  <div className="text-red-400 text-sm font-medium">Critical</div>
+                </div>
+                {/* Department */}
+                <div className="bg-[#1F2937] rounded-lg p-2">
+                  <div className="text-[#6B7280] text-[10px] font-bold uppercase">DEPARTMENT</div>
+                  <div className="text-green-400 text-sm font-medium">BMC</div>
+                </div>
+                {/* Est. Days */}
+                <div className="bg-[#1F2937] rounded-lg p-2">
+                  <div className="text-[#6B7280] text-[10px] font-bold uppercase">EST. DAYS</div>
+                  <div className="text-amber-400 text-sm font-medium">7 Days</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Progress bar */}
+            <div className="mt-3 text-left">
+              <div className="flex justify-between text-xs text-[#9CA3AF] mb-1">
+                <span className="font-semibold">Submitting report...</span>
+                <span className="font-bold">98%</span>
+              </div>
+              <div className="bg-[#1F2937] rounded-full h-1.5 w-full">
+                <div className="w-[98%] bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full h-1.5"></div>
+              </div>
             </div>
           </div>
 
           {/* Floating cards */}
-          <div className="absolute -top-4 -right-8 bg-green-500 rounded-2xl px-4 py-2.5 shadow-lg animate-bounce text-white text-xs font-bold border border-green-400/25">
+          <div className="absolute -top-6 -right-6 bg-green-500 text-white rounded-2xl px-4 py-2 text-xs font-bold shadow-xl animate-bounce">
             ✅ Issue Reported!
           </div>
 
-          <div className="absolute -bottom-4 -left-8 bg-[#111827] border border-[#374151] rounded-2xl px-5 py-3 shadow-2xl text-left">
-            <div className="text-white text-xs font-bold flex items-center gap-1.5">
-              <span>🤖</span> Gemini Analyzed
-            </div>
-            <div className="text-[#9CA3AF] text-xs mt-0.5 font-semibold">
-              Pothole &bull; Critical &bull; BMC
-            </div>
-          </div>
-
-          {/* Floating stats cards */}
-          <div 
-            style={{ animationDelay: "0s" }}
-            className="hidden sm:block absolute -left-16 top-8 bg-[#111827] border border-[#374151] rounded-2xl px-4 py-3 shadow-2xl animate-float z-20 text-left"
-          >
-            <div className="text-white text-xs font-bold">
-              🔥 12 Issues Fixed Today
-            </div>
-          </div>
-
-          <div 
-            style={{ animationDelay: "1s" }}
-            className="hidden sm:block absolute -right-16 bottom-8 bg-[#111827] border border-green-500/30 rounded-2xl px-4 py-3 shadow-2xl animate-float z-20 text-left"
-          >
-            <div className="text-green-400 text-xs font-bold">
-              ✅ AI Verified
-            </div>
-            <div className="text-[#9CA3AF] text-xs">
-              Gemini confidence: 98%
-            </div>
-          </div>
-
-          <div 
-            style={{ animationDelay: "0.5s" }}
-            className="hidden sm:block absolute -right-8 top-4 bg-[#111827] border border-blue-500/30 rounded-2xl px-4 py-3 shadow-2xl animate-float z-20 text-left"
-          >
+          <div className="absolute -bottom-6 -left-6 bg-[#111827] border border-blue-500/30 rounded-2xl px-4 py-3 shadow-xl text-left">
             <div className="text-blue-400 text-xs font-bold">
               ⚡ 0.8s Analysis
+            </div>
+            <div className="text-[#9CA3AF] text-xs mt-0.5">
+              Gemini verified
             </div>
           </div>
         </motion.div>
       </section>
 
-      {/* STATS TICKER */}
-      <div className="relative z-10 py-8 bg-[#111827]/50 border-y border-[#374151] overflow-hidden mt-0">
-        <div className="animate-marquee flex gap-16 items-center">
-          {Array.from({ length: 4 }).flatMap(() => [
-            "🏙️ Mumbai",
-            "🔧 Pothole Fixed",
-            "💧 Water Leak Resolved",
-            "🚦 3 Critical Issues Today",
-            "⚡ AI Verified",
-          ]).map((item, idx) => (
-            <div
-              key={idx}
-              className="text-[#9CA3AF] text-sm whitespace-nowrap flex items-center gap-2 font-semibold uppercase tracking-wider"
-            >
-              <span className="text-blue-400">{item.split(" ")[0]}</span>
-              <span>{item.split(" ").slice(1).join(" ")}</span>
-            </div>
-          ))}
+      {/* STATS SECTION */}
+      <section className="relative z-10 py-16 px-8 max-w-5xl mx-auto w-full">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className={`${t.surface} rounded-2xl p-8 border ${t.border} border-t-2 border-t-blue-500 text-center shadow-xl relative overflow-hidden`}>
+            <div className="text-6xl font-black text-blue-500 drop-shadow-[0_0_15px_rgba(59,130,246,0.4)]">{stats.total}</div>
+            <div className={`${t.text} font-bold text-base mt-3`}>Total Issues Reported</div>
+            <div className={`${t.muted} text-xs mt-1 font-medium`}>AI auto-categorized citizen reports</div>
+          </div>
+          <div className={`${t.surface} rounded-2xl p-8 border ${t.border} border-t-2 border-t-green-500 text-center shadow-xl relative overflow-hidden`}>
+            <div className="text-6xl font-black text-green-500 drop-shadow-[0_0_15px_rgba(16,185,129,0.4)]">{stats.resolved}</div>
+            <div className={`${t.text} font-bold text-base mt-3`}>Issues Resolved</div>
+            <div className={`${t.muted} text-xs mt-1 font-medium`}>Verified and closed by city officials</div>
+          </div>
+          <div className={`${t.surface} rounded-2xl p-8 border ${t.border} border-t-2 border-t-amber-500 text-center shadow-xl relative overflow-hidden`}>
+            <div className="text-6xl font-black text-amber-500 drop-shadow-[0_0_15px_rgba(245,158,11,0.4)]">5</div>
+            <div className={`${t.text} font-bold text-base mt-3`}>Active Departments</div>
+            <div className={`${t.muted} text-xs mt-1 font-medium`}>BMC, PWD, MSEDCL, & more</div>
+          </div>
         </div>
-      </div>
+      </section>
 
       {/* HOW IT WORKS SECTION */}
       <section className="py-32 px-8 relative overflow-hidden z-10">
         <div className="absolute right-0 top-0 w-1/2 h-full bg-blue-600/3 blur-3xl pointer-events-none" />
         
-        <h2 className="text-5xl font-black text-center text-white tracking-tight">
+        <h2 className={`text-5xl font-black text-center ${t.text} tracking-tight`}>
           How It Works
         </h2>
         <div className="mx-auto mt-3 w-24 h-1 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full" />
 
-        <div className="relative grid grid-cols-1 md:grid-cols-3 gap-8 mt-20 max-w-5xl mx-auto w-full">
+        <div className="relative grid grid-cols-1 md:grid-cols-8 gap-4 mt-20 max-w-5xl mx-auto w-full items-center">
           {/* Card 1 */}
           <motion.div
             initial={{ opacity: 0, y: 40 }}
@@ -358,7 +380,7 @@ export default function Home() {
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.6 }}
             whileHover={{ y: -8, borderColor: "rgba(59,130,246,0.5)" }}
-            className="bg-[#111827] rounded-3xl p-8 border border-[#374151] relative overflow-hidden transition-colors duration-300"
+            className={`${t.surface} rounded-3xl p-8 border ${t.border} relative overflow-hidden transition-colors duration-300 md:col-span-2`}
           >
             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-bl-full pointer-events-none" />
             <div className="text-8xl font-black text-blue-500/10 absolute top-4 right-4 leading-none pointer-events-none select-none">
@@ -367,15 +389,15 @@ export default function Home() {
             <div className="w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center text-3xl">
               📸
             </div>
-            <h3 className="text-white font-bold text-2xl mt-6">Snap & Upload</h3>
-            <p className="text-[#9CA3AF] mt-3 leading-relaxed text-sm font-medium">
+            <h3 className={`${t.text} font-bold text-2xl mt-6`}>Snap & Upload</h3>
+            <p className={`${t.muted} mt-3 leading-relaxed text-sm font-medium`}>
               Take a photo of any civic issue — pothole, leak, broken light — and upload instantly.
             </p>
           </motion.div>
 
-          {/* Connector 1 */}
-          <div className="hidden md:flex absolute top-1/2 -translate-y-1/2 left-[31.5%] text-blue-500/30 text-4xl font-bold select-none pointer-events-none">
-            &rarr;
+          {/* Arrow 1 */}
+          <div className="hidden md:flex items-center justify-center text-blue-500/30 text-5xl font-black md:col-span-1 select-none pointer-events-none">
+            →
           </div>
 
           {/* Card 2 */}
@@ -385,7 +407,7 @@ export default function Home() {
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.6, delay: 0.15 }}
             whileHover={{ y: -8, borderColor: "rgba(59,130,246,0.5)" }}
-            className="bg-[#111827] rounded-3xl p-8 border border-[#374151] relative overflow-hidden transition-colors duration-300"
+            className={`${t.surface} rounded-3xl p-8 border ${t.border} relative overflow-hidden transition-colors duration-300 md:col-span-2`}
           >
             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-bl-full pointer-events-none" />
             <div className="text-8xl font-black text-blue-500/10 absolute top-4 right-4 leading-none pointer-events-none select-none">
@@ -394,15 +416,15 @@ export default function Home() {
             <div className="w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center text-3xl">
               🤖
             </div>
-            <h3 className="text-white font-bold text-2xl mt-6">AI Analyzes</h3>
-            <p className="text-[#9CA3AF] mt-3 leading-relaxed text-sm font-medium">
+            <h3 className={`${t.text} font-bold text-2xl mt-6`}>AI Analyzes</h3>
+            <p className={`${t.muted} mt-3 leading-relaxed text-sm font-medium`}>
               Gemini Vision identifies type, severity, and which municipal department handles it.
             </p>
           </motion.div>
 
-          {/* Connector 2 */}
-          <div className="hidden md:flex absolute top-1/2 -translate-y-1/2 left-[65%] text-blue-500/30 text-4xl font-bold select-none pointer-events-none">
-            &rarr;
+          {/* Arrow 2 */}
+          <div className="hidden md:flex items-center justify-center text-blue-500/30 text-5xl font-black md:col-span-1 select-none pointer-events-none">
+            →
           </div>
 
           {/* Card 3 */}
@@ -412,7 +434,7 @@ export default function Home() {
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.6, delay: 0.3 }}
             whileHover={{ y: -8, borderColor: "rgba(59,130,246,0.5)" }}
-            className="bg-[#111827] rounded-3xl p-8 border border-[#374151] relative overflow-hidden transition-colors duration-300"
+            className={`${t.surface} rounded-3xl p-8 border ${t.border} relative overflow-hidden transition-colors duration-300 md:col-span-2`}
           >
             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-bl-full pointer-events-none" />
             <div className="text-8xl font-black text-blue-500/10 absolute top-4 right-4 leading-none pointer-events-none select-none">
@@ -421,8 +443,8 @@ export default function Home() {
             <div className="w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center text-3xl">
               ✅
             </div>
-            <h3 className="text-white font-bold text-2xl mt-6">Track & Resolve</h3>
-            <p className="text-[#9CA3AF] mt-3 leading-relaxed text-sm font-medium">
+            <h3 className={`${t.text} font-bold text-2xl mt-6`}>Track & Resolve</h3>
+            <p className={`${t.muted} mt-3 leading-relaxed text-sm font-medium`}>
               Community upvotes prioritize issues. Track status until your city is fixed.
             </p>
           </motion.div>
@@ -430,11 +452,11 @@ export default function Home() {
       </section>
 
       {/* FEATURES GRID */}
-      <section className="py-32 px-8 bg-[#111827]/30 relative z-10">
-        <h2 className="text-5xl font-black text-center text-white tracking-tight">
+      <section className={`py-32 px-8 ${t.surface}/30 relative z-10`}>
+        <h2 className={`text-5xl font-black text-center ${t.text} tracking-tight`}>
           Everything You Need
         </h2>
-        <p className="text-[#9CA3AF] text-center mt-3 text-lg font-medium">
+        <p className={`${t.muted} text-center mt-3 text-lg font-medium`}>
           Built for citizens who care about their community
         </p>
 
@@ -480,7 +502,7 @@ export default function Home() {
             <motion.div
               key={feat.title}
               whileHover={{ scale: 1.02, borderColor: "rgba(59,130,246,0.4)" }}
-              className="bg-[#111827] rounded-3xl p-6 border border-[#374151] transition-all duration-300 text-left"
+              className={`${t.surface} rounded-3xl p-6 border ${t.border} ${borderTopMap[feat.color]} transition-all duration-300 text-left`}
             >
               <div
                 className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl mb-4 ${
@@ -489,8 +511,8 @@ export default function Home() {
               >
                 {feat.icon}
               </div>
-              <h3 className="text-white font-bold text-lg">{feat.title}</h3>
-              <p className="text-[#9CA3AF] text-sm mt-2 font-medium leading-relaxed">
+              <h3 className={`${t.text} font-semibold text-lg md:text-xl`}>{feat.title}</h3>
+              <p className={`${t.muted} text-sm mt-2 font-medium leading-relaxed`}>
                 {feat.desc}
               </p>
             </motion.div>
@@ -500,11 +522,12 @@ export default function Home() {
 
       {/* FINAL CTA */}
       <section className="py-32 px-8 text-center relative overflow-hidden z-10 bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.15)_0%,transparent_70%)]">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-6xl font-black text-white tracking-tight">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(59,130,246,0.15),transparent_70%)] pointer-events-none z-0" />
+        <div className="max-w-4xl mx-auto relative z-10">
+          <h2 className={`text-6xl font-black ${t.text} tracking-tight`}>
             Ready to Fix Your City?
           </h2>
-          <p className="text-[#9CA3AF] text-xl mt-4 max-w-2xl mx-auto font-medium leading-relaxed">
+          <p className={`${t.muted} text-xl mt-4 max-w-2xl mx-auto font-medium leading-relaxed`}>
             Join citizens making Maharashtra better, one report at a time
           </p>
 
@@ -528,23 +551,26 @@ export default function Home() {
       </section>
 
       {/* FOOTER */}
-      <footer className="bg-[#0A0F1E] border-t border-[#374151] py-12 px-8 relative z-10 w-full">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6 text-center md:text-left">
-          <div>
-            <div className="text-white font-bold text-xl flex items-center justify-center md:justify-start gap-1.5">
+      <footer className={`${t.bg} border-t ${t.border} py-12 px-8 relative z-10 w-full`}>
+        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 items-center gap-6 text-center md:text-left text-[#6B7280] text-xs">
+          {/* Left: Logo + tagline */}
+          <div className="flex flex-col items-center md:items-start">
+            <div className={`${t.text} font-bold text-lg flex items-center gap-1.5`}>
               <span>⚡</span> CivicPulse
             </div>
-            <p className="text-[#6B7280] text-sm mt-1 font-medium">
+            <p className="text-[#6B7280] text-xs mt-1">
               Making cities better, one report at a time.
             </p>
           </div>
-          <div className="text-[#6B7280] text-xs font-semibold uppercase tracking-wider text-center">
-            Built for Vibe2Ship Hackathon 2026
+
+          {/* Center: Copyright */}
+          <div className="text-[#6B7280] text-xs md:text-center font-medium">
+            © 2026 CivicPulse • Vibe2Ship Hackathon
           </div>
-          <div>
-            <div className="text-[#9CA3AF] text-sm font-semibold">
-              Powered by Gemini AI + Firebase
-            </div>
+
+          {/* Right: Powered by */}
+          <div className="text-[#6B7280] text-xs md:text-right font-medium">
+            Powered by Gemini AI + Firebase
           </div>
         </div>
       </footer>

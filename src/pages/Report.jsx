@@ -5,11 +5,24 @@ import { useAuth } from "../context/AuthContext";
 import { collection, addDoc, getDocs, doc, updateDoc, increment } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { motion } from "framer-motion";
+import { useTheme } from "../context/ThemeContext";
 
 export default function Report({ onViewReports }) {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
   const { user, userProfile } = useAuth();
+  const { isDark } = useTheme();
+
+  const t = {
+    bg: isDark ? 'bg-[#0A0F1E]' : 'bg-[#EEF2FF]',
+    surface: isDark ? 'bg-[#111827]' : 'bg-[#E8EFFE]',
+    surface2: isDark ? 'bg-[#1F2937]' : 'bg-[#DDE6FD]',
+    border: isDark ? 'border-[#374151]' : 'border-[#C7D7F9]',
+    text: isDark ? 'text-white' : 'text-[#1E293B]',
+    muted: isDark ? 'text-[#9CA3AF]' : 'text-[#475569]',
+    sidebar: isDark ? 'bg-[#0D1117]' : 'bg-[#E2EAFC]',
+    card: isDark ? 'bg-[#111827] border-[#374151]' : 'bg-[#EEF2FF] border-[#C7D7F9]',
+  };
   
   // File and Analysis states
   const [file, setFile] = useState(null);
@@ -330,12 +343,12 @@ export default function Report({ onViewReports }) {
 
       {/* SUCCESS STATE */}
       {submitted && (
-        <div className="flex flex-col items-center justify-center text-center bg-[#0A0F1E] min-h-[60vh] py-12 px-4 rounded-3xl border border-[#374151]/30">
+        <div className={"flex flex-col items-center justify-center text-center " + t.bg + " min-h-[60vh] py-12 px-4 rounded-3xl border " + t.border + "/30"}>
           <div className="w-24 h-24 bg-green-500/20 rounded-full flex items-center justify-center mx-auto">
             <span className="text-5xl animate-bounce">✅</span>
           </div>
-          <h2 className="text-white font-black text-4xl mt-6">Issue Reported Successfully!</h2>
-          <p className="text-[#9CA3AF] text-base mt-3 max-w-md mx-auto leading-relaxed">
+          <h2 className={`${t.text} font-black text-4xl mt-6`}>Issue Reported Successfully!</h2>
+          <p className={`${t.muted} text-base mt-3 max-w-md mx-auto leading-relaxed`}>
             Your report has been logged. The community and municipal department have been notified.
           </p>
           {reportedId && (
@@ -352,7 +365,7 @@ export default function Report({ onViewReports }) {
             </button>
             <button
               onClick={handleViewReports}
-              className="border border-[#374151] hover:bg-[#1F2937] text-white font-semibold px-8 py-3 rounded-xl transition duration-200 cursor-pointer text-center"
+              className={`border ${t.border} hover:${t.surface2} ${t.text} font-semibold px-8 py-3 rounded-xl transition duration-200 cursor-pointer text-center`}
             >
               View My Reports
             </button>
@@ -364,8 +377,8 @@ export default function Report({ onViewReports }) {
         <>
           {/* HEADER */}
           <div className="mb-8 text-center md:text-left">
-            <h1 className="text-3xl font-black text-white tracking-tight">Report a Civic Issue</h1>
-            <p className="text-[#9CA3AF] text-sm mt-2">
+            <h1 className={`text-3xl font-black ${t.text} tracking-tight`}>Report a Civic Issue</h1>
+            <p className={`${t.muted} text-sm mt-2`}>
               AI will automatically analyze your photo and fill in the details
             </p>
           </div>
@@ -375,12 +388,12 @@ export default function Report({ onViewReports }) {
             {/* Step 1 */}
             <div className="flex flex-col items-center shrink-0">
               <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 ${
-                currentStep >= 1 ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" : "bg-[#1F2937] border border-[#374151] text-[#6B7280]"
+                currentStep >= 1 ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" : `${t.surface2} border ${t.border} text-[#6B7280]`
               }`}>
                 1
               </div>
               <span className={`text-xs mt-2 font-semibold transition-all duration-300 ${
-                currentStep === 1 ? "text-white" : "text-[#9CA3AF]"
+                currentStep === 1 ? t.text : t.muted
               }`}>
                 Upload Photo
               </span>
@@ -388,18 +401,18 @@ export default function Report({ onViewReports }) {
 
             {/* Connector 1-2 */}
             <div className={`flex-1 h-0.5 mx-4 transition-all duration-300 ${
-              currentStep > 1 ? "bg-blue-600" : "bg-[#374151]"
+              currentStep > 1 ? "bg-blue-600" : (isDark ? "bg-[#374151]" : "bg-[#C7D7F9]")
             }`} style={{ transform: "translateY(-10px)" }}></div>
 
             {/* Step 2 */}
             <div className="flex flex-col items-center shrink-0">
               <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 ${
-                currentStep >= 2 ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" : "bg-[#1F2937] border border-[#374151] text-[#6B7280]"
+                currentStep >= 2 ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" : `${t.surface2} border ${t.border} text-[#6B7280]`
               }`}>
                 2
               </div>
               <span className={`text-xs mt-2 font-semibold transition-all duration-300 ${
-                currentStep === 2 ? "text-white" : "text-[#9CA3AF]"
+                currentStep === 2 ? t.text : t.muted
               }`}>
                 AI Analysis
               </span>
@@ -407,18 +420,18 @@ export default function Report({ onViewReports }) {
 
             {/* Connector 2-3 */}
             <div className={`flex-1 h-0.5 mx-4 transition-all duration-300 ${
-              currentStep > 2 ? "bg-blue-600" : "bg-[#374151]"
+              currentStep > 2 ? "bg-blue-600" : (isDark ? "bg-[#374151]" : "bg-[#C7D7F9]")
             }`} style={{ transform: "translateY(-10px)" }}></div>
 
             {/* Step 3 */}
             <div className="flex flex-col items-center shrink-0">
               <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 ${
-                currentStep >= 3 ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" : "bg-[#1F2937] border border-[#374151] text-[#6B7280]"
+                currentStep >= 3 ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" : `${t.surface2} border ${t.border} text-[#6B7280]`
               }`}>
                 3
               </div>
               <span className={`text-xs mt-2 font-semibold transition-all duration-300 ${
-                currentStep === 3 ? "text-white" : "text-[#9CA3AF]"
+                currentStep === 3 ? t.text : t.muted
               }`}>
                 Submit Report
               </span>
@@ -433,11 +446,11 @@ export default function Report({ onViewReports }) {
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
-                className={`relative border-2 border-dashed rounded-3xl p-20 text-center cursor-pointer transition-all duration-300 group ${
+                className={"relative border-2 border-dashed rounded-3xl p-20 text-center cursor-pointer transition-all duration-300 group " + (
                   isDragging 
                     ? "border-blue-500 bg-blue-500/5" 
-                    : "border-[#374151] hover:border-blue-500 bg-[#111827]/50 hover:bg-blue-500/3"
-                }`}
+                    : t.border + " hover:border-blue-500 " + t.surface + "/50 hover:bg-blue-500/3"
+                )}
               >
                 <input
                   type="file"
@@ -448,12 +461,12 @@ export default function Report({ onViewReports }) {
                 />
                 
                 {/* Camera icon */}
-                <div className="w-20 h-20 mx-auto bg-[#1F2937] rounded-2xl flex items-center justify-center group-hover:bg-blue-500/10 transition duration-300">
+                <div className={`w-20 h-20 mx-auto ${t.surface2} rounded-2xl flex items-center justify-center group-hover:bg-blue-500/10 transition duration-300`}>
                   <span className="text-4xl">📷</span>
                 </div>
 
-                <h3 className="text-white font-bold text-2xl mt-6">Drop your photo here</h3>
-                <p className="text-[#9CA3AF] mt-2">or click to browse files</p>
+                <h3 className={`${t.text} font-bold text-2xl mt-6`}>Drop your photo here</h3>
+                <p className={`${t.muted} mt-2`}>or click to browse files</p>
                 <p className="text-[#6B7280] text-xs mt-3">Supports JPG, PNG, WEBP • Max 10MB</p>
                 
                 <button
@@ -468,16 +481,16 @@ export default function Report({ onViewReports }) {
 
               {/* Photo tips row */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-[#111827] rounded-xl p-4 border border-[#374151] text-center">
-                  <div className="text-xs text-[#9CA3AF] font-bold">📸 Clear photo</div>
+                <div className={`${t.surface} rounded-xl p-4 border ${t.border} text-center`}>
+                  <div className={`text-xs ${t.muted} font-bold`}>📸 Clear photo</div>
                   <div className="text-xs text-[#6B7280] mt-1 font-semibold">Good lighting</div>
                 </div>
-                <div className="bg-[#111827] rounded-xl p-4 border border-[#374151] text-center">
-                  <div className="text-xs text-[#9CA3AF] font-bold">📍 Show location</div>
+                <div className={`${t.surface} rounded-xl p-4 border ${t.border} text-center`}>
+                  <div className={`text-xs ${t.muted} font-bold`}>📍 Show location</div>
                   <div className="text-xs text-[#6B7280] mt-1 font-semibold">Include surroundings</div>
                 </div>
-                <div className="bg-[#111827] rounded-xl p-4 border border-[#374151] text-center">
-                  <div className="text-xs text-[#9CA3AF] font-bold">🔍 Close up</div>
+                <div className={`${t.surface} rounded-xl p-4 border ${t.border} text-center`}>
+                  <div className={`text-xs ${t.muted} font-bold`}>🔍 Close up</div>
                   <div className="text-xs text-[#6B7280] mt-1 font-semibold">Show the issue clearly</div>
                 </div>
               </div>
@@ -491,13 +504,13 @@ export default function Report({ onViewReports }) {
                 <img
                   src={preview}
                   alt="Preview"
-                  className="w-full h-72 object-cover rounded-2xl border border-[#374151]/50 shadow-lg"
+                  className={"w-full h-72 object-cover rounded-2xl border " + t.border + "/50 shadow-lg"}
                 />
               )}
 
               {/* LOADING STATE */}
               {loading && (
-                <div className="bg-[#111827] rounded-2xl border border-[#374151] p-8 text-center mt-6">
+                <div className={`${t.surface} rounded-2xl border ${t.border} p-8 text-center mt-6`}>
                   {/* Spinner container */}
                   <div className="w-16 h-16 mx-auto bg-blue-500/10 rounded-full flex items-center justify-center">
                     <div className="animate-spin border-4 border-blue-500 border-t-transparent rounded-full w-8 h-8"></div>
@@ -505,12 +518,12 @@ export default function Report({ onViewReports }) {
                   <h3 className="text-blue-400 font-bold mt-6 text-lg">
                     Gemini is analyzing your photo...
                   </h3>
-                  <p className="text-[#9CA3AF] text-sm mt-1 max-w-sm mx-auto font-medium">
+                  <p className={`${t.muted} text-sm mt-1 max-w-sm mx-auto font-medium`}>
                     Identifying issue type, severity, and responsible department
                   </p>
 
                   {/* Progress steps (800ms delays) */}
-                  <div className="mt-8 text-left max-w-md mx-auto space-y-3.5 border-t border-[#374151]/50 pt-6">
+                  <div className={"mt-8 text-left max-w-md mx-auto space-y-3.5 border-t " + t.border + "/50 pt-6"}>
                     {loadingSteps.map((step, idx) => {
                       let icon = "○";
                       let colorClass = "text-[#6B7280]";
@@ -541,28 +554,28 @@ export default function Report({ onViewReports }) {
                     <>
                       <div className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/30 rounded-2xl p-6 mt-6">
                         <h2 className="text-green-400 font-bold text-lg">✅ Gemini Analysis Complete</h2>
-                        <p className="text-[#9CA3AF] text-sm mt-1">
+                        <p className={`${t.muted} text-sm mt-1`}>
                           AI has pre-filled the form below. Review and submit.
                         </p>
                       </div>
 
                       {/* 4 Result badges */}
                       <div className="grid grid-cols-2 gap-3 mt-4">
-                        <div className="bg-[#111827] rounded-xl p-3 border border-[#374151] flex flex-col justify-between">
+                        <div className={`${t.surface} rounded-xl p-3 border ${t.border} flex flex-col justify-between`}>
                           <span className="text-[#6B7280] text-xs uppercase tracking-wider font-bold">Category</span>
                           <span className="text-blue-400 font-semibold text-sm mt-1">{analysis.category}</span>
                         </div>
-                        <div className="bg-[#111827] rounded-xl p-3 border border-[#374151] flex flex-col justify-between">
+                        <div className={`${t.surface} rounded-xl p-3 border ${t.border} flex flex-col justify-between`}>
                           <span className="text-[#6B7280] text-xs uppercase tracking-wider font-bold">Severity</span>
                           <span className={`text-xs font-bold px-2 py-0.5 rounded-full inline-block mt-1 w-max ${getSeverityColor(analysis.severity)}`}>
                             {analysis.severity}
                           </span>
                         </div>
-                        <div className="bg-[#111827] rounded-xl p-3 border border-[#374151] flex flex-col justify-between">
+                        <div className={`${t.surface} rounded-xl p-3 border ${t.border} flex flex-col justify-between`}>
                           <span className="text-[#6B7280] text-xs uppercase tracking-wider font-bold">Department</span>
                           <span className="text-green-400 font-semibold text-sm mt-1">{analysis.department}</span>
                         </div>
-                        <div className="bg-[#111827] rounded-xl p-3 border border-[#374151] flex flex-col justify-between">
+                        <div className={`${t.surface} rounded-xl p-3 border ${t.border} flex flex-col justify-between`}>
                           <span className="text-[#6B7280] text-xs uppercase tracking-wider font-bold">Est. Resolution</span>
                           <span className="text-amber-400 font-semibold text-sm mt-1">{analysis.estimated_resolution_days} days</span>
                         </div>
@@ -580,12 +593,12 @@ export default function Report({ onViewReports }) {
                     <div className="flex flex-col items-center bg-red-500/10 border border-red-500/30 rounded-2xl p-10 text-center">
                       <span className="text-4xl mb-3">⚠️</span>
                       <h2 className="text-red-400 font-semibold text-xl">Not a Civic Issue</h2>
-                      <p className="text-[#9CA3AF] text-sm mt-3 max-w-md leading-relaxed">
+                      <p className={`${t.muted} text-sm mt-3 max-w-md leading-relaxed`}>
                         This image doesn't appear to show a civic infrastructure problem. Please upload a photo of a pothole, water leak, broken streetlight, or similar issues.
                       </p>
                       <button
                         onClick={handleReset}
-                        className="mt-6 bg-[#1F2937] hover:bg-[#374151] text-white border border-[#374151] font-medium px-6 py-2.5 rounded-xl transition duration-200 cursor-pointer"
+                        className={`mt-6 ${t.surface2} hover:${t.border.replace('border', 'bg')} ${t.text} border ${t.border} font-medium px-6 py-2.5 rounded-xl transition duration-200 cursor-pointer`}
                       >
                         Try Again
                       </button>
@@ -602,19 +615,19 @@ export default function Report({ onViewReports }) {
               /* DUPLICATE WARNING SECTION */
               <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-6 mb-6 max-w-2xl mx-auto">
                 <h2 className="text-amber-400 font-bold text-lg">⚠️ Similar Issues Already Reported</h2>
-                <p className="text-[#9CA3AF] text-sm mt-1">
+                <p className={`${t.muted} text-sm mt-1`}>
                   These existing reports match your issue. Consider upvoting them instead.
                 </p>
                 
                 {/* Show duplicate cards (max 3) */}
                 <div className="mt-4 space-y-3">
                   {duplicates.slice(0, 3).map((dup, idx) => (
-                    <div key={idx} className="bg-[#111827] rounded-xl border border-[#374151] p-4 flex gap-3">
+                    <div key={idx} className={`${t.surface} rounded-xl border ${t.border} p-4 flex gap-3`}>
                       {dup.imagePreview && (
                         <img
                           src={dup.imagePreview}
                           alt="Duplicate issue"
-                          className="w-16 h-16 object-cover rounded-lg shrink-0 border border-[#374151]"
+                          className={`w-16 h-16 object-cover rounded-lg shrink-0 border ${t.border}`}
                         />
                       )}
                       <div className="flex-1 flex flex-col justify-between">
@@ -626,14 +639,14 @@ export default function Report({ onViewReports }) {
                             <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${getSeverityColor(dup.severity)}`}>
                               {dup.severity}
                             </span>
-                            <span className="bg-[#1F2937] text-[#9CA3AF] border border-[#374151] text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+                            <span className={`${t.surface2} ${t.muted} border ${t.border} text-[10px] font-bold px-2.5 py-0.5 rounded-full`}>
                               {dup.status}
                             </span>
                           </div>
-                          <p className="text-white text-sm font-semibold mt-2">{dup.location || "Location Not Specified"}</p>
+                          <p className={`${t.text} text-sm font-semibold mt-2`}>{dup.location || "Location Not Specified"}</p>
                         </div>
                         <div className="flex items-center justify-between mt-3">
-                          <span className="text-[#9CA3AF] text-xs flex items-center gap-1 font-semibold">
+                          <span className={`${t.muted} text-xs flex items-center gap-1 font-semibold`}>
                             👍 {dup.upvotes || 0}
                           </span>
                           <span className="text-[#6B7280] text-xs font-semibold">
@@ -655,7 +668,7 @@ export default function Report({ onViewReports }) {
                   </button>
                   <button
                     onClick={() => setShowWarning(false)}
-                    className="border border-[#374151] text-white rounded-xl px-6 py-3 hover:bg-[#1F2937] transition duration-200 cursor-pointer"
+                    className={`border ${t.border} ${t.text} rounded-xl px-6 py-3 hover:${t.surface2} transition duration-200 cursor-pointer`}
                   >
                     Report Anyway (Different Issue)
                   </button>
@@ -671,30 +684,30 @@ export default function Report({ onViewReports }) {
                     <img
                       src={preview}
                       alt="Preview"
-                      className="w-full h-56 object-cover rounded-2xl border border-[#374151]/50 shadow-md"
+                      className={"w-full h-56 object-cover rounded-2xl border " + t.border + "/50 shadow-md"}
                     />
                   )}
 
-                  <div className="bg-[#111827] rounded-2xl p-5 border border-[#374151] shadow-lg">
+                  <div className={`${t.surface} rounded-2xl p-5 border ${t.border} shadow-lg`}>
                     <h4 className="text-xs font-bold text-[#6B7280] uppercase tracking-wider mb-4">
                       AI Detection Summary
                     </h4>
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="bg-[#0A0F1E]/50 rounded-xl p-3 border border-[#374151]/40 flex flex-col justify-between">
+                      <div className={t.bg + "/50 rounded-xl p-3 border " + t.border + "/40 flex flex-col justify-between"}>
                         <span className="text-[#6B7280] text-[10px] uppercase tracking-wider font-bold">Category</span>
                         <span className="text-blue-400 font-semibold text-xs mt-1">{analysis.category}</span>
                       </div>
-                      <div className="bg-[#0A0F1E]/50 rounded-xl p-3 border border-[#374151]/40 flex flex-col justify-between">
+                      <div className={t.bg + "/50 rounded-xl p-3 border " + t.border + "/40 flex flex-col justify-between"}>
                         <span className="text-[#6B7280] text-[10px] uppercase tracking-wider font-bold">Severity</span>
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-block mt-1 w-max ${getSeverityColor(analysis.severity)}`}>
                           {analysis.severity}
                         </span>
                       </div>
-                      <div className="bg-[#0A0F1E]/50 rounded-xl p-3 border border-[#374151]/40 flex flex-col justify-between">
+                      <div className={t.bg + "/50 rounded-xl p-3 border " + t.border + "/40 flex flex-col justify-between"}>
                         <span className="text-[#6B7280] text-[10px] uppercase tracking-wider font-bold">Department</span>
                         <span className="text-green-400 font-semibold text-xs mt-1">{analysis.department}</span>
                       </div>
-                      <div className="bg-[#0A0F1E]/50 rounded-xl p-3 border border-[#374151]/40 flex flex-col justify-between">
+                      <div className={t.bg + "/50 rounded-xl p-3 border " + t.border + "/40 flex flex-col justify-between"}>
                         <span className="text-[#6B7280] text-[10px] uppercase tracking-wider font-bold">Est. Resolution</span>
                         <span className="text-amber-400 font-semibold text-xs mt-1">{analysis.estimated_resolution_days} days</span>
                       </div>
@@ -703,17 +716,17 @@ export default function Report({ onViewReports }) {
                 </div>
 
                 {/* RIGHT COLUMN: Editable Form */}
-                <div className="w-full bg-[#111827]/40 rounded-2xl p-6 border border-[#374151]/30">
+                <div className={"w-full " + t.surface + "/40 rounded-2xl p-6 border " + t.border + "/30"}>
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                      <label className="text-[#9CA3AF] text-sm font-semibold mb-1.5 block">
+                      <label className={`text-sm font-semibold mb-1.5 block ${t.muted}`}>
                         Category
                       </label>
                       <select
                         name="category"
                         value={formData.category}
                         onChange={handleInputChange}
-                        className="bg-[#1F2937] border border-[#374151] rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none w-full text-sm transition cursor-pointer"
+                        className={`${t.surface2} border ${t.border} rounded-xl px-4 py-3 ${t.text} focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none w-full text-sm transition cursor-pointer`}
                         required
                       >
                         <option value="Pothole">Pothole</option>
@@ -728,14 +741,14 @@ export default function Report({ onViewReports }) {
                     </div>
 
                     <div>
-                      <label className="text-[#9CA3AF] text-sm font-semibold mb-1.5 block">
+                      <label className={`text-sm font-semibold mb-1.5 block ${t.muted}`}>
                         Severity
                       </label>
                       <select
                         name="severity"
                         value={formData.severity}
                         onChange={handleInputChange}
-                        className={`bg-[#1F2937] border border-[#374151] rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none w-full text-sm transition cursor-pointer ${getSeverityBorderClass(formData.severity)}`}
+                        className={`${t.surface2} border ${t.border} rounded-xl px-4 py-3 ${t.text} focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none w-full text-sm transition cursor-pointer ${getSeverityBorderClass(formData.severity)}`}
                         required
                       >
                         <option value="Low">Low</option>
@@ -746,14 +759,14 @@ export default function Report({ onViewReports }) {
                     </div>
 
                     <div>
-                      <label className="text-[#9CA3AF] text-sm font-semibold mb-1.5 block">
+                      <label className={`text-sm font-semibold mb-1.5 block ${t.muted}`}>
                         Department
                       </label>
                       <select
                         name="department"
                         value={formData.department}
                         onChange={handleInputChange}
-                        className="bg-[#1F2937] border border-[#374151] rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none w-full text-sm transition cursor-pointer"
+                        className={`${t.surface2} border ${t.border} rounded-xl px-4 py-3 ${t.text} focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none w-full text-sm transition cursor-pointer`}
                         required
                       >
                         <option value="BMC">BMC (Brihanmumbai Municipal Corporation)</option>
@@ -766,7 +779,7 @@ export default function Report({ onViewReports }) {
                     </div>
 
                     <div>
-                      <label className="text-[#9CA3AF] text-sm font-semibold mb-1.5 block">
+                      <label className={`text-sm font-semibold mb-1.5 block ${t.muted}`}>
                         Description
                       </label>
                       <textarea
@@ -774,13 +787,13 @@ export default function Report({ onViewReports }) {
                         value={formData.description}
                         onChange={handleInputChange}
                         rows={3}
-                        className="bg-[#1F2937] border border-[#374151] rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none w-full text-sm transition resize-none"
+                        className={`${t.surface2} border ${t.border} rounded-xl px-4 py-3 ${t.text} focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none w-full text-sm transition resize-none`}
                         required
                       />
                     </div>
 
                     <div>
-                      <label className="text-[#9CA3AF] text-sm font-semibold mb-1.5 block">
+                      <label className={`text-sm font-semibold mb-1.5 block ${t.muted}`}>
                         Suggested Action
                       </label>
                       <input
@@ -788,13 +801,13 @@ export default function Report({ onViewReports }) {
                         name="suggested_action"
                         value={formData.suggested_action}
                         onChange={handleInputChange}
-                        className="bg-[#1F2937] border border-[#374151] rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none w-full text-sm transition"
+                        className={`${t.surface2} border ${t.border} rounded-xl px-4 py-3 ${t.text} focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none w-full text-sm transition`}
                         required
                       />
                     </div>
 
                     <div>
-                      <label className="text-[#9CA3AF] text-sm font-semibold mb-1.5 block">
+                      <label className={`text-sm font-semibold mb-1.5 block ${t.muted}`}>
                         Location Name *
                       </label>
                       <div className="relative">
@@ -805,14 +818,14 @@ export default function Report({ onViewReports }) {
                           value={formData.location}
                           onChange={handleInputChange}
                           placeholder="e.g. Gokhale Road, Thane West"
-                          className="bg-[#1F2937] border border-[#374151] rounded-xl pl-10 pr-4 py-3 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none w-full text-sm transition"
+                          className={`${t.surface2} border ${t.border} rounded-xl pl-10 pr-4 py-3 ${t.text} focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none w-full text-sm transition`}
                           required
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="text-[#9CA3AF] text-sm font-semibold mb-1.5 block">
+                      <label className={`text-sm font-semibold mb-1.5 block ${t.muted}`}>
                         Reporter Name
                       </label>
                       <input
@@ -821,7 +834,7 @@ export default function Report({ onViewReports }) {
                         value={formData.reporter}
                         onChange={handleInputChange}
                         placeholder="Optional"
-                        className="bg-[#1F2937] border border-[#374151] rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none w-full text-sm transition"
+                        className={`${t.surface2} border ${t.border} rounded-xl px-4 py-3 ${t.text} focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none w-full text-sm transition`}
                       />
                     </div>
 
@@ -889,3 +902,5 @@ function getDaysAgo(dateStr) {
   if (diffDays === 1) return "1 day ago";
   return `${diffDays} days ago`;
 }
+// Force HMR reload comment
+
