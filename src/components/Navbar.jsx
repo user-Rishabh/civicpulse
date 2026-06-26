@@ -28,9 +28,6 @@ export default function Navbar() {
       ];
     } else {
       return [
-        ...baseItems,
-        { name: "Report Issue", path: "/report" },
-        { name: "Live Feed", path: "/feed" },
         { name: "My Dashboard", path: "/citizen-dashboard" },
       ];
     }
@@ -80,11 +77,11 @@ export default function Navbar() {
         <div className="flex items-center gap-4 shrink-0">
           {user ? (
             <div className="flex items-center gap-4">
-              <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold" title={user.email}>
-                {firstLetter}
+              <div className="w-9 h-9 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                {userProfile?.name?.[0]?.toUpperCase() || "U"}
               </div>
-              <span className="text-[#9CA3AF] text-sm font-medium hidden sm:inline" title={user.email}>
-                {truncateEmail(user.email)}
+              <span className="text-white text-sm font-medium">
+                {userProfile?.name || "User"}
               </span>
               <button
                 onClick={logout}
