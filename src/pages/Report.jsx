@@ -27,6 +27,7 @@ export default function Report({ onViewReports }) {
   // File and Analysis states
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState("");
+  const [thumbnail, setThumbnail] = useState("");
   const [loading, setLoading] = useState(false);
   const [analysis, setAnalysis] = useState(null);
   const [error, setError] = useState("");
@@ -56,7 +57,9 @@ export default function Report({ onViewReports }) {
   });
 
   const loadingSteps = [
-    "Uploading image to Gemini Vision...",
+    file?.type?.startsWith("video/") 
+      ? "Uploading video frame to Gemini Vision..." 
+      : "Uploading image to Gemini Vision...",
     "Identifying issue type and category...",
     "Assessing severity level...",
     "Determining responsible department...",
@@ -96,65 +99,144 @@ export default function Report({ onViewReports }) {
     setLoading(true);
     setCurrentStep(2); // Transition to Step 2 immediately on selection
 
-    const reader = new FileReader();
-    reader.readAsDataURL(selectedFile);
-    reader.onloadend = async () => {
-      const dataUrl = reader.result;
-      setPreview(dataUrl);
+    if (selectedFile.size > 50 * 1024 * 1024) {
+      setError("File is too large. Max size is 50MB.");
+      setCurrentStep(1);
+      setLoading(false);
+      return;
+    }
 
-      try {
-        const mimeType = dataUrl.split(";")[0].split(":")[1];
-        const base64Data = dataUrl.split(",")[1];
+    if (selectedFile.type.startsWith("video/")) {
+      const videoUrl = URL.createObjectURL(selectedFile);
+      setPreview(videoUrl);
 
-        // Call Gemini Analysis
-        const result = await analyzeIssueImage(base64Data, mimeType);
-
-        if (!result) {
-          throw new Error("No response received from Gemini AI.");
-        }
-
-        // 1. Load ALL issues from Firestore 'issues' collection
-        let allIssues = [];
+      const video = document.createElement('video');
+      video.muted = true;
+      video.playsInline = true;
+      video.src = videoUrl;
+      video.addEventListener('loadeddata', async () => {
         try {
-          const querySnapshot = await getDocs(collection(db, "issues"));
-          querySnapshot.forEach((doc) => {
-            allIssues.push({ docId: doc.id, ...doc.data() });
+          const canvas = document.createElement('canvas');
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(video, 0, 0);
+          }
+          const thumbnailDataUrl = canvas.toDataURL('image/jpeg');
+          const thumbnailBase64 = thumbnailDataUrl.split(',')[1];
+          setThumbnail(thumbnailDataUrl);
+
+          // Use thumbnail for Gemini analysis
+          const result = await analyzeIssueImage(thumbnailBase64, 'image/jpeg');
+
+          if (!result) {
+            throw new Error("No response received from Gemini AI.");
+          }
+
+          // 1. Load ALL issues from Firestore 'issues' collection
+          let allIssues = [];
+          try {
+            const querySnapshot = await getDocs(collection(db, "issues"));
+            querySnapshot.forEach((doc) => {
+              allIssues.push({ docId: doc.id, ...doc.data() });
+            });
+          } catch (dbErr) {
+            console.error("Failed to load issues for duplicate check:", dbErr);
+          }
+
+          // 2. Check for duplicates
+          const foundDuplicates = checkDuplicates(allIssues, result, "");
+          if (foundDuplicates.length > 0) {
+            setDuplicates(foundDuplicates);
+            setShowWarning(true);
+          } else {
+            setDuplicates([]);
+            setShowWarning(false);
+          }
+
+          setAnalysis(result);
+
+          // Prefill form
+          setFormData({
+            category: result.category || "Other",
+            severity: result.severity || "Medium",
+            department: result.department || "Other",
+            description: result.description || "",
+            suggested_action: result.suggested_action || "",
+            location: "", // Required to be entered by user
+            reporter: "",
+            estimated_resolution_days: result.estimated_resolution_days || 7,
           });
-        } catch (dbErr) {
-          console.error("Failed to load issues for duplicate check:", dbErr);
+        } catch (err) {
+          console.error("Analysis error:", err);
+          setError(err.message || "Failed to analyze video frame. Please try again.");
+          setCurrentStep(1); // Reset back to upload if error occurs
+        } finally {
+          setLoading(false);
         }
+      });
+    } else {
+      const reader = new FileReader();
+      reader.readAsDataURL(selectedFile);
+      reader.onloadend = async () => {
+        const dataUrl = reader.result;
+        setPreview(dataUrl);
 
-        // 2. Check for duplicates
-        const foundDuplicates = checkDuplicates(allIssues, result, "");
-        if (foundDuplicates.length > 0) {
-          setDuplicates(foundDuplicates);
-          setShowWarning(true);
-        } else {
-          setDuplicates([]);
-          setShowWarning(false);
+        try {
+          const mimeType = dataUrl.split(";")[0].split(":")[1];
+          const base64Data = dataUrl.split(",")[1];
+
+          // Call Gemini Analysis
+          const result = await analyzeIssueImage(base64Data, mimeType);
+
+          if (!result) {
+            throw new Error("No response received from Gemini AI.");
+          }
+
+          // 1. Load ALL issues from Firestore 'issues' collection
+          let allIssues = [];
+          try {
+            const querySnapshot = await getDocs(collection(db, "issues"));
+            querySnapshot.forEach((doc) => {
+              allIssues.push({ docId: doc.id, ...doc.data() });
+            });
+          } catch (dbErr) {
+            console.error("Failed to load issues for duplicate check:", dbErr);
+          }
+
+          // 2. Check for duplicates
+          const foundDuplicates = checkDuplicates(allIssues, result, "");
+          if (foundDuplicates.length > 0) {
+            setDuplicates(foundDuplicates);
+            setShowWarning(true);
+          } else {
+            setDuplicates([]);
+            setShowWarning(false);
+          }
+
+          setAnalysis(result);
+
+          // Prefill form
+          setFormData({
+            category: result.category || "Other",
+            severity: result.severity || "Medium",
+            department: result.department || "Other",
+            description: result.description || "",
+            suggested_action: result.suggested_action || "",
+            location: "", // Required to be entered by user
+            reporter: "",
+            estimated_resolution_days: result.estimated_resolution_days || 7,
+          });
+        } catch (err) {
+          console.error("Analysis error:", err);
+          setError(err.message || "Failed to analyze image. Please try again.");
+          setCurrentStep(1); // Reset back to upload if error occurs
+        } finally {
+          setLoading(false);
         }
-
-        setAnalysis(result);
-
-        // Prefill form
-        setFormData({
-          category: result.category || "Other",
-          severity: result.severity || "Medium",
-          department: result.department || "Other",
-          description: result.description || "",
-          suggested_action: result.suggested_action || "",
-          location: "", // Required to be entered by user
-          reporter: "",
-          estimated_resolution_days: result.estimated_resolution_days || 7,
-        });
-      } catch (err) {
-        console.error("Analysis error:", err);
-        setError(err.message || "Failed to analyze image. Please try again.");
-        setCurrentStep(1); // Reset back to upload if error occurs
-      } finally {
-        setLoading(false);
-      }
-    };
+      };
+    }
   };
 
   const handleDragOver = (e) => {
@@ -170,10 +252,10 @@ export default function Report({ onViewReports }) {
     e.preventDefault();
     setIsDragging(false);
     const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile && droppedFile.type.startsWith("image/")) {
+    if (droppedFile && (droppedFile.type.startsWith("image/") || droppedFile.type.startsWith("video/"))) {
       processFile(droppedFile);
     } else {
-      setError("Please drop a valid image file.");
+      setError("Please drop a valid image or video file.");
     }
   };
 
@@ -188,6 +270,7 @@ export default function Report({ onViewReports }) {
   const handleReset = () => {
     setFile(null);
     setPreview("");
+    setThumbnail("");
     setLoading(false);
     setAnalysis(null);
     setError("");
@@ -237,7 +320,7 @@ export default function Report({ onViewReports }) {
       userEmail: user.email,
       reporterName: formData.reporter || userProfile?.name || "Anonymous",
       reporter: formData.reporter || userProfile?.name || "Anonymous",
-      imagePreview: preview,
+      imagePreview: thumbnail || preview,
       upvotes: 0,
       status: "Pending",
       createdAt: new Date().toISOString(),
@@ -456,18 +539,18 @@ export default function Report({ onViewReports }) {
                   type="file"
                   ref={fileInputRef}
                   onChange={handleFileChange}
-                  accept="image/*"
+                  accept="image/*,video/*"
                   className="hidden"
                 />
                 
-                {/* Camera icon */}
+                {/* Camera and Video icon */}
                 <div className={`w-20 h-20 mx-auto ${t.surface2} rounded-2xl flex items-center justify-center group-hover:bg-blue-500/10 transition duration-300`}>
-                  <span className="text-4xl">📷</span>
+                  <span className="text-4xl">📷 🎥</span>
                 </div>
 
-                <h3 className={`${t.text} font-bold text-2xl mt-6`}>Drop your photo here</h3>
+                <h3 className={`${t.text} font-bold text-2xl mt-6`}>Drop your photo or video here</h3>
                 <p className={`${t.muted} mt-2`}>or click to browse files</p>
-                <p className="text-[#6B7280] text-xs mt-3">Supports JPG, PNG, WEBP • Max 10MB</p>
+                <p className="text-[#6B7280] text-xs mt-3">Supports JPG, PNG, WEBP, MP4, MOV • Max 50MB</p>
                 
                 <button
                   type="button"
@@ -501,11 +584,15 @@ export default function Report({ onViewReports }) {
           {currentStep === 2 && (
             <div className="space-y-6 max-w-2xl mx-auto">
               {preview && (
-                <img
-                  src={preview}
-                  alt="Preview"
-                  className={"w-full h-72 object-cover rounded-2xl border " + t.border + "/50 shadow-lg"}
-                />
+                file?.type?.startsWith("video/") ? (
+                  <video src={preview} controls className="w-full h-64 rounded-2xl object-cover" />
+                ) : (
+                  <img
+                    src={preview}
+                    alt="Preview"
+                    className={"w-full h-72 object-cover rounded-2xl border " + t.border + "/50 shadow-lg"}
+                  />
+                )
               )}
 
               {/* LOADING STATE */}
@@ -516,7 +603,9 @@ export default function Report({ onViewReports }) {
                     <div className="animate-spin border-4 border-blue-500 border-t-transparent rounded-full w-8 h-8"></div>
                   </div>
                   <h3 className="text-blue-400 font-bold mt-6 text-lg">
-                    Gemini is analyzing your photo...
+                    {file?.type?.startsWith("video/") 
+                      ? "Video uploaded — analyzing first frame with Gemini..." 
+                      : "Gemini is analyzing your photo..."}
                   </h3>
                   <p className={`${t.muted} text-sm mt-1 max-w-sm mx-auto font-medium`}>
                     Identifying issue type, severity, and responsible department
@@ -681,11 +770,15 @@ export default function Report({ onViewReports }) {
                 {/* LEFT COLUMN: Sticky Preview & AI Summary */}
                 <div className="w-full space-y-6 lg:sticky lg:top-24">
                   {preview && (
-                    <img
-                      src={preview}
-                      alt="Preview"
-                      className={"w-full h-56 object-cover rounded-2xl border " + t.border + "/50 shadow-md"}
-                    />
+                    file?.type?.startsWith("video/") ? (
+                      <video src={preview} controls className="w-full h-64 rounded-2xl object-cover" />
+                    ) : (
+                      <img
+                        src={preview}
+                        alt="Preview"
+                        className={"w-full h-56 object-cover rounded-2xl border " + t.border + "/50 shadow-md"}
+                      />
+                    )
                   )}
 
                   <div className={`${t.surface} rounded-2xl p-5 border ${t.border} shadow-lg`}>
