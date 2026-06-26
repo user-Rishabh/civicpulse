@@ -7,7 +7,6 @@ import Report from "./Report";
 
 export default function CitizenDashboard() {
   const { user, userProfile } = useAuth();
-  const [issues, setIssues] = useState([]);
   const [myIssues, setMyIssues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("Dashboard");
@@ -21,49 +20,29 @@ export default function CitizenDashboard() {
   ]);
 
   useEffect(() => {
+    if (!user?.uid) {
+      setLoading(false);
+      return;
+    }
     const issuesCollection = collection(db, "issues");
-    const unsubscribeAll = onSnapshot(
-      issuesCollection,
+    const q = query(issuesCollection, where("userId", "==", user.uid));
+    const unsubscribe = onSnapshot(
+      q,
       (snapshot) => {
         const list = snapshot.docs.map((doc) => ({
           docId: doc.id,
           ...doc.data(),
         }));
-
-        // Sort: newest first
         list.sort((a, b) => b.id - a.id);
-        setIssues(list);
+        setMyIssues(list);
         setLoading(false);
       },
       (error) => {
-        console.error("Firestore error in citizen dashboard:", error);
+        console.error("Firestore error loading user issues:", error);
         setLoading(false);
       }
     );
-
-    let unsubscribeMy = () => {};
-    if (user?.uid) {
-      const q = query(issuesCollection, where("userId", "==", user.uid));
-      unsubscribeMy = onSnapshot(
-        q,
-        (snapshot) => {
-          const list = snapshot.docs.map((doc) => ({
-            docId: doc.id,
-            ...doc.data(),
-          }));
-          list.sort((a, b) => b.id - a.id);
-          setMyIssues(list);
-        },
-        (error) => {
-          console.error("Firestore error loading user issues:", error);
-        }
-      );
-    }
-
-    return () => {
-      unsubscribeAll();
-      unsubscribeMy();
-    };
+    return () => unsubscribe();
   }, [user?.uid]);
 
   const handleUpvote = async (docId, currentUpvotes) => {
@@ -221,46 +200,56 @@ export default function CitizenDashboard() {
                   </div>
                 </div>
 
-                {/* Community Feed & Recent Activity */}
+                {/* My Recent Reports & Need to report something? Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="bg-[#111827] border border-[#374151] rounded-2xl p-6">
-                    <h2 className="text-xl font-bold text-white mb-4">Community Feed</h2>
-                    <div className="space-y-4">
-                      {issues.slice(0, 5).map((issue) => (
-                        <div
-                          key={issue.docId || issue.id}
-                          className="bg-[#0A0F1E]/50 rounded-xl p-3 flex items-center justify-between gap-4 border border-[#374151]/30"
-                        >
-                          <div className="flex items-center gap-3 min-w-0">
+                    <h2 className="text-xl font-bold text-white mb-4">My Recent Reports</h2>
+                    
+                    {myIssues.length === 0 ? (
+                      <p className="text-[#9CA3AF] text-sm">You haven't reported any issues yet.</p>
+                    ) : (
+                      <div className="space-y-4">
+                        {myIssues.slice(0, 3).map((issue) => (
+                          <div
+                            key={issue.docId || issue.id}
+                            className="bg-[#0A0F1E]/50 rounded-xl p-3 flex items-center gap-4 border border-[#374151]/30"
+                          >
                             <img
                               src={issue.imagePreview}
                               alt=""
                               className="w-12 h-12 object-cover rounded-lg shrink-0 border border-[#374151]/50 bg-gray-900"
                             />
-                            <div className="min-w-0">
-                              <span className="bg-blue-500/10 text-blue-400 text-[9px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider border border-blue-500/20">
-                                {issue.category}
-                              </span>
-                              <div className="text-xs text-[#9CA3AF] mt-1 truncate max-w-[150px]">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="bg-blue-500/10 text-blue-400 text-[9px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider border border-blue-500/20">
+                                  {issue.category}
+                                </span>
+                                <span className={`text-[9px] px-2 py-0.5 rounded-md font-bold border ${
+                                  issue.status === "Resolved"
+                                    ? "bg-green-500/10 text-green-400 border-green-500/20"
+                                    : issue.status === "In Progress"
+                                    ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
+                                    : "bg-gray-500/10 text-gray-400 border-gray-500/20"
+                                }`}>
+                                  {issue.status}
+                                </span>
+                              </div>
+                              <div className="text-xs text-[#9CA3AF] mt-1 truncate">
                                 📍 {issue.location}
                               </div>
                             </div>
                           </div>
-
-                          <button
-                            onClick={() => handleUpvote(issue.docId || issue.id, issue.upvotes)}
-                            className="bg-[#1F2937] hover:bg-[#374151] border border-[#374151] text-white hover:text-blue-400 font-semibold px-2.5 py-1.5 rounded-lg text-xs transition duration-200 flex items-center gap-1 shrink-0 cursor-pointer"
-                          >
-                            <span>👍</span>
-                            <span>{issue.upvotes || 0}</span>
-                          </button>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    )}
+                    
                     <div className="mt-4">
-                      <Link to="/feed" className="text-blue-400 hover:text-blue-300 text-xs font-semibold">
-                        View Full Feed →
-                      </Link>
+                      <button
+                        onClick={() => setActiveTab("track")}
+                        className="text-blue-400 hover:text-blue-300 text-xs font-semibold cursor-pointer"
+                      >
+                        View All My Reports →
+                      </button>
                     </div>
                   </div>
 
