@@ -476,7 +476,7 @@ export default function CitizenDashboard() {
             {/* 2. REPORT AN ISSUE TAB */}
             {activeTab === "Report an Issue" && (
               <div className="-mt-8">
-                <Report />
+                <Report onViewReports={() => setActiveTab("track")} />
               </div>
             )}
 
