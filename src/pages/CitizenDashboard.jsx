@@ -8,8 +8,7 @@ import { generateSupportReply } from "../lib/gemini";
 
 export default function CitizenDashboard() {
   const { user, userProfile } = useAuth();
-  const [myIssues, setMyIssues] = useState([]);
-  const [allIssues, setAllIssues] = useState([]);
+  const [issues, setIssues] = useState([]);
   const [communityFilter, setCommunityFilter] = useState("All");
   const [selectedIssue, setSelectedIssue] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -52,62 +51,34 @@ export default function CitizenDashboard() {
   }, [selectedChatIssue]);
 
   useEffect(() => {
-    if (!user?.uid) {
+    const q = query(collection(db, 'issues'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({
+        id: doc.id,
+        docId: doc.id,
+        ...doc.data()
+      }));
+      // Sort: newest first locally
+      data.sort((a, b) => {
+        const valA = typeof a.id === 'number' ? a.id : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+        const valB = typeof b.id === 'number' ? b.id : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+        return valB - valA;
+      });
+      setIssues(data);
       setLoading(false);
-      return;
-    }
-    const issuesCollection = collection(db, "issues");
-    const q = query(issuesCollection, where("userId", "==", user.uid));
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const list = snapshot.docs.map((doc) => ({
-          docId: doc.id,
-          ...doc.data(),
-        }));
-        list.sort((a, b) => b.id - a.id);
-        setMyIssues(list);
-        setLoading(false);
-      },
-      (error) => {
-        console.error("Firestore error loading user issues:", error);
-        setLoading(false);
-      }
-    );
+    }, (error) => {
+      console.error('Firestore error:', error);
+      setLoading(false);
+    });
     return () => unsubscribe();
-  }, [user?.uid]);
+  }, []);
 
-  useEffect(() => {
-    if (activeTab !== 'community') return;
-    const issuesCollection = collection(db, "issues");
-    const unsubscribe = onSnapshot(
-      issuesCollection,
-      (snapshot) => {
-        const list = snapshot.docs.map((doc) => ({
-          docId: doc.id,
-          ...doc.data(),
-        }));
-        list.sort((a, b) => b.id - a.id);
-        setAllIssues(list);
-      },
-      (error) => {
-        console.error("Firestore error loading all issues:", error);
-      }
-    );
-    return () => unsubscribe();
-  }, [activeTab]);
+  const allIssues = issues;
+  const myIssues = issues.filter(i => i.userId === user?.uid || i.userEmail === user?.email);
 
   const handleUpvote = async (docId, currentUpvotes) => {
-    // Optimistic update for allIssues
-    setAllIssues((prev) =>
-      prev.map((i) =>
-        i.docId === docId || String(i.id) === String(docId)
-          ? { ...i, upvotes: (i.upvotes || 0) + 1 }
-          : i
-      )
-    );
-    // Optimistic update for myIssues
-    setMyIssues((prev) =>
+    // Optimistic update for issues
+    setIssues((prev) =>
       prev.map((i) =>
         i.docId === docId || String(i.id) === String(docId)
           ? { ...i, upvotes: (i.upvotes || 0) + 1 }

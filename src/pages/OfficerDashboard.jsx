@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { collection, onSnapshot, doc, updateDoc, getDoc, setDoc, arrayUnion } from "firebase/firestore";
+import { collection, onSnapshot, doc, updateDoc, getDoc, setDoc, arrayUnion, query, orderBy } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
 import { verifyInProgressImage, verifyResolvedImage, analyzeWorkPhoto } from "../lib/gemini";
@@ -88,22 +88,26 @@ export default function OfficerDashboard() {
   };
 
   useEffect(() => {
-    const issuesCollection = collection(db, "issues");
+    const q = query(collection(db, 'issues'));
     const unsubscribe = onSnapshot(
-      issuesCollection,
+      q,
       (snapshot) => {
-        const list = snapshot.docs.map((doc) => ({
+        const data = snapshot.docs.map((doc) => ({
+          id: doc.id,
           docId: doc.id,
           ...doc.data(),
         }));
-
-        // Sort: newest first
-        list.sort((a, b) => b.id - a.id);
-        setIssues(list);
+        // Sort: newest first locally to avoid index requirement
+        data.sort((a, b) => {
+          const valA = typeof a.id === 'number' ? a.id : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+          const valB = typeof b.id === 'number' ? b.id : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+          return valB - valA;
+        });
+        setIssues(data);
         setLoading(false);
       },
       (error) => {
-        console.error("Firestore error in officer dashboard:", error);
+        console.error("Firestore error:", error);
         setLoading(false);
       }
     );
@@ -113,10 +117,8 @@ export default function OfficerDashboard() {
 
   const officerDepartment = userProfile?.department || "BMC";
 
-  // Filter issues by officer's department
-  const assignedIssues = issues.filter(
-    (issue) => issue.department === officerDepartment
-  );
+  // Filter issues by officer's department - REMOVED department filter to show ALL issues
+  const assignedIssues = issues;
 
   const totalAssigned = assignedIssues.length;
   const pendingCount = assignedIssues.filter((i) => i.status === "Pending").length;
