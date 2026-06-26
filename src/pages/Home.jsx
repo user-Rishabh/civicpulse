@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 export default function Home() {
+  const { user } = useAuth();
   const [stats, setStats] = useState({
     total: 0,
     resolved: 0,
@@ -47,13 +49,13 @@ export default function Home() {
         
         <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center items-center">
           <Link
-            to="/report"
+            to={user ? "/report" : "/login"}
             className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-4 rounded-xl shadow-lg shadow-blue-500/20 hover:shadow-blue-500/35 hover:-translate-y-0.5 active:translate-y-0 transition duration-200 text-center"
           >
             Report an Issue →
           </Link>
           <Link
-            to="/feed"
+            to={user ? "/feed" : "/login"}
             className="w-full sm:w-auto border border-[#374151] hover:bg-[#1F2937] text-white font-semibold px-8 py-4 rounded-xl hover:-translate-y-0.5 active:translate-y-0 transition duration-200 text-center"
           >
             View Live Feed
