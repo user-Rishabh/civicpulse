@@ -9,7 +9,7 @@ export async function sendStatusNotification({ citizenEmail, citizenName, locati
       import.meta.env.VITE_EMAILJS_TEMPLATE_ID,
       {
         citizen_name: citizenName || 'Citizen',
-        citizen_email: citizenEmail,
+        to_email: citizenEmail,
         location: location,
         status: status,
         officer_note: officerNote || 'No additional notes',

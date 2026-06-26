@@ -67,7 +67,7 @@ Return ONLY raw JSON (no markdown, no backticks):
 }
 
 export async function analyzeWorkPhoto(base64Data, mimeType, issueCategory, stage) {
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
   const prompt = `You are verifying municipal work progress for a civic issue.
 Issue type: ${issueCategory}
 Stage: ${stage} (either "work_started" or "work_completed")

@@ -155,11 +155,11 @@ export default function CitizenDashboard() {
   };
 
   const tabs = [
-    { id: "Dashboard", label: "Dashboard", icon: "📊" },
-    { id: "Report an Issue", label: "Report an Issue", icon: "🚨" },
-    { id: "track", label: "Track My Reports", icon: "📍" },
-    { id: "Send Message", label: "Send Message", icon: "💬" },
-    { id: "community", label: "Community Feed", icon: "🌍" }
+    { id: "Dashboard", label: "Dashboard", icon: "" },
+    { id: "Report an Issue", label: "Report an Issue", icon: "" },
+    { id: "track", label: "Track My Reports", icon: "" },
+    { id: "Send Message", label: "Send Message", icon: "" },
+    { id: "community", label: "Community Feed", icon: "" }
   ];
 
   const getFilteredCommunityIssues = () => {
@@ -181,7 +181,7 @@ export default function CitizenDashboard() {
       <div className="fixed left-0 top-0 w-64 h-screen bg-[#0D1117] border-r border-[#374151] pt-20 flex flex-col z-30">
         {/* App Logo */}
         <div className="text-blue-400 font-bold text-xl px-6 mb-8 mt-4">
-          ⚡ CivicPulse
+          CivicPulse
         </div>
 
         {/* Navigation Items */}
@@ -233,7 +233,7 @@ export default function CitizenDashboard() {
                 onClick={() => setNotifOpen(o => !o)}
                 className="relative w-10 h-10 flex items-center justify-center bg-[#111827] border border-[#374151] rounded-xl hover:border-blue-500/50 transition cursor-pointer"
               >
-                <span className="text-lg">🔔</span>
+                <span className="text-lg">&#x1F514;</span>
                 {unreadCount > 0 && (
                   <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow">
                     {unreadCount > 9 ? '9+' : unreadCount}
@@ -289,7 +289,7 @@ export default function CitizenDashboard() {
                 {/* Header */}
                 <div>
                   <h1 className="text-3xl font-bold text-white tracking-tight">
-                    Welcome back, {userProfile?.name || "Citizen"} 👋
+                    Welcome back, {userProfile?.name || "Citizen"}
                   </h1>
                   <p className="text-[#9CA3AF] mt-2 text-sm">
                     Track your reported civic issues and community activity
@@ -300,7 +300,7 @@ export default function CitizenDashboard() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                   {/* My Reports */}
                   <div className="bg-[#111827] rounded-2xl p-6 border border-[#374151] flex flex-col justify-between hover:border-blue-500/20 transition duration-200">
-                    <span className="text-2xl">📋</span>
+                    <span className="text-2xl"></span>
                     <div className="mt-4">
                       <div className="text-3xl font-black text-blue-400">{totalCount}</div>
                       <div className="text-[#9CA3AF] text-xs font-semibold mt-1">My Reports</div>
@@ -309,7 +309,7 @@ export default function CitizenDashboard() {
 
                   {/* Resolved */}
                   <div className="bg-[#111827] rounded-2xl p-6 border border-[#374151] flex flex-col justify-between hover:border-green-500/20 transition duration-200">
-                    <span className="text-2xl">✅</span>
+                    <span className="text-2xl"></span>
                     <div className="mt-4">
                       <div className="text-3xl font-black text-green-400">{resolvedCount}</div>
                       <div className="text-[#9CA3AF] text-xs font-semibold mt-1">Resolved</div>
@@ -318,7 +318,7 @@ export default function CitizenDashboard() {
 
                   {/* In Progress */}
                   <div className="bg-[#111827] rounded-2xl p-6 border border-[#374151] flex flex-col justify-between hover:border-yellow-500/20 transition duration-200">
-                    <span className="text-2xl">⏳</span>
+                    <span className="text-2xl"></span>
                     <div className="mt-4">
                       <div className="text-3xl font-black text-yellow-400">{inProgressCount}</div>
                       <div className="text-[#9CA3AF] text-xs font-semibold mt-1">In Progress</div>
@@ -327,7 +327,7 @@ export default function CitizenDashboard() {
 
                   {/* Upvotes Given */}
                   <div className="bg-[#111827] rounded-2xl p-6 border border-[#374151] flex flex-col justify-between hover:border-purple-500/20 transition duration-200">
-                    <span className="text-2xl">👍</span>
+                    <span className="text-2xl"></span>
                     <div className="mt-4">
                       <div className="text-3xl font-black text-purple-400">{totalUpvotes}</div>
                       <div className="text-[#9CA3AF] text-xs font-semibold mt-1">Upvotes Given</div>
@@ -370,7 +370,7 @@ export default function CitizenDashboard() {
                                 </span>
                               </div>
                               <div className="text-xs text-[#9CA3AF] mt-1 truncate">
-                                📍 {issue.location}
+                                Location: {issue.location}
                               </div>
                             </div>
                           </div>
@@ -383,7 +383,7 @@ export default function CitizenDashboard() {
                         onClick={() => setActiveTab("track")}
                         className="text-blue-400 hover:text-blue-300 text-xs font-semibold cursor-pointer"
                       >
-                        View All My Reports →
+                        View All My Reports &rarr;
                       </button>
                     </div>
                   </div>
@@ -399,7 +399,7 @@ export default function CitizenDashboard() {
                       onClick={() => setActiveTab("Report an Issue")}
                       className="mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition duration-200 text-sm shadow-md shadow-blue-500/10 cursor-pointer"
                     >
-                      Report an Issue →
+                      Report an Issue &rarr;
                     </button>
                   </div>
                 </div>
@@ -422,13 +422,13 @@ export default function CitizenDashboard() {
 
                 {myIssues.length === 0 ? (
                   <div className="flex flex-col items-center justify-center bg-[#111827] border border-[#374151] rounded-2xl p-16 text-center">
-                    <span className="text-5xl mb-3">📢</span>
+                    <span className="text-5xl mb-3"></span>
                     <h3 className="text-white font-bold text-lg">You haven't reported any issues yet</h3>
                     <button
                       onClick={() => setActiveTab("Report an Issue")}
                       className="mt-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl transition duration-200 text-sm shadow-md shadow-blue-500/10 cursor-pointer"
                     >
-                      Report an Issue →
+                      Report an Issue &rarr;
                     </button>
                   </div>
                 ) : (
@@ -455,8 +455,8 @@ export default function CitizenDashboard() {
                               </span>
                             </div>
                             <p className="text-white text-sm mt-2">{issue.description}</p>
-                            <div className="text-xs text-[#9CA3AF] mt-1">📍 {issue.location}</div>
-                            <div className="text-xs text-[#6B7280] mt-1">📅 Reported: {issue.date}</div>
+                            <div className="text-xs text-[#9CA3AF] mt-1">Location: {issue.location}</div>
+                            <div className="text-xs text-[#6B7280] mt-1">Date: Reported: {issue.date}</div>
                           </div>
                         </div>
 
@@ -467,7 +467,7 @@ export default function CitizenDashboard() {
                             <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white font-bold shadow-lg shadow-green-500/20">
                               ✓
                             </div>
-                            <span className="text-xs font-semibold text-green-400 mt-2">✅ Reported</span>
+                            <span className="text-xs font-semibold text-green-400 mt-2">Reported</span>
                           </div>
 
                           {/* Line 1 */}
@@ -487,7 +487,7 @@ export default function CitizenDashboard() {
                             <span className={`text-xs font-semibold mt-2 ${
                               issue.status === "In Progress" || issue.status === "Resolved" ? "text-yellow-400" : "text-[#9CA3AF]"
                             }`}>
-                              🔄 In Progress
+                              In Progress
                             </span>
                           </div>
 
@@ -508,7 +508,7 @@ export default function CitizenDashboard() {
                             <span className={`text-xs font-semibold mt-2 ${
                               issue.status === "Resolved" ? "text-green-400" : "text-[#9CA3AF]"
                             }`}>
-                              ✅ Resolved
+                              Resolved
                             </span>
                           </div>
                         </div>
@@ -516,13 +516,13 @@ export default function CitizenDashboard() {
                         {/* OFFICER UPDATE BOX */}
                         {issue.officerNote ? (
                           <div className="mt-4 bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
-                            <div className="text-blue-400 font-semibold text-sm">📋 Department Update</div>
+                            <div className="text-blue-400 font-semibold text-sm">Department Update</div>
                             <div className="text-white text-sm mt-1">{issue.officerNote}</div>
                             <div className="text-[#6B7280] text-xs mt-2">Updated by Municipal Officer</div>
                           </div>
                         ) : (
                           <div className="mt-4 bg-[#1F2937] rounded-xl p-4 border border-[#374151]">
-                            <div className="text-[#9CA3AF] text-sm">⏳ Awaiting department response...</div>
+                            <div className="text-[#9CA3AF] text-sm">Awaiting department response...</div>
                           </div>
                         )}
 
@@ -546,14 +546,14 @@ export default function CitizenDashboard() {
                         {/* EST. RESOLUTION */}
                         {(issue.estimatedDays !== undefined && issue.estimatedDays !== null) && (
                           <div className="mt-3 bg-amber-500/10 border border-amber-500/20 rounded-lg px-4 py-2 inline-flex items-center gap-2">
-                            <span className="text-amber-400 text-sm">⏱️ Estimated Resolution: {issue.estimatedDays} days</span>
+                            <span className="text-amber-400 text-sm">Estimated Resolution: {issue.estimatedDays} days</span>
                           </div>
                         )}
 
                         {/* RESOLVED CELEBRATION BANNER */}
                         {issue.status === 'Resolved' && (
                           <div className="mt-4 bg-green-500/10 border border-green-500/20 rounded-xl p-4">
-                            <p className="text-green-400 font-bold text-sm">🎉 This issue has been resolved! Thank you for making your city better.</p>
+                            <p className="text-green-400 font-bold text-sm">This issue has been resolved! Thank you for making your city better.</p>
                             {issue.workPhotos && issue.workPhotos[1] && (
                               <div className="mt-3">
                                 <p className="text-[#9CA3AF] text-xs mb-1 font-semibold">Completion Proof Photo</p>
@@ -658,7 +658,7 @@ export default function CitizenDashboard() {
                 {/* Issues Grid */}
                 {filteredCommunityIssues.length === 0 ? (
                   <div className="flex flex-col items-center justify-center bg-[#111827] border border-[#374151] rounded-2xl p-16 text-center mt-6">
-                    <span className="text-5xl mb-3">🗃️</span>
+                    <span className="text-5xl mb-3"></span>
                     <h3 className="text-white font-bold text-lg">No community issues yet</h3>
                   </div>
                 ) : (
@@ -691,7 +691,7 @@ export default function CitizenDashboard() {
                               {issue.description}
                             </p>
                             <div className="text-xs text-[#9CA3AF] mt-2 flex items-center gap-1">
-                              <span>📍</span>
+                              <span>Location:</span>
                               <span className="truncate">{issue.location}</span>
                             </div>
                           </div>
@@ -715,7 +715,7 @@ export default function CitizenDashboard() {
                                 }}
                                 className="border border-[#374151] bg-[#1F2937] px-2.5 py-1 rounded-lg text-[#9CA3AF] text-xs font-semibold flex items-center gap-1.5 hover:border-blue-500 hover:text-blue-400 transition cursor-pointer"
                               >
-                                👍 {issue.upvotes || 0}
+                                &#x1F44D; {issue.upvotes || 0}
                               </button>
                             </div>
                             <div className="text-xs text-[#6B7280] mt-2">
@@ -760,7 +760,7 @@ export default function CitizenDashboard() {
                         </span>
                         {selectedIssue.department && (
                           <span className="bg-purple-500/10 text-purple-400 text-[10px] px-2 py-0.5 rounded-md border border-purple-500/20 font-bold uppercase tracking-wider">
-                            🏢 {selectedIssue.department}
+                            {selectedIssue.department}
                           </span>
                         )}
                       </div>
@@ -773,21 +773,21 @@ export default function CitizenDashboard() {
 
                       {/* Location */}
                       <div className="text-xs text-[#9CA3AF] flex items-center gap-1 font-medium">
-                        <span>📍 Location:</span>
+                        <span>Location:</span>
                         <span className="text-white">{selectedIssue.location}</span>
                       </div>
 
                       {/* Suggested Action */}
                       {selectedIssue.suggested_action && (
                         <div className="text-sm text-blue-400 font-medium">
-                          💡 Suggested Action: {selectedIssue.suggested_action}
+                          Action: {selectedIssue.suggested_action}
                         </div>
                       )}
 
                       {/* Officer Note */}
                       {selectedIssue.officerNote && (
                         <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
-                          <div className="text-xs font-semibold text-blue-400">📋 Department Update</div>
+                          <div className="text-xs font-semibold text-blue-400">Department Update</div>
                           <p className="text-white text-xs mt-1 leading-relaxed">{selectedIssue.officerNote}</p>
                         </div>
                       )}
@@ -798,7 +798,7 @@ export default function CitizenDashboard() {
                           onClick={() => handleUpvote(selectedIssue.docId || selectedIssue.id, selectedIssue.upvotes)}
                           className="border border-[#374151] bg-[#1F2937] px-4 py-2 rounded-xl text-[#9CA3AF] text-sm font-semibold flex items-center gap-1.5 hover:border-blue-500 hover:text-blue-400 transition cursor-pointer"
                         >
-                          <span>👍 Upvote</span>
+                          <span>&#x1F44D; Upvote</span>
                           <span>{selectedIssue.upvotes || 0}</span>
                         </button>
 
