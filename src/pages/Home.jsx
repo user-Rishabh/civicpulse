@@ -157,24 +157,6 @@ export default function Home() {
         style={{ background: 'radial-gradient(600px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(59,130,246,0.06), transparent 40%)' }}
         className="relative z-10 flex flex-col items-center justify-center min-h-screen px-8 text-center max-w-6xl mx-auto w-full pt-20"
       >
-        {/* BADGE */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0 }}
-          className="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/30 rounded-full px-5 py-2 mb-8"
-        >
-          <span className="relative flex h-3 w-3">
-            <span className="animate-ping bg-blue-400 absolute inline-flex h-full w-full rounded-full opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
-          </span>
-          <span className="text-blue-400 text-sm font-medium">
-            Powered by Gemini 1.5 Flash Vision
-          </span>
-          <span className="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full ml-2 font-semibold">
-            NEW
-          </span>
-        </motion.div>
 
         {/* MAIN HEADING */}
         <motion.h1
@@ -545,7 +527,7 @@ export default function Home() {
           </motion.div>
 
           <p className="text-[#6B7280] text-sm mt-4 font-semibold uppercase tracking-wider">
-            No credit card required &bull; Free forever &bull; Powered by AI
+            No credit card required &bull; Free forever
           </p>
         </div>
       </section>
