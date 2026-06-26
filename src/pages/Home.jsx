@@ -568,10 +568,7 @@ export default function Home() {
             © 2026 CivicPulse • Vibe2Ship Hackathon
           </div>
 
-          {/* Right: Powered by */}
-          <div className="text-[#6B7280] text-xs md:text-right font-medium">
-            Powered by Gemini AI + Firebase
-          </div>
+
         </div>
       </footer>
     </div>
