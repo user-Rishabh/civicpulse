@@ -90,3 +90,35 @@ If stage is "work_completed": confirm the issue appears fixed/resolved`;
   const clean = text.replace(/```json|```/g, "").trim();
   return JSON.parse(clean);
 }
+
+export async function generateSupportReply({ userProfile, issue, chatHistory, userMessage }) {
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  const prompt = `You are "Gemini", an AI support assistant for the municipal corporation (CivicPulse).
+Your goal is to answer a citizen's question about their reported issue, based on their account details and the specific issue status.
+
+Citizen Profile:
+- Name: ${userProfile?.name || "Citizen"}
+- Email: ${userProfile?.email || "Unknown"}
+
+Issue Details:
+- Category: ${issue.category}
+- Description: ${issue.description}
+- Severity: ${issue.severity}
+- Status: ${issue.status}
+- Location: ${issue.location}
+- Department Assigned: ${issue.department || "BMC"}
+- Estimated Days to Resolve: ${issue.estimatedDays !== undefined && issue.estimatedDays !== null ? issue.estimatedDays : "Not set yet"}
+- Resolution Plan: ${issue.resolutionPlan || "No plan submitted yet"}
+- Officer Note: ${issue.officerNote || "No updates from officer yet"}
+
+Recent Chat History:
+${chatHistory.map(m => `[${m.senderRole === "citizen" ? "Citizen" : "Officer/Gemini"}]: ${m.text}`).join("\n")}
+
+Citizen's New Message:
+"${userMessage}"
+
+Provide a concise, helpful, and polite response (max 3 sentences) addressing the citizen's question. Use the provided issue details to give concrete, real answers. Do not make up information. If estimated resolution or plan isn't set, politely let them know the department is reviewing it. Do not include any JSON or markdown formatting, just return the plain text response.`;
+
+  const result = await model.generateContent(prompt);
+  return result.response.text().trim();
+}

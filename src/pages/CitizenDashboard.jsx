@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
-import { collection, onSnapshot, doc, updateDoc, query, where } from "firebase/firestore";
+import { useEffect, useState, useRef } from "react";
+import { collection, onSnapshot, doc, updateDoc, query, where, getDoc, setDoc, arrayUnion } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
 import { Link } from "react-router-dom";
 import Report from "./Report";
+import { generateSupportReply } from "../lib/gemini";
 
 export default function CitizenDashboard() {
   const { user, userProfile } = useAuth();
@@ -20,13 +21,35 @@ export default function CitizenDashboard() {
     try { return JSON.parse(localStorage.getItem('civicpulse_notifications') || '[]'); } catch { return []; }
   });
 
-  // Mock message state
+  // Real-time Chat States
+  const [selectedChatIssue, setSelectedChatIssue] = useState(null);
+  const [chatMessages, setChatMessages] = useState([]);
   const [chatMessage, setChatMessage] = useState("");
-  const [chatHistory, setChatHistory] = useState([
-    { sender: "system", text: "Welcome to CivicPulse Support. How can we help you today?", time: "09:00 AM" },
-    { sender: "user", text: "I wanted to check the status of my streetlight complaint.", time: "09:02 AM" },
-    { sender: "system", text: "Our municipal team is currently looking into it. You will receive an update note on your dashboard as soon as work starts.", time: "09:03 AM" }
-  ]);
+  const [geminiLoading, setGeminiLoading] = useState(false);
+
+  const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatMessages, geminiLoading]);
+
+  useEffect(() => {
+    if (!selectedChatIssue?.id) {
+      setChatMessages([]);
+      return;
+    }
+    const chatDocRef = doc(db, "chats", String(selectedChatIssue.id));
+    const unsubscribe = onSnapshot(chatDocRef, (snapshot) => {
+      if (snapshot.exists()) {
+        setChatMessages(snapshot.data().messages || []);
+      } else {
+        setChatMessages([]);
+      }
+    }, (error) => {
+      console.error("Error listening to chat messages:", error);
+    });
+    return () => unsubscribe();
+  }, [selectedChatIssue]);
 
   useEffect(() => {
     if (!user?.uid) {
@@ -109,27 +132,71 @@ export default function CitizenDashboard() {
     }
   };
 
-  const handleSendMessage = (e) => {
+  const handleSendChatMessage = async (e) => {
     e.preventDefault();
-    if (!chatMessage.trim()) return;
+    const userMsgText = chatMessage.trim();
+    if (!userMsgText || !selectedChatIssue) return;
 
-    const newMsg = {
-      sender: "user",
-      text: chatMessage,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    const messageId = Date.now();
+    const timestamp = new Date().toISOString();
+    const newMessage = {
+      id: messageId,
+      text: userMsgText,
+      senderEmail: user?.email || "citizen@example.com",
+      senderRole: "citizen",
+      timestamp: timestamp,
     };
 
-    setChatHistory(prev => [...prev, newMsg]);
-    setChatMessage("");
+    const chatDocId = String(selectedChatIssue.id);
+    const chatDocRef = doc(db, "chats", chatDocId);
 
-    // Simulate reply
-    setTimeout(() => {
-      setChatHistory(prev => [...prev, {
-        sender: "system",
-        text: "Thank you for your message. An officer from the respective department will respond shortly.",
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      }]);
-    }, 1500);
+    try {
+      const chatDocSnap = await getDoc(chatDocRef);
+      if (chatDocSnap.exists()) {
+        await updateDoc(chatDocRef, {
+          messages: arrayUnion(newMessage),
+        });
+      } else {
+        await setDoc(chatDocRef, {
+          issueId: selectedChatIssue.id,
+          citizenEmail: user?.email || "citizen@example.com",
+          officerEmail: selectedChatIssue.department || "",
+          messages: [newMessage],
+        });
+      }
+      setChatMessage("");
+    } catch (err) {
+      console.error("Failed to send chat message:", err);
+      return;
+    }
+
+    // Trigger Gemini AI support response
+    setGeminiLoading(true);
+    try {
+      const history = [...chatMessages, newMessage];
+      const aiReplyText = await generateSupportReply({
+        userProfile,
+        issue: selectedChatIssue,
+        chatHistory: history,
+        userMessage: userMsgText,
+      });
+
+      const aiMessage = {
+        id: Date.now(),
+        text: aiReplyText,
+        senderEmail: "gemini-support@civicpulse.gov",
+        senderRole: "officer", // acts as department/officer response
+        timestamp: new Date().toISOString(),
+      };
+
+      await updateDoc(chatDocRef, {
+        messages: arrayUnion(aiMessage),
+      });
+    } catch (aiErr) {
+      console.error("Gemini support reply failed:", aiErr);
+    } finally {
+      setGeminiLoading(false);
+    }
   };
 
   // Statistics
@@ -575,55 +642,144 @@ export default function CitizenDashboard() {
 
             {/* 4. SEND MESSAGE TAB */}
             {activeTab === "Send Message" && (
-              <div className="max-w-3xl mx-auto space-y-6">
+              <div className="max-w-6xl mx-auto space-y-6">
                 <div>
                   <h1 className="text-2xl font-bold text-white">Send Message</h1>
                   <p className="text-[#9CA3AF] text-sm mt-1">Direct support chat with municipal operators</p>
                 </div>
 
-                <div className="bg-[#111827] border border-[#374151] rounded-2xl overflow-hidden flex flex-col h-[500px]">
-                  {/* Chat Header */}
-                  <div className="bg-[#1F2937] px-6 py-4 border-b border-[#374151] flex items-center gap-3">
-                    <span className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse"></span>
-                    <span className="text-white font-semibold text-sm">Operator Chat Status: Online</span>
-                  </div>
-
-                  {/* Chat Body */}
-                  <div className="flex-1 p-6 overflow-y-auto space-y-4 flex flex-col justify-end">
-                    {chatHistory.map((msg, index) => {
-                      const isUser = msg.sender === "user";
-                      return (
-                        <div
-                          key={index}
-                          className={`max-w-[70%] rounded-2xl p-4 text-sm leading-relaxed ${
-                            isUser
-                              ? "bg-blue-600 text-white self-end rounded-tr-none"
-                              : "bg-[#1F2937] text-gray-200 self-start rounded-tl-none border border-[#374151]/50"
-                          }`}
-                        >
-                          <p>{msg.text}</p>
-                          <span className="text-[10px] text-gray-400 mt-2 block text-right">{msg.time}</span>
+                <div className="bg-[#111827] border border-[#374151] rounded-2xl overflow-hidden flex h-[500px]">
+                  {/* LEFT PANEL */}
+                  <div className="w-1/3 border-r border-[#374151] flex flex-col h-full bg-[#0D1117]/50">
+                    <div className="p-4 border-b border-[#374151]">
+                      <h2 className="text-sm text-[#9CA3AF] mb-3 font-semibold">
+                        My Issues
+                      </h2>
+                    </div>
+                    <div className="flex-1 overflow-y-auto">
+                      {myIssues.length === 0 ? (
+                        <div className="p-8 text-center text-[#9CA3AF] text-sm">
+                          You haven't reported any issues yet.
                         </div>
-                      );
-                    })}
+                      ) : (
+                        myIssues.map((issue) => {
+                          const isSelected = selectedChatIssue?.id === issue.id;
+                          return (
+                            <div
+                              key={issue.id}
+                              onClick={() => setSelectedChatIssue(issue)}
+                              className={`p-4 border-b border-[#374151]/50 cursor-pointer transition flex items-center gap-3 ${
+                                isSelected ? "bg-blue-500/10 border-l-4 border-blue-500" : "hover:bg-[#1F2937]/50"
+                              }`}
+                            >
+                              <img
+                                src={issue.imagePreview}
+                                alt=""
+                                className="w-10 h-10 object-cover rounded-lg border border-[#374151]/50 bg-gray-900 shrink-0"
+                              />
+                              <div className="min-w-0 flex-1">
+                                <span className="bg-blue-500/10 text-blue-400 text-[8px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
+                                  {issue.category}
+                                </span>
+                                <div className="text-xs text-[#9CA3AF] truncate mt-1">
+                                  {issue.location}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
                   </div>
 
-                  {/* Chat Input */}
-                  <form onSubmit={handleSendMessage} className="p-4 border-t border-[#374151] bg-[#0A0F1E]/50 flex gap-3">
-                    <input
-                      type="text"
-                      placeholder="Type your message here..."
-                      value={chatMessage}
-                      onChange={(e) => setChatMessage(e.target.value)}
-                      className="flex-1 bg-[#1F2937] border border-[#374151] rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none transition text-sm"
-                    />
-                    <button
-                      type="submit"
-                      className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl transition text-sm shadow-md shadow-blue-500/10 cursor-pointer shrink-0"
-                    >
-                      Send
-                    </button>
-                  </form>
+                  {/* RIGHT PANEL */}
+                  <div className="w-2/3 flex flex-col h-full bg-[#0A0F1E]/20">
+                    {!selectedChatIssue ? (
+                      <div className="flex-1 flex items-center justify-center text-[#9CA3AF] text-sm">
+                        Select an issue to chat with the department
+                      </div>
+                    ) : (
+                      <>
+                        {/* Chat Header */}
+                        <div className="bg-[#1F2937] px-6 py-3 border-b border-[#374151] flex items-center justify-between">
+                          <div>
+                            <span className="bg-blue-500/10 text-blue-400 text-[10px] px-2 py-0.5 rounded-md border border-blue-500/20 font-bold uppercase">
+                              {selectedChatIssue.category}
+                            </span>
+                            <span className="text-[#9CA3AF] text-xs ml-3">
+                              Location: {selectedChatIssue.location}
+                            </span>
+                          </div>
+                          {selectedChatIssue.department && (
+                            <span className="bg-purple-500/10 text-purple-400 text-[9px] px-2 py-0.5 rounded-md border border-purple-500/20 font-bold uppercase">
+                              🏢 {selectedChatIssue.department}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Messages Area */}
+                        <div className="h-96 overflow-y-auto p-6 space-y-4 flex flex-col">
+                          {chatMessages.length === 0 ? (
+                            <div className="text-center text-xs text-[#9CA3AF] py-8">
+                              No messages yet. Send a message to start communicating.
+                            </div>
+                          ) : (
+                            chatMessages.map((msg) => {
+                              const isUser = msg.senderRole === "citizen";
+                              return (
+                                <div
+                                  key={msg.id}
+                                  className={`flex flex-col ${isUser ? "items-end" : "items-start"}`}
+                                >
+                                  <div
+                                    className={`max-w-xs rounded-2xl px-4 py-2 text-sm leading-relaxed ${
+                                      isUser
+                                        ? "bg-blue-600 text-white rounded-br-sm ml-auto"
+                                        : "bg-[#1F2937] text-white rounded-bl-sm border border-[#374151]/50"
+                                    }`}
+                                  >
+                                    {msg.text}
+                                  </div>
+                                  <span className="text-xs text-[#6B7280] mt-1">
+                                    {new Date(msg.timestamp).toLocaleTimeString([], {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })}
+                                  </span>
+                                </div>
+                              );
+                            })
+                          )}
+                          {geminiLoading && (
+                            <div className="flex flex-col items-start animate-pulse">
+                              <div className="max-w-xs rounded-2xl px-4 py-2 text-sm leading-relaxed bg-[#1F2937] text-[#9CA3AF] rounded-bl-sm border border-[#374151]/50 flex items-center gap-2">
+                                <div className="animate-spin border-2 border-blue-400 border-t-transparent rounded-full w-3.5 h-3.5 shrink-0"></div>
+                                <span>Gemini is thinking...</span>
+                              </div>
+                            </div>
+                          )}
+                          <div ref={messagesEndRef} />
+                        </div>
+
+                        {/* Chat Input */}
+                        <form onSubmit={handleSendChatMessage} className="p-4 border-t border-[#374151] bg-[#0A0F1E]/50 flex gap-3 mt-auto">
+                          <input
+                            type="text"
+                            placeholder="Type your message here..."
+                            value={chatMessage}
+                            onChange={(e) => setChatMessage(e.target.value)}
+                            className="flex-1 bg-[#1F2937] border border-[#374151] rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none transition text-sm"
+                          />
+                          <button
+                            type="submit"
+                            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl transition text-sm cursor-pointer shadow-md shadow-blue-500/10"
+                          >
+                            Send
+                          </button>
+                        </form>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
