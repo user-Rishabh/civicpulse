@@ -10,6 +10,7 @@ export default function CitizenDashboard() {
   const [myIssues, setMyIssues] = useState([]);
   const [allIssues, setAllIssues] = useState([]);
   const [communityFilter, setCommunityFilter] = useState("All");
+  const [selectedIssue, setSelectedIssue] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("Dashboard");
 
@@ -68,6 +69,30 @@ export default function CitizenDashboard() {
   }, [activeTab]);
 
   const handleUpvote = async (docId, currentUpvotes) => {
+    // Optimistic update for allIssues
+    setAllIssues((prev) =>
+      prev.map((i) =>
+        i.docId === docId || String(i.id) === String(docId)
+          ? { ...i, upvotes: (i.upvotes || 0) + 1 }
+          : i
+      )
+    );
+    // Optimistic update for myIssues
+    setMyIssues((prev) =>
+      prev.map((i) =>
+        i.docId === docId || String(i.id) === String(docId)
+          ? { ...i, upvotes: (i.upvotes || 0) + 1 }
+          : i
+      )
+    );
+    // Optimistic update for selectedIssue in modal
+    setSelectedIssue((prev) => {
+      if (prev && (prev.docId === docId || String(prev.id) === String(docId))) {
+        return { ...prev, upvotes: (prev.upvotes || 0) + 1 };
+      }
+      return prev;
+    });
+
     try {
       const docRef = doc(db, "issues", docId);
       await updateDoc(docRef, {
@@ -132,13 +157,14 @@ export default function CitizenDashboard() {
   ];
 
   const getFilteredCommunityIssues = () => {
+    const activeIssues = allIssues.filter((i) => i.status !== "Resolved");
     if (communityFilter === "All") {
-      return allIssues;
+      return activeIssues;
     }
-    if (communityFilter === "Pending" || communityFilter === "Resolved") {
-      return allIssues.filter((i) => i.status === communityFilter);
+    if (communityFilter === "Pending") {
+      return activeIssues.filter((i) => i.status === communityFilter);
     }
-    return allIssues.filter((i) => i.category === communityFilter);
+    return activeIssues.filter((i) => i.category === communityFilter);
   };
 
   const filteredCommunityIssues = getFilteredCommunityIssues();
@@ -520,7 +546,7 @@ export default function CitizenDashboard() {
 
                 {/* Filter Bar */}
                 <div className="flex gap-3 flex-wrap mt-4">
-                  {["All", "Pothole", "Water Leak", "Broken Streetlight", "Garbage Dumping", "Pending", "Resolved"].map((filter) => {
+                  {["All", "Pothole", "Water Leak", "Broken Streetlight", "Garbage Dumping", "Pending"].map((filter) => {
                     const isActive = communityFilter === filter;
                     return (
                       <button
@@ -545,17 +571,18 @@ export default function CitizenDashboard() {
                     <h3 className="text-white font-bold text-lg">No community issues yet</h3>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 gap-4 mt-6">
+                  <div className="grid grid-cols-3 gap-4 mt-6">
                     {filteredCommunityIssues.map((issue) => (
                       <div
                         key={issue.docId || issue.id}
-                        className="bg-[#111827] rounded-2xl border border-[#374151] overflow-hidden hover:border-blue-500/50 transition flex flex-col justify-between"
+                        onClick={() => setSelectedIssue(issue)}
+                        className="bg-[#111827] rounded-2xl border border-[#374151] overflow-hidden hover:border-blue-500/50 transition flex flex-col justify-between cursor-pointer"
                       >
                         {/* Card Image */}
                         <img
                           src={issue.imagePreview}
                           alt=""
-                          className="h-40 w-full object-cover bg-gray-900 border-b border-[#374151]/50"
+                          className="h-36 w-full object-cover bg-gray-900 border-b border-[#374151]/50"
                         />
 
                         {/* Card Body */}
@@ -590,9 +617,15 @@ export default function CitizenDashboard() {
                               }`}>
                                 {issue.status}
                               </span>
-                              <span className="text-[#9CA3AF] text-xs font-semibold flex items-center gap-1">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleUpvote(issue.docId || issue.id, issue.upvotes);
+                                }}
+                                className="border border-[#374151] bg-[#1F2937] px-2.5 py-1 rounded-lg text-[#9CA3AF] text-xs font-semibold flex items-center gap-1.5 hover:border-blue-500 hover:text-blue-400 transition cursor-pointer"
+                              >
                                 👍 {issue.upvotes || 0}
-                              </span>
+                              </button>
                             </div>
                             <div className="text-xs text-[#6B7280] mt-2">
                               Reported on {issue.date}
@@ -601,6 +634,91 @@ export default function CitizenDashboard() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                )}
+
+                {/* Click to Expand Modal */}
+                {selectedIssue && (
+                  <div className="fixed inset-0 bg-black/70 backdrop-blur flex items-center justify-center z-50">
+                    <div className="bg-[#111827] rounded-2xl border border-[#374151] p-6 max-w-lg w-full mx-4 flex flex-col gap-4 overflow-y-auto max-h-[90vh]">
+                      {/* Full image */}
+                      {selectedIssue.imagePreview && (
+                        <img
+                          src={selectedIssue.imagePreview}
+                          alt=""
+                          className="w-full h-56 object-cover rounded-xl bg-gray-900 border border-[#374151]/50"
+                        />
+                      )}
+
+                      {/* Badges */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="bg-blue-500/10 text-blue-400 text-[10px] px-2 py-0.5 rounded-md border border-blue-500/20 font-bold uppercase tracking-wider">
+                          {selectedIssue.category}
+                        </span>
+                        <span className={getSeverityBadgeClass(selectedIssue.severity)}>
+                          {selectedIssue.severity}
+                        </span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-md border font-bold uppercase ${
+                          selectedIssue.status === "Resolved"
+                            ? "bg-green-500/10 text-green-400 border-green-500/20"
+                            : selectedIssue.status === "In Progress"
+                            ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
+                            : "bg-gray-500/10 text-gray-400 border-gray-500/20"
+                        }`}>
+                          {selectedIssue.status}
+                        </span>
+                        {selectedIssue.department && (
+                          <span className="bg-purple-500/10 text-purple-400 text-[10px] px-2 py-0.5 rounded-md border border-purple-500/20 font-bold uppercase tracking-wider">
+                            🏢 {selectedIssue.department}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Description */}
+                      <div>
+                        <h4 className="text-xs text-[#9CA3AF] font-bold uppercase tracking-wider">Description</h4>
+                        <p className="text-white text-sm mt-1 leading-relaxed whitespace-pre-wrap">{selectedIssue.description}</p>
+                      </div>
+
+                      {/* Location */}
+                      <div className="text-xs text-[#9CA3AF] flex items-center gap-1 font-medium">
+                        <span>📍 Location:</span>
+                        <span className="text-white">{selectedIssue.location}</span>
+                      </div>
+
+                      {/* Suggested Action */}
+                      {selectedIssue.suggested_action && (
+                        <div className="text-sm text-blue-400 font-medium">
+                          💡 Suggested Action: {selectedIssue.suggested_action}
+                        </div>
+                      )}
+
+                      {/* Officer Note */}
+                      {selectedIssue.officerNote && (
+                        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+                          <div className="text-xs font-semibold text-blue-400">📋 Department Update</div>
+                          <p className="text-white text-xs mt-1 leading-relaxed">{selectedIssue.officerNote}</p>
+                        </div>
+                      )}
+
+                      {/* Footer Controls */}
+                      <div className="flex items-center justify-between mt-4 pt-4 border-t border-[#374151]/50">
+                        <button
+                          onClick={() => handleUpvote(selectedIssue.docId || selectedIssue.id, selectedIssue.upvotes)}
+                          className="border border-[#374151] bg-[#1F2937] px-4 py-2 rounded-xl text-[#9CA3AF] text-sm font-semibold flex items-center gap-1.5 hover:border-blue-500 hover:text-blue-400 transition cursor-pointer"
+                        >
+                          <span>👍 Upvote</span>
+                          <span>{selectedIssue.upvotes || 0}</span>
+                        </button>
+
+                        <button
+                          onClick={() => setSelectedIssue(null)}
+                          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2.5 rounded-xl transition text-sm cursor-pointer shadow-md shadow-blue-500/10"
+                        >
+                          Close
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
