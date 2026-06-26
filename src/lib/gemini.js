@@ -65,3 +65,28 @@ Return ONLY raw JSON (no markdown, no backticks):
   const clean = text.replace(/```json|```/g, "").trim();
   return JSON.parse(clean);
 }
+
+export async function analyzeWorkPhoto(base64Data, mimeType, issueCategory, stage) {
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const prompt = `You are verifying municipal work progress for a civic issue.
+Issue type: ${issueCategory}
+Stage: ${stage} (either "work_started" or "work_completed")
+
+Analyze this photo and return ONLY raw JSON:
+{
+  "is_valid_proof": true or false,
+  "confidence": "High/Medium/Low",
+  "observation": "one sentence about what you see in the image",
+  "stage_confirmed": true or false
+}
+If stage is "work_started": confirm workers/equipment/materials are present
+If stage is "work_completed": confirm the issue appears fixed/resolved`;
+
+  const result = await model.generateContent([
+    { inlineData: { data: base64Data, mimeType } },
+    { text: prompt }
+  ]);
+  const text = result.response.text();
+  const clean = text.replace(/```json|```/g, "").trim();
+  return JSON.parse(clean);
+}

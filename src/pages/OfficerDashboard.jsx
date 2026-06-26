@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { collection, onSnapshot, doc, updateDoc } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
-import { verifyInProgressImage, verifyResolvedImage } from "../lib/gemini";
+import { verifyInProgressImage, verifyResolvedImage, analyzeWorkPhoto } from "../lib/gemini";
+import { sendStatusNotification, createInAppNotification } from "../lib/notifications";
 
 export default function OfficerDashboard() {
   const { userProfile } = useAuth();
@@ -16,6 +17,9 @@ export default function OfficerDashboard() {
   const [verifyLoading, setVerifyLoading] = useState({});
   const [verifyError, setVerifyError] = useState({});
   const [verifySuccess, setVerifySuccess] = useState({});
+  const [submitLoading, setSubmitLoading] = useState({});
+  const [submitError, setSubmitError] = useState({});
+  const [submitSuccess, setSubmitSuccess] = useState({});
 
   // Review submission state
   const [reviewTitle, setReviewTitle] = useState("");
@@ -254,6 +258,111 @@ export default function OfficerDashboard() {
       setReviewTitle("");
       setReviewDesc("");
     }, 3000);
+  };
+
+  const handleUploadWorkStarted = (issue, file) => {
+    if (!file || !issue.docId) return;
+    const docId = issue.docId;
+    setSubmitLoading((p) => ({ ...p, [docId]: true }));
+    setSubmitError((p) => ({ ...p, [docId]: "" }));
+    setSubmitSuccess((p) => ({ ...p, [docId]: "" }));
+
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onloadend = async () => {
+      const dataUrl = reader.result;
+      try {
+        const mimeType = dataUrl.split(";")[0].split(":")[1];
+        const base64Data = dataUrl.split(",")[1];
+        const result = await analyzeWorkPhoto(base64Data, mimeType, issue.category, "work_started");
+
+        if (result && result.is_valid_proof) {
+          const updatedPhotos = [...(issue.workPhotos || []), dataUrl];
+          await updateDoc(doc(db, "issues", docId), {
+            status: "In Progress",
+            workPhotos: updatedPhotos,
+            workStartedNote: result.observation,
+          });
+          createInAppNotification(
+            issue.id,
+            `Your ${issue.category} issue at ${issue.location} is now In Progress!`,
+            "progress"
+          );
+          await sendStatusNotification({
+            citizenEmail: issue.userEmail,
+            citizenName: issue.reporter,
+            location: issue.location,
+            status: "In Progress",
+            officerNote: result.observation,
+            category: issue.category,
+          });
+          setSubmitSuccess((p) => ({ ...p, [docId]: "✅ Gemini verified! Issue marked as In Progress" }));
+        } else {
+          setSubmitError((p) => ({
+            ...p,
+            [docId]: result?.observation || "❌ Gemini could not verify work proof. Please upload a clearer photo showing active work.",
+          }));
+        }
+      } catch (err) {
+        console.error("Work started upload error:", err);
+        setSubmitError((p) => ({ ...p, [docId]: err.message || "Upload failed." }));
+      } finally {
+        setSubmitLoading((p) => ({ ...p, [docId]: false }));
+      }
+    };
+  };
+
+  const handleUploadWorkCompleted = (issue, file) => {
+    if (!file || !issue.docId) return;
+    const docId = issue.docId;
+    setSubmitLoading((p) => ({ ...p, [docId]: true }));
+    setSubmitError((p) => ({ ...p, [docId]: "" }));
+    setSubmitSuccess((p) => ({ ...p, [docId]: "" }));
+
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onloadend = async () => {
+      const dataUrl = reader.result;
+      try {
+        const mimeType = dataUrl.split(";")[0].split(":")[1];
+        const base64Data = dataUrl.split(",")[1];
+        const result = await analyzeWorkPhoto(base64Data, mimeType, issue.category, "work_completed");
+
+        if (result && result.is_valid_proof) {
+          const updatedPhotos = [...(issue.workPhotos || []), dataUrl];
+          await updateDoc(doc(db, "issues", docId), {
+            status: "Resolved",
+            workPhotos: updatedPhotos,
+            completionNote: result.observation,
+            resolvedDate: new Date().toISOString().split("T")[0],
+          });
+          createInAppNotification(
+            issue.id,
+            `Great news! Your ${issue.category} issue at ${issue.location} has been RESOLVED! 🎉`,
+            "resolved"
+          );
+          await sendStatusNotification({
+            citizenEmail: issue.userEmail,
+            citizenName: issue.reporter,
+            location: issue.location,
+            status: "Resolved",
+            officerNote: result.observation,
+            category: issue.category,
+          });
+          setSubmitSuccess((p) => ({ ...p, [docId]: "✅ Gemini verified completion! Issue marked as Resolved 🎉" }));
+        } else {
+          setSubmitError((p) => ({
+            ...p,
+            [docId]: result?.observation || "❌ Could not verify completion. Please upload photo of the fixed location.",
+          }));
+        }
+      } catch (err) {
+        console.error("Work completed upload error:", err);
+        setSubmitError((p) => ({ ...p, [docId]: err.message || "Upload failed." }));
+      } finally {
+        setSubmitLoading((p) => ({ ...p, [docId]: false }));
+      }
+    };
   };
 
   const getStatusBorderClass = (status) => {
@@ -619,156 +728,205 @@ export default function OfficerDashboard() {
 
             {/* 3. SUBMIT REVIEW TAB */}
             {activeTab === "submit" && (
-              <div className="max-w-4xl mx-auto space-y-6">
+              <div className="max-w-4xl mx-auto space-y-10">
                 <div>
                   <h1 className="text-2xl font-bold text-white">Submit Work Review</h1>
-                  <p className="text-[#9CA3AF] text-sm mt-1">Upload proof photos to update issue progress</p>
+                  <p className="text-[#9CA3AF] text-sm mt-1">Upload proof photos to update issue progress — verified by Gemini AI</p>
                 </div>
 
-                {/* Issues List */}
-                <div className="space-y-4">
-                  {issues.filter(i => i.status === "In Progress" || i.status === "Resolved").length === 0 ? (
-                    <div className="flex flex-col items-center justify-center bg-[#111827] border border-[#374151] rounded-2xl p-16 text-center">
-                      <span className="text-5xl mb-4">🔍</span>
-                      <h3 className="text-white font-bold text-lg">No active issues to review</h3>
-                      <p className="text-[#9CA3AF] text-sm mt-1">
-                        Issues in progress or resolved will appear here for progress photo verification
-                      </p>
+                {/* ====== SECTION 1: PENDING ISSUES ====== */}
+                <div>
+                  <div className="flex items-center gap-3 mb-4">
+                    <h2 className="text-xl font-bold text-white">⏳ Pending Issues</h2>
+                    <span className="bg-gray-500/20 text-gray-400 text-xs font-bold px-2.5 py-1 rounded-full">
+                      {issues.filter(i => i.status === "Pending").length}
+                    </span>
+                  </div>
+                  {issues.filter(i => i.status === "Pending").length === 0 ? (
+                    <div className="bg-[#111827] border border-[#374151] rounded-2xl p-8 text-center text-[#9CA3AF] text-sm">
+                      No pending issues
                     </div>
                   ) : (
-                    issues
-                      .filter(i => i.status === "In Progress" || i.status === "Resolved")
-                      .map((issue) => {
-                        const workPhotos = issue.workPhotos || [];
-                        return (
+                    issues.filter(i => i.status === "Pending").map(issue => (
+                      <div key={issue.docId} className="bg-[#111827] rounded-2xl border border-[#374151] p-5 mb-4">
+                        <div className="flex gap-4">
+                          <img src={issue.imagePreview} alt="" className="w-24 h-24 object-cover rounded-xl shrink-0 border border-[#374151]/50 bg-gray-900" />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="bg-blue-500/10 text-blue-400 text-[10px] px-2 py-0.5 rounded-md border border-blue-500/20 font-bold uppercase tracking-wider">{issue.category}</span>
+                              <span className={getSeverityBadgeClass(issue.severity)}>{issue.severity}</span>
+                              <span className="bg-gray-500/10 text-gray-400 text-[10px] px-2 py-0.5 rounded-md border border-gray-500/20 font-bold uppercase">Pending</span>
+                            </div>
+                            <p className="text-white text-sm mt-1 leading-relaxed">{issue.description}</p>
+                            <p className="text-xs text-[#9CA3AF] mt-1">📍 {issue.location}</p>
+                            <p className="text-xs text-[#6B7280] mt-0.5">👤 {issue.userEmail || "Anonymous"}</p>
+                          </div>
+                        </div>
+
+                        {/* UPLOAD WORK STARTED */}
+                        <div className="mt-4 pt-4 border-t border-[#374151]/30">
+                          <p className="text-sm text-[#9CA3AF] mb-2">📸 Upload Work Started Photo</p>
+                          <input
+                            type="file"
+                            id={`pending-upload-${issue.docId}`}
+                            accept="image/*"
+                            onChange={e => handleUploadWorkStarted(issue, e.target.files[0])}
+                            className="hidden"
+                          />
                           <div
-                            key={issue.docId || issue.id}
-                            className="bg-[#111827] rounded-2xl border border-[#374151] p-5 mb-4 hover:border-blue-500/20 transition duration-200"
+                            onClick={() => !submitLoading[issue.docId] && document.getElementById(`pending-upload-${issue.docId}`).click()}
+                            className={`border-2 border-dashed rounded-xl p-4 text-center transition duration-200 ${submitLoading[issue.docId] ? "border-blue-500/50 cursor-not-allowed opacity-60" : "border-[#374151] hover:border-blue-500 cursor-pointer"}`}
                           >
-                            {/* Issue Header Info */}
-                            <div className="flex gap-4">
-                              <img
-                                src={issue.imagePreview}
-                                alt=""
-                                className="w-24 h-24 object-cover rounded-xl shrink-0 border border-[#374151]/50 bg-gray-900"
-                              />
-                              <div className="flex-1 min-w-0 space-y-1">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="bg-blue-500/10 text-blue-400 text-[10px] px-2 py-0.5 rounded-md border border-blue-500/20 font-bold uppercase tracking-wider">
-                                    {issue.category}
-                                  </span>
-                                  <span className={`text-[10px] px-2 py-0.5 rounded-md border font-bold uppercase tracking-wider ${
-                                    issue.status === 'Resolved'
-                                      ? 'bg-green-500/20 text-green-400 border-green-500/30'
-                                      : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
-                                  }`}>
-                                    {issue.status}
-                                  </span>
-                                </div>
-                                <p className="text-white text-sm font-semibold mt-1 leading-relaxed">
-                                  {issue.description}
-                                </p>
-                                <p className="text-xs text-[#9CA3AF]">📍 {issue.location}</p>
-                              </div>
+                            <p className="text-xs text-[#9CA3AF]">
+                              {submitLoading[issue.docId] ? "🤖 Gemini is verifying work proof..." : "Upload photo showing work has begun"}
+                            </p>
+                          </div>
+                          {submitLoading[issue.docId] && (
+                            <p className="text-blue-400 text-xs font-semibold animate-pulse mt-2">🤖 Gemini is verifying work proof...</p>
+                          )}
+                          {submitSuccess[issue.docId] && (
+                            <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 mt-2 text-green-400 text-xs font-semibold">
+                              {submitSuccess[issue.docId]}
                             </div>
+                          )}
+                          {submitError[issue.docId] && (
+                            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 mt-2 text-red-400 text-xs font-semibold">
+                              ❌ {submitError[issue.docId]}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
 
-                            {/* WORK PHOTOS SECTION */}
-                            <div className="mt-4 pt-4 border-t border-[#374151]/30">
-                              <div className="flex justify-between items-center mb-2">
-                                <span className="text-sm text-[#9CA3AF]">
-                                  Progress Photos ({workPhotos.length}/2 uploaded)
-                                </span>
+                {/* ====== SECTION 2: IN PROGRESS ISSUES ====== */}
+                <div>
+                  <div className="flex items-center gap-3 mb-4">
+                    <h2 className="text-xl font-bold text-yellow-400">🔄 In Progress</h2>
+                    <span className="bg-yellow-500/20 text-yellow-400 text-xs font-bold px-2.5 py-1 rounded-full">
+                      {issues.filter(i => i.status === "In Progress").length}
+                    </span>
+                  </div>
+                  {issues.filter(i => i.status === "In Progress").length === 0 ? (
+                    <div className="bg-[#111827] border border-[#374151] rounded-2xl p-8 text-center text-[#9CA3AF] text-sm">
+                      No in-progress issues
+                    </div>
+                  ) : (
+                    issues.filter(i => i.status === "In Progress").map(issue => (
+                      <div key={issue.docId} className="bg-[#111827] rounded-2xl border border-yellow-500/20 p-5 mb-4">
+                        <div className="flex gap-4">
+                          <img src={issue.imagePreview} alt="" className="w-24 h-24 object-cover rounded-xl shrink-0 border border-[#374151]/50 bg-gray-900" />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="bg-blue-500/10 text-blue-400 text-[10px] px-2 py-0.5 rounded-md border border-blue-500/20 font-bold uppercase tracking-wider">{issue.category}</span>
+                              <span className="bg-yellow-500/10 text-yellow-400 text-[10px] px-2 py-0.5 rounded-md border border-yellow-500/20 font-bold uppercase">In Progress</span>
+                            </div>
+                            <p className="text-white text-sm mt-1 leading-relaxed">{issue.description}</p>
+                            <p className="text-xs text-[#9CA3AF] mt-1">📍 {issue.location}</p>
+                          </div>
+                        </div>
+
+                        {/* SHOW WORK STARTED PHOTO & NOTE */}
+                        {issue.workPhotos && issue.workPhotos.length > 0 && (
+                          <div className="mt-4 flex items-start gap-3">
+                            <img src={issue.workPhotos[0]} alt="Work started" className="w-20 h-20 rounded-lg object-cover border border-yellow-500/30 shrink-0" />
+                            {issue.workStartedNote && (
+                              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-2 text-blue-300 text-xs leading-relaxed flex-1">
+                                🤖 Gemini: {issue.workStartedNote}
                               </div>
+                            )}
+                          </div>
+                        )}
 
-                              <div className="flex items-center gap-3 flex-wrap">
-                                {workPhotos.map((photo, idx) => (
-                                  <img
-                                    key={idx}
-                                    src={photo}
-                                    alt=""
-                                    className="w-20 h-20 rounded-lg object-cover border border-[#374151]"
-                                  />
-                                ))}
-                                {workPhotos.length < 2 && (
-                                  <>
-                                    <input
-                                      type="file"
-                                      id={`submit-upload-${issue.docId}`}
-                                      accept="image/*"
-                                      onChange={(e) => handleUploadPhoto(issue.docId, e.target.files[0], workPhotos, issue.category)}
-                                      className="hidden"
-                                    />
-                                    <button
-                                      type="button"
-                                      onClick={() => !verifyLoading[issue.docId] && document.getElementById(`submit-upload-${issue.docId}`).click()}
-                                      className={`w-20 h-20 rounded-lg border border-dashed border-[#374151] flex flex-col items-center justify-center bg-[#1F2937]/20 transition duration-200 ${
-                                        verifyLoading[issue.docId]
-                                          ? "cursor-not-allowed opacity-50"
-                                          : "hover:border-blue-500/50 hover:bg-[#1F2937]/40 cursor-pointer"
-                                      }`}
-                                    >
-                                      <span className="text-lg font-bold">+</span>
-                                      <span className="text-[10px] font-semibold">
-                                        {verifyLoading[issue.docId] ? "Verifying" : "Upload"}
-                                      </span>
-                                    </button>
-                                  </>
-                                )}
-                              </div>
+                        {/* COMPLETION UPLOAD */}
+                        <div className="mt-4 pt-4 border-t border-[#374151]/30">
+                          <p className="text-sm text-[#9CA3AF] mb-2">📸 Upload Completion Photo (same location)</p>
+                          <input
+                            type="file"
+                            id={`inprogress-upload-${issue.docId}`}
+                            accept="image/*"
+                            onChange={e => handleUploadWorkCompleted(issue, e.target.files[0])}
+                            className="hidden"
+                          />
+                          <div
+                            onClick={() => !submitLoading[issue.docId] && document.getElementById(`inprogress-upload-${issue.docId}`).click()}
+                            className={`border-2 border-dashed rounded-xl p-4 text-center transition duration-200 ${submitLoading[issue.docId] ? "border-blue-500/50 cursor-not-allowed opacity-60" : "border-[#374151] hover:border-green-500 cursor-pointer"}`}
+                          >
+                            <p className="text-xs text-[#9CA3AF]">
+                              {submitLoading[issue.docId] ? "🤖 Gemini is verifying completion..." : "Upload a photo showing the issue is fully resolved"}
+                            </p>
+                          </div>
+                          {submitLoading[issue.docId] && (
+                            <p className="text-blue-400 text-xs font-semibold animate-pulse mt-2">🤖 Gemini is verifying completion...</p>
+                          )}
+                          {submitSuccess[issue.docId] && (
+                            <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 mt-2 text-green-400 text-xs font-semibold">
+                              {submitSuccess[issue.docId]}
+                            </div>
+                          )}
+                          {submitError[issue.docId] && (
+                            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 mt-2 text-red-400 text-xs font-semibold">
+                              ❌ {submitError[issue.docId]}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
 
-                              {/* Gemini Verification States */}
-                              {verifyLoading[issue.docId] && (
-                                <div className="text-blue-400 text-xs font-semibold animate-pulse mt-2">
-                                  ✨ Gemini AI verifying photo...
-                                </div>
-                              )}
-                              {verifyError[issue.docId] && (
-                                <div className="text-red-400 text-xs font-semibold mt-2">
-                                  ❌ Gemini Refused: {verifyError[issue.docId]}
-                                </div>
-                              )}
-                              {verifySuccess[issue.docId] && (
-                                <div className="text-green-400 text-xs font-semibold mt-2">
-                                  ✅ Gemini Approved: {verifySuccess[issue.docId]}
-                                </div>
+                {/* ====== SECTION 3: RESOLVED ISSUES ====== */}
+                <div>
+                  <div className="flex items-center gap-3 mb-4">
+                    <h2 className="text-xl font-bold text-green-400">✅ Resolved Issues</h2>
+                    <span className="bg-green-500/20 text-green-400 text-xs font-bold px-2.5 py-1 rounded-full">
+                      {issues.filter(i => i.status === "Resolved").length}
+                    </span>
+                  </div>
+                  {issues.filter(i => i.status === "Resolved").length === 0 ? (
+                    <div className="bg-[#111827] border border-[#374151] rounded-2xl p-8 text-center text-[#9CA3AF] text-sm">
+                      No resolved issues yet
+                    </div>
+                  ) : (
+                    issues.filter(i => i.status === "Resolved").map(issue => (
+                      <div key={issue.docId} className="bg-green-500/5 rounded-2xl border border-green-500/20 p-5 mb-4">
+                        <div className="flex gap-4">
+                          <img src={issue.imagePreview} alt="" className="w-20 h-20 object-cover rounded-xl shrink-0 border border-green-500/20 bg-gray-900" />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="bg-blue-500/10 text-blue-400 text-[10px] px-2 py-0.5 rounded-md border border-blue-500/20 font-bold uppercase tracking-wider">{issue.category}</span>
+                              <span className="bg-green-500/10 text-green-400 text-[10px] px-2 py-0.5 rounded-md border border-green-500/20 font-bold uppercase">Resolved</span>
+                            </div>
+                            <p className="text-white text-sm mt-1">{issue.description}</p>
+                            <p className="text-xs text-[#9CA3AF] mt-1">📍 {issue.location}</p>
+                            {issue.resolvedDate && (
+                              <p className="text-green-400 text-sm mt-2 font-semibold">✅ Resolved on {issue.resolvedDate}</p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* BEFORE / AFTER PHOTOS */}
+                        {issue.workPhotos && issue.workPhotos.length >= 2 && (
+                          <div className="mt-4 pt-4 border-t border-green-500/20 flex gap-4">
+                            <div className="flex-1">
+                              <p className="text-[#9CA3AF] text-xs font-semibold mb-1">Work Started</p>
+                              <img src={issue.workPhotos[0]} alt="Work started" className="w-full h-32 object-cover rounded-lg border border-yellow-500/20" />
+                              {issue.workStartedNote && (
+                                <p className="text-blue-300 text-xs mt-1 italic">🤖 {issue.workStartedNote}</p>
                               )}
                             </div>
-
-                            {/* COMPLETION STATUS & RESOLVE BUTTON */}
-                            <div className="flex items-center justify-between mt-4 pt-4 border-t border-[#374151]/30 flex-wrap gap-3">
-                              <div>
-                                {workPhotos.length === 0 && (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20">
-                                    ⚠️ No proof uploaded
-                                  </span>
-                                )}
-                                {workPhotos.length === 1 && (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
-                                    🔄 Work Started - 1 photo uploaded
-                                  </span>
-                                )}
-                                {workPhotos.length >= 2 && (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-500/10 text-green-400 border border-green-500/20">
-                                    ✅ Ready to mark Resolved
-                                  </span>
-                                )}
-                              </div>
-
-                              <button
-                                disabled={workPhotos.length < 2}
-                                onClick={() => handleStatusChange(issue.docId, "Resolved", workPhotos)}
-                                className={`px-4 py-2 rounded-xl text-xs font-semibold transition duration-200 cursor-pointer ${
-                                  workPhotos.length >= 2
-                                    ? "bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/10"
-                                    : "bg-[#1F2937] text-gray-500 border border-[#374151] cursor-not-allowed"
-                                }`}
-                              >
-                                Mark as Resolved ✅
-                              </button>
+                            <div className="flex-1">
+                              <p className="text-[#9CA3AF] text-xs font-semibold mb-1">Completed</p>
+                              <img src={issue.workPhotos[1]} alt="Completed" className="w-full h-32 object-cover rounded-lg border border-green-500/20" />
+                              {issue.completionNote && (
+                                <p className="text-green-300 text-xs mt-1 italic">🤖 {issue.completionNote}</p>
+                              )}
                             </div>
                           </div>
-                        );
-                      })
+                        )}
+                      </div>
+                    ))
                   )}
                 </div>
               </div>
