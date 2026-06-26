@@ -4,9 +4,34 @@ import { db } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
 import { verifyInProgressImage, verifyResolvedImage, analyzeWorkPhoto } from "../lib/gemini";
 import { sendStatusNotification, createInAppNotification } from "../lib/notifications";
+import IssueMap from "../components/IssueMap";
+import { useTheme } from "../context/ThemeContext";
 
 export default function OfficerDashboard() {
   const { userProfile } = useAuth();
+  const { isDark } = useTheme();
+
+  const t = {
+    bg: isDark ? 'bg-[#0A0F1E]' : 'bg-[#EEF2FF]',
+    surface: isDark ? 'bg-[#111827]' : 'bg-[#E8EFFE]',
+    surface2: isDark ? 'bg-[#1F2937]' : 'bg-[#DDE6FD]',
+    border: isDark ? 'border-[#374151]' : 'border-[#C7D7F9]',
+    text: isDark ? 'text-white' : 'text-[#1E293B]',
+    muted: isDark ? 'text-[#9CA3AF]' : 'text-[#475569]',
+    sidebar: isDark ? 'bg-[#0D1117]' : 'bg-[#E2EAFC]',
+    card: isDark ? 'bg-[#111827] border-[#374151]' : 'bg-[#EEF2FF] border-[#C7D7F9]',
+  };
+
+  const bgPrimary = t.bg;
+  const bgSurface = t.surface;
+  const bgSurface2 = t.surface2;
+  const bgSidebar = t.sidebar;
+  const borderTheme = t.border;
+  const borderSidebar = t.border;
+  const textTheme = t.text;
+  const textMuted = t.muted;
+  const textSubtle = isDark ? "text-[#6B7280]" : "text-[#475569]";
+
   const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("Dashboard"); // Defaults to Dashboard
@@ -354,10 +379,11 @@ export default function OfficerDashboard() {
     { id: "analyze", label: "Analyze Reports" },
     { id: "messages", label: "Messages" },
     { id: "submit", label: "Submit Review" },
+    { id: "map", label: "Issue Map" },
   ];
 
   return (
-    <div className="min-h-screen bg-[#0A0F1E] text-[#F9FAFB] flex relative">
+    <div className={`min-h-screen ${bgPrimary} ${textTheme} flex relative transition-colors duration-300`}>
       {/* Toast Alert */}
       {toastMsg && (
         <div className="fixed bottom-5 right-5 bg-green-600 border border-green-500 text-white px-5 py-3 rounded-xl shadow-2xl z-50 text-sm font-semibold animate-pulse">
@@ -366,7 +392,7 @@ export default function OfficerDashboard() {
       )}
 
       {/* Sidebar */}
-      <div className="fixed left-0 top-0 w-64 h-screen bg-[#0D1117] border-r border-[#374151] pt-20 flex flex-col z-30">
+      <div className={`fixed left-0 top-0 w-64 h-screen ${bgSidebar} border-r ${borderSidebar} pt-20 flex flex-col z-30 transition-colors duration-300`}>
         {/* App Logo */}
         <div className="text-blue-400 font-bold text-xl px-6 mb-8 mt-4">
           CivicPulse
@@ -392,7 +418,7 @@ export default function OfficerDashboard() {
                 className={`px-6 py-3 flex items-center justify-between gap-3 cursor-pointer rounded-r-xl mr-3 font-semibold text-sm transition-all duration-200 ${
                   isActive
                     ? "bg-blue-600 text-white shadow-md shadow-blue-500/10"
-                    : "text-[#9CA3AF] hover:text-white hover:bg-[#1F2937]"
+                    : `${textMuted} hover:${textTheme} hover:${bgSurface2}`
                 }`}
               >
                 <span>{tab.label}</span>
@@ -420,10 +446,10 @@ export default function OfficerDashboard() {
             {activeTab === "Dashboard" && (
               <div className="space-y-8 max-w-4xl mx-auto animate-fadeIn">
                 <div>
-                  <h1 className="text-3xl font-bold text-white tracking-tight">
+                  <h1 className={`text-3xl font-bold ${textTheme} tracking-tight`}>
                     Officer Control Panel
                   </h1>
-                  <p className="text-[#9CA3AF] mt-1 text-sm">
+                  <p className={`${textMuted} mt-1 text-sm`}>
                     Welcome back, {userProfile?.name || "Officer"} - {officerDepartment} Department
                   </p>
                 </div>
@@ -431,47 +457,47 @@ export default function OfficerDashboard() {
                 {/* Stats Row */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
                   {/* Total Assigned */}
-                  <div className="bg-[#111827] rounded-2xl p-6 border border-[#374151] flex flex-col justify-between hover:border-blue-500/20 transition duration-200">
+                  <div className={`${bgSurface} rounded-2xl p-6 border ${borderTheme} flex flex-col justify-between hover:border-blue-500/20 transition duration-200`}>
                     <span className="text-2xl"></span>
                     <div className="mt-4">
                       <div className="text-3xl font-black text-blue-400">{totalAssigned}</div>
-                      <div className="text-[#9CA3AF] text-xs font-semibold mt-1">Total Assigned</div>
+                      <div className={`${textMuted} text-xs font-semibold mt-1`}>Total Assigned</div>
                     </div>
                   </div>
 
                   {/* Pending Action */}
-                  <div className="bg-[#111827] rounded-2xl p-6 border border-[#374151] flex flex-col justify-between hover:border-red-500/20 transition duration-200">
+                  <div className={`${bgSurface} rounded-2xl p-6 border ${borderTheme} flex flex-col justify-between hover:border-red-500/20 transition duration-200`}>
                     <span className="text-2xl"></span>
                     <div className="mt-4">
                       <div className="text-3xl font-black text-red-400">{pendingCount}</div>
-                      <div className="text-[#9CA3AF] text-xs font-semibold mt-1">Pending Action</div>
+                      <div className={`${textMuted} text-xs font-semibold mt-1`}>Pending Action</div>
                     </div>
                   </div>
 
                   {/* In Progress */}
-                  <div className="bg-[#111827] rounded-2xl p-6 border border-[#374151] flex flex-col justify-between hover:border-yellow-500/20 transition duration-200">
+                  <div className={`${bgSurface} rounded-2xl p-6 border ${borderTheme} flex flex-col justify-between hover:border-yellow-500/20 transition duration-200`}>
                     <span className="text-2xl"></span>
                     <div className="mt-4">
                       <div className="text-3xl font-black text-yellow-400">{inProgressCount}</div>
-                      <div className="text-[#9CA3AF] text-xs font-semibold mt-1">In Progress</div>
+                      <div className={`${textMuted} text-xs font-semibold mt-1`}>In Progress</div>
                     </div>
                   </div>
 
                   {/* Resolved */}
-                  <div className="bg-[#111827] rounded-2xl p-6 border border-[#374151] flex flex-col justify-between hover:border-green-500/20 transition duration-200">
+                  <div className={`${bgSurface} rounded-2xl p-6 border ${borderTheme} flex flex-col justify-between hover:border-green-500/20 transition duration-200`}>
                     <span className="text-2xl"></span>
                     <div className="mt-4">
                       <div className="text-3xl font-black text-green-400">{resolvedCount}</div>
-                      <div className="text-[#9CA3AF] text-xs font-semibold mt-1">Resolved</div>
+                      <div className={`${textMuted} text-xs font-semibold mt-1`}>Resolved</div>
                     </div>
                   </div>
                 </div>
 
                 {/* Shortcut Card */}
-                <div className="bg-[#111827] border border-[#374151] rounded-2xl p-6 flex flex-col md:flex-row justify-between items-center gap-6">
+                <div className={`${bgSurface} border ${borderTheme} rounded-2xl p-6 flex flex-col md:flex-row justify-between items-center gap-6`}>
                   <div>
-                    <h2 className="text-xl font-bold text-white mb-2">Manage Assigned Incidents</h2>
-                    <p className="text-[#9CA3AF] text-sm leading-relaxed max-w-xl">
+                    <h2 className={`text-xl font-bold ${textTheme} mb-2`}>Manage Assigned Incidents</h2>
+                    <p className={`${textMuted} text-sm leading-relaxed max-w-xl`}>
                       Access the full list of complaints lodged under the {officerDepartment} department. Check details, write update notes, and manage resolutions.
                     </p>
                   </div>
@@ -487,19 +513,19 @@ export default function OfficerDashboard() {
 
             {/* 2. ANALYZE REPORTS TAB */}
             {activeTab === "analyze" && (
-              <div className="max-w-4xl mx-auto space-y-6">
+              <div className="max-w-4xl mx-auto space-y-6 animate-fadeIn">
                 <div>
-                  <h1 className="text-2xl font-bold text-white">Analyze Reports</h1>
-                  <p className="text-[#9CA3AF] text-sm mt-1">
+                  <h1 className={`text-2xl font-bold ${textTheme}`}>Analyze Reports</h1>
+                  <p className={`${textMuted} text-sm mt-1`}>
                     View all reported civic issues assigned to {officerDepartment}
                   </p>
                 </div>
 
                 <div className="space-y-4">
                   {assignedIssues.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center bg-[#111827] border border-[#374151] rounded-2xl p-16 text-center">
-                      <h3 className="text-white font-bold text-lg">No issues assigned yet</h3>
-                      <p className="text-[#9CA3AF] text-sm mt-1">
+                    <div className={`flex flex-col items-center justify-center ${bgSurface} border ${borderTheme} rounded-2xl p-16 text-center`}>
+                      <h3 className={`${textTheme} font-bold text-lg`}>No issues assigned yet</h3>
+                      <p className={`${textMuted} text-sm mt-1`}>
                         Issues reported for your department will appear here.
                       </p>
                     </div>
@@ -507,14 +533,14 @@ export default function OfficerDashboard() {
                     assignedIssues.map((issue) => (
                       <div
                         key={issue.docId || issue.id}
-                        className="bg-[#111827] rounded-2xl border border-[#374151] p-5 mb-4 max-w-4xl mx-auto flex flex-col gap-4"
+                        className={`${bgSurface} rounded-2xl border ${borderTheme} p-5 mb-4 max-w-4xl mx-auto flex flex-col gap-4 transition-colors duration-300`}
                       >
                         {/* TOP Section */}
                         <div className="flex gap-4">
                           <img
                             src={issue.imagePreview}
                             alt=""
-                            className="w-28 h-28 object-cover rounded-xl shrink-0 border border-[#374151]/50 bg-gray-900"
+                            className={`w-28 h-28 object-cover rounded-xl shrink-0 border ${borderTheme} bg-gray-900`}
                           />
                           <div className="flex-1 min-w-0 space-y-2">
                             <div className="flex items-center gap-2 flex-wrap">
@@ -525,24 +551,24 @@ export default function OfficerDashboard() {
                                 {issue.severity}
                               </span>
                             </div>
-                            <p className="text-white text-sm font-medium leading-relaxed">
+                            <p className={`${textTheme} text-sm font-medium leading-relaxed`}>
                               {issue.description}
                             </p>
-                            <div className="flex items-center gap-3 text-xs text-[#9CA3AF] flex-wrap">
-                              <span>Location: {issue.location}</span>
-                              <span className="text-[#6B7280]">
+                            <div className="flex items-center gap-3 text-xs flex-wrap">
+                              <span className={textMuted}>Location: {issue.location}</span>
+                              <span className={textSubtle}>
                                 Reporter: {issue.userEmail || "Anonymous"}
                               </span>
-                              <span className="text-[#6B7280]">Date: {issue.date}</span>
+                              <span className={textSubtle}>Date: {issue.date}</span>
                             </div>
                           </div>
                         </div>
 
                         {/* AI SUMMARY BOX */}
-                        <div className="bg-[#1F2937] rounded-xl p-4 mt-3 border border-[#374151]">
+                        <div className={`${bgSurface2} rounded-xl p-4 mt-3 border ${borderTheme}`}>
                           <div className="grid grid-cols-3 gap-4">
                             <div>
-                              <div className="text-[10px] uppercase font-bold text-[#6B7280] tracking-wider">
+                              <div className={`text-[10px] uppercase font-bold ${textSubtle} tracking-wider`}>
                                 Department
                               </div>
                               <div className="text-blue-400 text-sm font-semibold mt-1">
@@ -550,7 +576,7 @@ export default function OfficerDashboard() {
                               </div>
                             </div>
                             <div>
-                              <div className="text-[10px] uppercase font-bold text-[#6B7280] tracking-wider">
+                              <div className={`text-[10px] uppercase font-bold ${textSubtle} tracking-wider`}>
                                 Est. Resolution
                               </div>
                               <div className="text-amber-400 text-sm font-semibold mt-1">
@@ -560,10 +586,10 @@ export default function OfficerDashboard() {
                               </div>
                             </div>
                             <div>
-                              <div className="text-[10px] uppercase font-bold text-[#6B7280] tracking-wider">
+                              <div className={`text-[10px] uppercase font-bold ${textSubtle} tracking-wider`}>
                                 AI Suggested Action
                               </div>
-                              <div className="text-[#9CA3AF] text-xs mt-1 leading-relaxed">
+                              <div className={`${textMuted} text-xs mt-1 leading-relaxed`}>
                                 {issue.suggested_action || "None"}
                               </div>
                             </div>
@@ -598,7 +624,7 @@ export default function OfficerDashboard() {
                             ) : (
                               <button
                                 onClick={() => handleToggleExpand(issue.docId)}
-                                className="border border-blue-500/50 text-blue-400 rounded-lg px-4 py-2 text-sm hover:bg-blue-500/10 transition cursor-pointer font-semibold"
+                                className="border border-blue-500/50 text-blue-400 rounded-lg px-4 py-2 text-sm hover:bg-blue-500/10 transition cursor-pointer font-semibold bg-transparent"
                               >
                                 {expandedIssueId === issue.docId ? "Cancel" : "Set Estimated Resolution"}
                               </button>
@@ -608,15 +634,15 @@ export default function OfficerDashboard() {
 
                         {/* Interactive Click-to-Expand Form */}
                         {expandedIssueId === issue.docId && (
-                          <div className="bg-[#1F2937] rounded-xl p-4 border border-[#374151] mt-3 animate-fadeIn">
+                          <div className={`${bgSurface2} rounded-xl p-4 border ${borderTheme} mt-3 animate-fadeIn`}>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               {/* Option 1: Set Resolution Timeline */}
-                              <div className="bg-[#111827] border border-[#374151] hover:border-green-500/60 rounded-xl p-4 transition duration-200 flex flex-col justify-between">
+                              <div className={`${bgSurface} border ${borderTheme} hover:border-green-500/60 rounded-xl p-4 transition duration-200 flex flex-col justify-between`}>
                                 <div className="space-y-3">
-                                  <h4 className="text-white font-semibold text-sm">Set Resolution Timeline</h4>
-                                  <p className="text-[#9CA3AF] text-xs">I can resolve this issue</p>
+                                  <h4 className={`${textTheme} font-semibold text-sm`}>Set Resolution Timeline</h4>
+                                  <p className={`${textMuted} text-xs`}>I can resolve this issue</p>
                                   <div>
-                                    <label className="text-[#9CA3AF] text-[10px] uppercase font-bold block mb-1">
+                                    <label className={`${textMuted} text-[10px] uppercase font-bold block mb-1`}>
                                       Estimated days to resolve
                                     </label>
                                     <input
@@ -624,19 +650,19 @@ export default function OfficerDashboard() {
                                       min="1"
                                       value={estDays}
                                       onChange={(e) => setEstDays(e.target.value)}
-                                      className="bg-[#0A0F1E] border border-[#374151] rounded-lg px-3 py-2 text-white w-24 text-sm focus:border-green-500 focus:outline-none"
+                                      className={`${bgPrimary} border ${borderTheme} rounded-lg px-3 py-2 ${textTheme} w-24 text-sm focus:border-green-500 focus:outline-none`}
                                       placeholder="e.g. 5"
                                     />
                                   </div>
                                   <div>
-                                    <label className="text-[#9CA3AF] text-[10px] uppercase font-bold block mb-1">
+                                    <label className={`${textMuted} text-[10px] uppercase font-bold block mb-1`}>
                                       Resolution plan
                                     </label>
                                     <textarea
                                       value={resolutionPlan}
                                       onChange={(e) => setResolutionPlan(e.target.value)}
                                       placeholder="Describe how you plan to resolve this..."
-                                      className="bg-[#0A0F1E] border border-[#374151] rounded-lg px-3 py-2 text-white w-full text-sm resize-none focus:border-green-500 focus:outline-none"
+                                      className={`${bgPrimary} border ${borderTheme} rounded-lg px-3 py-2 ${textTheme} w-full text-sm resize-none focus:border-green-500 focus:outline-none`}
                                       rows={2}
                                     />
                                   </div>
@@ -650,18 +676,18 @@ export default function OfficerDashboard() {
                               </div>
 
                               {/* Option 2: Cannot Resolve Now */}
-                              <div className="bg-[#111827] border border-[#374151] hover:border-red-500/60 rounded-xl p-4 transition duration-200 flex flex-col justify-between">
+                              <div className={`${bgSurface} border ${borderTheme} hover:border-red-500/60 rounded-xl p-4 transition duration-200 flex flex-col justify-between`}>
                                 <div className="space-y-3">
-                                  <h4 className="text-white font-semibold text-sm">Cannot Resolve Now</h4>
-                                  <p className="text-[#9CA3AF] text-xs">I cannot resolve this right now</p>
+                                  <h4 className={`${textTheme} font-semibold text-sm`}>Cannot Resolve Now</h4>
+                                  <p className={`${textMuted} text-xs`}>I cannot resolve this right now</p>
                                   <div>
-                                    <label className="text-[#9CA3AF] text-[10px] uppercase font-bold block mb-1">
+                                    <label className={`${textMuted} text-[10px] uppercase font-bold block mb-1`}>
                                       Reason
                                     </label>
                                     <select
                                       value={cannotResolveReason}
                                       onChange={(e) => setCannotResolveReason(e.target.value)}
-                                      className="bg-[#0A0F1E] border border-[#374151] rounded-lg px-3 py-2 text-white w-full text-sm focus:border-red-500 focus:outline-none cursor-pointer"
+                                      className={`${bgPrimary} border ${borderTheme} rounded-lg px-3 py-2 ${textTheme} w-full text-sm focus:border-red-500 focus:outline-none cursor-pointer`}
                                     >
                                       <option value="Budget Constraints">Budget Constraints</option>
                                       <option value="Requires Higher Authority Approval">
@@ -676,14 +702,14 @@ export default function OfficerDashboard() {
                                     </select>
                                   </div>
                                   <div>
-                                    <label className="text-[#9CA3AF] text-[10px] uppercase font-bold block mb-1">
+                                    <label className={`${textMuted} text-[10px] uppercase font-bold block mb-1`}>
                                       Additional details
                                     </label>
                                     <textarea
                                       value={cannotResolveDetails}
                                       onChange={(e) => setCannotResolveDetails(e.target.value)}
                                       placeholder="Provide reasons, dependencies or delay details..."
-                                      className="bg-[#0A0F1E] border border-[#374151] rounded-lg px-3 py-2 text-white w-full text-sm resize-none focus:border-red-500 focus:outline-none"
+                                      className={`${bgPrimary} border ${borderTheme} rounded-lg px-3 py-2 ${textTheme} w-full text-sm resize-none focus:border-red-500 focus:outline-none`}
                                       rows={2}
                                     />
                                   </div>
@@ -707,16 +733,16 @@ export default function OfficerDashboard() {
 
             {/* 3. SUBMIT REVIEW TAB */}
             {activeTab === "submit" && (
-              <div className="max-w-4xl mx-auto space-y-6">
+              <div className="max-w-4xl mx-auto space-y-6 animate-fadeIn">
                 <div>
-                  <h1 className="text-2xl font-bold text-white">Submit Review</h1>
-                  <p className="text-[#9CA3AF] text-sm mt-1">
+                  <h1 className={`text-2xl font-bold ${textTheme}`}>Submit Review</h1>
+                  <p className={`${textMuted} text-sm mt-1`}>
                     Review work progress and verify issue resolution for {officerDepartment}
                   </p>
                 </div>
 
                 {/* Sub-tabs header */}
-                <div className="flex border-b border-[#374151] gap-6">
+                <div className={`flex border-b ${borderTheme} gap-6`}>
                   {["Pending", "In Progress", "Resolved"].map((tabName) => {
                     const isActive = subTab === tabName;
                     return (
@@ -726,7 +752,7 @@ export default function OfficerDashboard() {
                         className={`py-3 px-1 text-sm font-semibold cursor-pointer border-b-2 transition duration-200 ${
                           isActive
                             ? "border-blue-500 text-white"
-                            : "border-transparent text-[#9CA3AF] hover:text-white"
+                            : `border-transparent ${textMuted} hover:text-white`
                         }`}
                       >
                         {tabName}
@@ -740,7 +766,7 @@ export default function OfficerDashboard() {
                   {subTab === "Pending" && (
                     <div className="space-y-4">
                       {assignedIssues.filter((i) => i.status === "Pending").length === 0 ? (
-                        <div className="bg-[#111827] border border-[#374151] rounded-2xl p-16 text-center text-[#9CA3AF]">
+                        <div className={`${bgSurface} border ${borderTheme} rounded-2xl p-16 text-center ${textMuted}`}>
                           No pending issues.
                         </div>
                       ) : (
@@ -749,14 +775,14 @@ export default function OfficerDashboard() {
                           .map((issue) => (
                             <div
                               key={issue.docId || issue.id}
-                              className="bg-[#111827] rounded-2xl border border-[#374151] p-5 mb-4 max-w-4xl mx-auto"
+                              className={`${bgSurface} rounded-2xl border ${borderTheme} p-5 mb-4 max-w-4xl mx-auto`}
                             >
                               {/* TOP details */}
                               <div className="flex gap-4">
                                 <img
                                   src={issue.imagePreview}
                                   alt=""
-                                  className="w-28 h-28 object-cover rounded-xl shrink-0 border border-[#374151]/50 bg-gray-900"
+                                  className={`w-28 h-28 object-cover rounded-xl shrink-0 border ${borderTheme} bg-gray-900`}
                                 />
                                 <div className="flex-1 min-w-0 space-y-2">
                                   <div className="flex items-center gap-2 flex-wrap">
@@ -767,26 +793,26 @@ export default function OfficerDashboard() {
                                       {issue.severity}
                                     </span>
                                   </div>
-                                  <p className="text-white text-sm font-medium leading-relaxed">
+                                  <p className={`${textTheme} text-sm font-medium leading-relaxed`}>
                                     {issue.description}
                                   </p>
-                                  <div className="flex items-center gap-3 text-xs text-[#9CA3AF] flex-wrap">
-                                    <span>Location: {issue.location}</span>
-                                    <span className="text-[#6B7280]">
+                                  <div className="flex items-center gap-3 text-xs flex-wrap">
+                                    <span className={textMuted}>Location: {issue.location}</span>
+                                    <span className={textSubtle}>
                                       Reporter: {issue.userEmail || "Anonymous"}
                                     </span>
-                                    <span className="text-[#6B7280]">Date: {issue.date}</span>
+                                    <span className={textSubtle}>Date: {issue.date}</span>
                                   </div>
                                 </div>
                               </div>
 
                               {/* STEP 1 SECTION */}
-                              <div className="mt-4 bg-[#1F2937] rounded-xl p-4 border border-[#374151] space-y-3">
+                              <div className={`mt-4 ${bgSurface2} rounded-xl p-4 border ${borderTheme} space-y-3`}>
                                 <div>
-                                  <h3 className="text-white font-semibold text-sm">
+                                  <h3 className={`${textTheme} font-semibold text-sm`}>
                                     Step 1: Upload Work Started Photo
                                   </h3>
-                                  <p className="text-[#9CA3AF] text-xs mt-1">
+                                  <p className={`${textMuted} text-xs mt-1`}>
                                     Upload a photo showing work has begun at the location
                                   </p>
                                 </div>
@@ -814,7 +840,7 @@ export default function OfficerDashboard() {
                                       : "cursor-pointer"
                                   }`}
                                 >
-                                  <span className="text-[#9CA3AF] text-xs">
+                                  <span className={`${textMuted} text-xs`}>
                                     {submitLoading[issue.docId]
                                       ? "Uploading..."
                                       : "Click to upload progress photo"}
@@ -850,7 +876,7 @@ export default function OfficerDashboard() {
                   {subTab === "In Progress" && (
                     <div className="space-y-4">
                       {assignedIssues.filter((i) => i.status === "In Progress").length === 0 ? (
-                        <div className="bg-[#111827] border border-[#374151] rounded-2xl p-16 text-center text-[#9CA3AF]">
+                        <div className={`${bgSurface} border ${borderTheme} rounded-2xl p-16 text-center ${textMuted}`}>
                           No in-progress issues.
                         </div>
                       ) : (
@@ -859,14 +885,14 @@ export default function OfficerDashboard() {
                           .map((issue) => (
                             <div
                               key={issue.docId || issue.id}
-                              className="bg-[#111827] rounded-2xl border border-[#374151] p-5 mb-4 max-w-4xl mx-auto"
+                              className={`${bgSurface} rounded-2xl border ${borderTheme} p-5 mb-4 max-w-4xl mx-auto`}
                             >
                               {/* TOP details */}
                               <div className="flex gap-4">
                                 <img
                                   src={issue.imagePreview}
                                   alt=""
-                                  className="w-28 h-28 object-cover rounded-xl shrink-0 border border-[#374151]/50 bg-gray-900"
+                                  className={`w-28 h-28 object-cover rounded-xl shrink-0 border ${borderTheme} bg-gray-900`}
                                 />
                                 <div className="flex-1 min-w-0 space-y-2">
                                   <div className="flex items-center gap-2 flex-wrap">
@@ -877,15 +903,15 @@ export default function OfficerDashboard() {
                                       {issue.severity}
                                     </span>
                                   </div>
-                                  <p className="text-white text-sm font-medium leading-relaxed">
+                                  <p className={`${textTheme} text-sm font-medium leading-relaxed`}>
                                     {issue.description}
                                   </p>
-                                  <div className="flex items-center gap-3 text-xs text-[#9CA3AF] flex-wrap">
-                                    <span>Location: {issue.location}</span>
-                                    <span className="text-[#6B7280]">
+                                  <div className="flex items-center gap-3 text-xs flex-wrap">
+                                    <span className={textMuted}>Location: {issue.location}</span>
+                                    <span className={textSubtle}>
                                       Reporter: {issue.userEmail || "Anonymous"}
                                     </span>
-                                    <span className="text-[#6B7280]">Date: {issue.date}</span>
+                                    <span className={textSubtle}>Date: {issue.date}</span>
                                   </div>
                                 </div>
                               </div>
@@ -900,7 +926,7 @@ export default function OfficerDashboard() {
                                   />
                                 )}
                                 <div className="flex-1">
-                                  <div className="text-white font-semibold text-xs">
+                                  <div className={`font-semibold text-xs ${textTheme}`}>
                                     Step 1 Complete - Work Started Photo Verified by Gemini
                                   </div>
                                   {issue.workStartedNote && (
@@ -912,12 +938,12 @@ export default function OfficerDashboard() {
                               </div>
 
                               {/* STEP 2 SECTION */}
-                              <div className="mt-4 bg-[#1F2937] rounded-xl p-4 border border-[#374151] space-y-3">
+                              <div className={`mt-4 ${bgSurface2} rounded-xl p-4 border ${borderTheme} space-y-3`}>
                                 <div>
-                                  <h3 className="text-white font-semibold text-sm">
+                                  <h3 className={`${textTheme} font-semibold text-sm`}>
                                     Step 2: Upload Completion Photo
                                   </h3>
-                                  <p className="text-[#9CA3AF] text-xs mt-1">
+                                  <p className={`${textMuted} text-xs mt-1`}>
                                     Upload photo of the SAME location showing issue is fully
                                     resolved
                                   </p>
@@ -946,7 +972,7 @@ export default function OfficerDashboard() {
                                       : "cursor-pointer"
                                   }`}
                                 >
-                                  <span className="text-[#9CA3AF] text-xs">
+                                  <span className={`${textMuted} text-xs`}>
                                     {submitLoading[issue.docId]
                                       ? "Uploading..."
                                       : "Click to upload completion photo"}
@@ -983,7 +1009,7 @@ export default function OfficerDashboard() {
                   {subTab === "Resolved" && (
                     <div className="space-y-4">
                       {assignedIssues.filter((i) => i.status === "Resolved").length === 0 ? (
-                        <div className="bg-[#111827] border border-[#374151] rounded-2xl p-16 text-center text-[#9CA3AF]">
+                        <div className={`${bgSurface} border ${borderTheme} rounded-2xl p-16 text-center ${textMuted}`}>
                           No resolved issues yet.
                         </div>
                       ) : (
@@ -999,7 +1025,7 @@ export default function OfficerDashboard() {
                                 <img
                                   src={issue.imagePreview}
                                   alt=""
-                                  className="w-28 h-28 object-cover rounded-xl shrink-0 border border-[#374151]/50 bg-gray-900"
+                                  className={`w-28 h-28 object-cover rounded-xl shrink-0 border ${borderTheme} bg-gray-900`}
                                 />
                                 <div className="flex-1 min-w-0 space-y-2">
                                   <div className="flex items-center gap-2 flex-wrap">
@@ -1010,15 +1036,15 @@ export default function OfficerDashboard() {
                                       {issue.severity}
                                     </span>
                                   </div>
-                                  <p className="text-white text-sm font-medium leading-relaxed">
+                                  <p className={`${textTheme} text-sm font-medium leading-relaxed`}>
                                     {issue.description}
                                   </p>
-                                  <div className="flex items-center gap-3 text-xs text-[#9CA3AF] flex-wrap">
-                                    <span>Location: {issue.location}</span>
-                                    <span className="text-[#6B7280]">
+                                  <div className="flex items-center gap-3 text-xs flex-wrap">
+                                    <span className={textMuted}>Location: {issue.location}</span>
+                                    <span className={textSubtle}>
                                       Reporter: {issue.userEmail || "Anonymous"}
                                     </span>
-                                    <span className="text-[#6B7280]">Date: {issue.date}</span>
+                                    <span className={textSubtle}>Date: {issue.date}</span>
                                   </div>
                                 </div>
                               </div>
@@ -1026,15 +1052,15 @@ export default function OfficerDashboard() {
                               {/* Before & After section */}
                               <div className="grid grid-cols-2 gap-4 mt-4">
                                 {/* Left: Work Started */}
-                                <div className="bg-[#0A0F1E]/30 rounded-xl p-3 border border-[#374151]/50 flex flex-col gap-2">
-                                  <div className="text-xs font-semibold text-[#9CA3AF]">
+                                <div className={`rounded-xl p-3 border ${borderTheme} flex flex-col gap-2 ${isDark ? 'bg-[#0A0F1E]/30' : 'bg-[#F8FAFC]'}`}>
+                                  <div className={`text-xs font-semibold ${textMuted}`}>
                                     Work Started
                                   </div>
                                   {issue.workPhotos?.[0] ? (
                                     <img
                                       src={issue.workPhotos[0]}
                                       alt="Work Started Proof"
-                                      className="w-full h-32 object-cover rounded-xl border border-[#374151]/50 bg-gray-900"
+                                      className={`w-full h-32 object-cover rounded-xl border ${borderTheme} bg-gray-900`}
                                     />
                                   ) : (
                                     <div className="w-full h-32 bg-gray-900 rounded-xl border border-[#374151]/30 flex items-center justify-center text-xs text-gray-500">
@@ -1042,22 +1068,22 @@ export default function OfficerDashboard() {
                                     </div>
                                   )}
                                   {issue.workStartedNote && (
-                                    <div className="text-xs text-[#9CA3AF] leading-relaxed italic">
+                                    <div className={`text-xs ${textMuted} leading-relaxed italic`}>
                                       "{issue.workStartedNote}"
                                     </div>
                                   )}
                                 </div>
 
                                 {/* Right: Completed */}
-                                <div className="bg-[#0A0F1E]/30 rounded-xl p-3 border border-[#374151]/50 flex flex-col gap-2">
-                                  <div className="text-xs font-semibold text-[#9CA3AF]">
+                                <div className={`rounded-xl p-3 border ${borderTheme} flex flex-col gap-2 ${isDark ? 'bg-[#0A0F1E]/30' : 'bg-[#F8FAFC]'}`}>
+                                  <div className={`text-xs font-semibold ${textMuted}`}>
                                     Completed
                                   </div>
                                   {issue.workPhotos?.[1] ? (
                                     <img
                                       src={issue.workPhotos[1]}
                                       alt="Completion Proof"
-                                      className="w-full h-32 object-cover rounded-xl border border-[#374151]/50 bg-gray-900"
+                                      className={`w-full h-32 object-cover rounded-xl border ${borderTheme} bg-gray-900`}
                                     />
                                   ) : (
                                     <div className="w-full h-32 bg-gray-900 rounded-xl border border-[#374151]/30 flex items-center justify-center text-xs text-gray-500">
@@ -1065,7 +1091,7 @@ export default function OfficerDashboard() {
                                     </div>
                                   )}
                                   {issue.completionNote && (
-                                    <div className="text-xs text-[#9CA3AF] leading-relaxed italic">
+                                    <div className={`text-xs ${textMuted} leading-relaxed italic`}>
                                       "{issue.completionNote}"
                                     </div>
                                   )}
@@ -1247,6 +1273,27 @@ export default function OfficerDashboard() {
                       </>
                     )}
                   </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "map" && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-white mb-2">Issue Map</h2>
+                  <p className="text-[#9CA3AF] mb-6">All civic issues reported across Mumbai</p>
+                </div>
+
+                <IssueMap issues={issues} height="500px" />
+
+                {/* Legend */}
+                <div className="flex gap-6 mt-4">
+                  {[['Critical','#EF4444'],['High','#F97316'],['Medium','#F59E0B'],['Low','#10B981']].map(([label, color]) => (
+                    <div key={label} className="flex items-center gap-2">
+                      <div style={{ background: color }} className="w-3 h-3 rounded-full" />
+                      <span className="text-[#9CA3AF] text-xs">{label}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

@@ -1,10 +1,23 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { motion } from "framer-motion";
+import { useTheme } from "../context/ThemeContext";
 
 export default function Navbar() {
   const location = useLocation();
   const { user, userProfile, logout } = useAuth();
+  const { isDark, toggleTheme } = useTheme();
+
+  const t = {
+    bg: isDark ? 'bg-[#0A0F1E]' : 'bg-[#EEF2FF]',
+    surface: isDark ? 'bg-[#111827]' : 'bg-[#E8EFFE]',
+    surface2: isDark ? 'bg-[#1F2937]' : 'bg-[#DDE6FD]',
+    border: isDark ? 'border-[#374151]' : 'border-[#C7D7F9]',
+    text: isDark ? 'text-white' : 'text-[#1E293B]',
+    muted: isDark ? 'text-[#9CA3AF]' : 'text-[#475569]',
+    sidebar: isDark ? 'bg-[#0D1117]' : 'bg-[#E2EAFC]',
+    card: isDark ? 'bg-[#111827] border-[#374151]' : 'bg-[#EEF2FF] border-[#C7D7F9]',
+  };
 
   const isActive = (path) => location.pathname === path;
 
@@ -37,7 +50,9 @@ export default function Navbar() {
   const firstLetter = user?.email ? user.email.charAt(0).toUpperCase() : "";
 
   return (
-    <nav className="fixed top-0 left-0 w-full z-50 bg-[#0A0F1E]/80 backdrop-blur-xl border-b border-white/5">
+    <nav className={`fixed top-0 left-0 w-full z-50 backdrop-blur-xl border-b transition-colors duration-300 ${t.bg}/80 ${
+      isDark ? "border-white/5" : `${t.border}/30`
+    }`}>
       <div className="max-w-7xl mx-auto px-8 py-4 flex justify-between items-center">
         {/* LEFT Logo & Brand */}
         <Link 
@@ -49,7 +64,7 @@ export default function Navbar() {
             ⚡
           </div>
           <div className="flex">
-            <span className="text-white font-bold text-xl">Civic</span>
+            <span className={`font-bold text-xl transition-colors duration-300 ${t.text}`}>Civic</span>
             <span className="text-blue-400 font-bold text-xl">Pulse</span>
           </div>
         </Link>
@@ -61,10 +76,10 @@ export default function Navbar() {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`text-sm font-medium transition px-4 py-2 rounded-lg ${
+                className={`text-sm font-medium transition px-4 py-2 rounded-lg transition-colors duration-300 ${
                   isActive(item.path)
-                    ? "text-white bg-white/5"
-                    : "text-[#9CA3AF] hover:text-white hover:bg-white/5"
+                    ? `${t.text} ${isDark ? "bg-white/5" : "bg-black/5"}`
+                    : `${t.muted} ${isDark ? "hover:text-white hover:bg-white/5" : "hover:text-[#1E293B] hover:bg-black/5"}`
                 }`}
               >
                 {item.name}
@@ -75,17 +90,25 @@ export default function Navbar() {
 
         {/* RIGHT Auth actions */}
         <div className="flex items-center gap-4 shrink-0">
+          <button
+            onClick={toggleTheme}
+            className={`w-9 h-9 rounded-xl border flex items-center justify-center hover:border-blue-500 transition text-lg cursor-pointer ${t.border} ${t.text}`}
+            title="Toggle theme"
+          >
+            {isDark ? "☀️" : "🌙"}
+          </button>
+
           {user ? (
             <div className="flex items-center gap-4">
               <div className="w-9 h-9 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
                 {userProfile?.name?.[0]?.toUpperCase() || "U"}
               </div>
-              <span className="text-white text-sm font-medium">
+              <span className={`text-sm font-medium transition-colors duration-300 ${t.text}`}>
                 {userProfile?.name || "User"}
               </span>
               <button
                 onClick={logout}
-                className="text-[#9CA3AF] hover:text-red-400 text-sm font-medium transition cursor-pointer bg-transparent border-none outline-none"
+                className={`hover:text-red-400 text-sm font-medium transition cursor-pointer bg-transparent border-none outline-none ${t.muted}`}
               >
                 Sign Out
               </button>
