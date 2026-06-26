@@ -10,6 +10,8 @@ export default function OfficerDashboard() {
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [activeFilter, setActiveFilter] = useState("All");
   const [notes, setNotes] = useState({});
+  const [estResolutionTimes, setEstResolutionTimes] = useState({});
+  const [warnings, setWarnings] = useState({});
 
   // Review submission state
   const [reviewTitle, setReviewTitle] = useState("");
@@ -57,22 +59,33 @@ export default function OfficerDashboard() {
   const getFilteredIssues = () => {
     switch (activeFilter) {
       case "Pending":
-        return assignedIssues.filter((i) => i.status === "Pending");
+        return issues.filter((i) => i.status === "Pending");
       case "In Progress":
-        return assignedIssues.filter((i) => i.status === "In Progress");
+        return issues.filter((i) => i.status === "In Progress");
       case "Resolved":
-        return assignedIssues.filter((i) => i.status === "Resolved");
+        return issues.filter((i) => i.status === "Resolved");
       case "Critical":
-        return assignedIssues.filter((i) => i.severity === "Critical");
+        return issues.filter((i) => i.severity === "Critical");
       default:
-        return assignedIssues;
+        return issues;
     }
   };
 
   const filteredIssues = getFilteredIssues();
 
-  const handleStatusChange = async (docId, newStatus) => {
+  const handleStatusChange = async (docId, newStatus, currentPhotos = []) => {
     if (!docId) return;
+    setWarnings((prev) => ({ ...prev, [docId]: "" })); // Reset warning
+
+    if (newStatus === "In Progress" && currentPhotos.length < 1) {
+      setWarnings((prev) => ({ ...prev, [docId]: "Please upload work photo proof first" }));
+      return;
+    }
+    if (newStatus === "Resolved" && currentPhotos.length < 2) {
+      setWarnings((prev) => ({ ...prev, [docId]: "Please upload work photo proof first" }));
+      return;
+    }
+
     try {
       await updateDoc(doc(db, "issues", docId), { status: newStatus });
       // Update in localStorage
@@ -90,6 +103,60 @@ export default function OfficerDashboard() {
     } catch (err) {
       console.error("Failed to update status:", err);
     }
+  };
+
+  const handleUpdateEstimatedDays = async (docId) => {
+    const days = estResolutionTimes[docId];
+    if (days === undefined || days === "") return;
+    try {
+      await updateDoc(doc(db, "issues", docId), { estimatedDays: Number(days) });
+      const stored = localStorage.getItem("civicpulse_issues");
+      if (stored) {
+        const issuesList = JSON.parse(stored);
+        const index = issuesList.findIndex(
+          (i) => i.docId === docId || String(i.id) === String(docId)
+        );
+        if (index !== -1) {
+          issuesList[index].estimatedDays = Number(days);
+          localStorage.setItem("civicpulse_issues", JSON.stringify(issuesList));
+        }
+      }
+      alert("Estimated resolution time updated!");
+    } catch (err) {
+      console.error("Failed to update estimated resolution days:", err);
+    }
+  };
+
+  const handleUploadPhoto = (docId, file, existingPhotos = []) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onloadend = async () => {
+      const base64Data = reader.result;
+      try {
+        const updatedPhotos = [...existingPhotos, base64Data];
+        await updateDoc(doc(db, "issues", docId), {
+          workPhotos: updatedPhotos,
+        });
+        const stored = localStorage.getItem("civicpulse_issues");
+        if (stored) {
+          const issuesList = JSON.parse(stored);
+          const index = issuesList.findIndex(
+            (i) => i.docId === docId || String(i.id) === String(docId)
+          );
+          if (index !== -1) {
+            issuesList[index].workPhotos = updatedPhotos;
+            localStorage.setItem("civicpulse_issues", JSON.stringify(issuesList));
+          }
+        }
+      } catch (err) {
+        console.error("Failed to upload progress photo:", err);
+      }
+    };
+  };
+
+  const handleEstimatedDaysChange = (docId, val) => {
+    setEstResolutionTimes((prev) => ({ ...prev, [docId]: val }));
   };
 
   const handleMarkCritical = async (docId) => {
@@ -183,7 +250,7 @@ export default function OfficerDashboard() {
 
   const tabs = [
     { id: "Dashboard", label: "Dashboard", icon: "📊" },
-    { id: "Analyze Reports", label: "Analyze Reports", icon: "📋" },
+    { id: "analyze", label: "Analyze Reports", icon: "📋" },
     { id: "Submit Review", label: "Submit Review", icon: "✅" }
   ];
 
@@ -294,7 +361,7 @@ export default function OfficerDashboard() {
                     </p>
                   </div>
                   <button
-                    onClick={() => setActiveTab("Analyze Reports")}
+                    onClick={() => setActiveTab("analyze")}
                     className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl transition duration-200 text-sm shadow-md shadow-blue-500/10 cursor-pointer shrink-0"
                   >
                     Analyze Reports →
@@ -304,7 +371,7 @@ export default function OfficerDashboard() {
             )}
 
             {/* 2. ANALYZE REPORTS TAB */}
-            {activeTab === "Analyze Reports" && (
+            {activeTab === "analyze" && (
               <div className="space-y-6">
                 <div>
                   <h1 className="text-2xl font-bold text-white">Analyze Assigned Reports</h1>
@@ -342,81 +409,143 @@ export default function OfficerDashboard() {
                     filteredIssues.map((issue) => (
                       <div
                         key={issue.docId || issue.id}
-                        className="bg-[#111827] rounded-2xl border border-[#374151] p-5 hover:border-blue-500/20 transition duration-200"
+                        className="bg-[#111827] rounded-2xl border border-[#374151] p-5 mb-5 hover:border-blue-500/20 transition duration-200"
                       >
-                        <div className="flex flex-col md:flex-row gap-4 justify-between items-start">
-                          <div className="flex gap-4 items-start">
-                            <img
-                              src={issue.imagePreview}
-                              alt=""
-                              className="w-20 h-20 rounded-xl object-cover shrink-0 border border-[#374151]/50 bg-gray-900"
-                            />
-                            <div className="space-y-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="bg-blue-500/10 text-blue-400 text-[10px] px-2 py-0.5 rounded-md border border-blue-500/20 font-bold uppercase tracking-wider">
-                                  {issue.category}
-                                </span>
-                                <span className={getSeverityBadgeClass(issue.severity)}>
-                                  {issue.severity}
-                                </span>
-                              </div>
-                              <p className="text-white text-sm font-medium mt-1 leading-relaxed">{issue.description}</p>
-                              <div className="text-xs text-[#9CA3AF] flex items-center gap-1 mt-1 font-medium">
-                                <span>📍</span>
-                                <span>{issue.location}</span>
-                              </div>
-                              <div className="flex items-center gap-3 text-xs text-[#6B7280] flex-wrap mt-0.5">
-                                <span>👤 Reporter: {issue.userEmail || "Anonymous"}</span>
-                                <span>📅 Reported: {issue.date}</span>
-                              </div>
+                        {/* TOP ROW */}
+                        <div className="flex gap-4">
+                          <img
+                            src={issue.imagePreview}
+                            alt=""
+                            className="w-28 h-28 object-cover rounded-xl shrink-0 border border-[#374151]/50 bg-gray-900"
+                          />
+                          <div className="flex-1 min-w-0 space-y-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="bg-blue-500/10 text-blue-400 text-[10px] px-2 py-0.5 rounded-md border border-blue-500/20 font-bold uppercase tracking-wider">
+                                {issue.category}
+                              </span>
+                              <span className={getSeverityBadgeClass(issue.severity)}>
+                                {issue.severity}
+                              </span>
                             </div>
-                          </div>
-
-                          <div className="flex flex-col gap-2 shrink-0 w-full md:w-auto mt-4 md:mt-0">
-                            <select
-                              value={issue.status}
-                              onChange={(e) => handleStatusChange(issue.docId, e.target.value)}
-                              className={`bg-[#1F2937] border rounded-lg px-3 py-2 text-white text-sm focus:outline-none transition cursor-pointer w-full md:w-40 ${getStatusBorderClass(
-                                issue.status
-                              )}`}
-                            >
-                              <option value="Pending">Pending</option>
-                              <option value="In Progress">In Progress</option>
-                              <option value="Resolved">Resolved</option>
-                            </select>
-
-                            {issue.severity !== "Critical" && (
-                              <button
-                                onClick={() => handleMarkCritical(issue.docId)}
-                                className="bg-red-600/10 hover:bg-red-600 border border-red-500/30 text-red-400 hover:text-white font-semibold px-3 py-2 rounded-lg text-xs transition duration-200 flex items-center justify-center gap-1 cursor-pointer w-full md:w-40"
-                              >
-                                🚨 Mark Critical
-                              </button>
-                            )}
+                            <p className="text-white text-sm mt-1">{issue.description}</p>
+                            <div className="text-xs text-[#9CA3AF]">📍 {issue.location}</div>
+                            <div className="text-xs text-[#6B7280]">👤 Reporter: {issue.userEmail || "Anonymous"}</div>
+                            <div className="text-xs text-[#6B7280]">📅 Reported: {issue.date}</div>
                           </div>
                         </div>
 
-                        {issue.officerNote && (
-                          <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-blue-300 text-xs mt-3 leading-relaxed font-medium">
-                            📋 Officer Note: {issue.officerNote}
+                        {/* STATUS DROPDOWN */}
+                        <div className="mt-3">
+                          <label className="text-[#9CA3AF] text-xs font-semibold block mb-1">Status</label>
+                          <select
+                            value={issue.status}
+                            onChange={(e) => handleStatusChange(issue.docId, e.target.value, issue.workPhotos || [])}
+                            className={`bg-[#1F2937] border rounded-lg px-3 py-2 text-white text-sm focus:outline-none transition cursor-pointer w-full md:w-48 ${getStatusBorderClass(
+                              issue.status
+                            )}`}
+                          >
+                            <option value="Pending">Pending</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Resolved">Resolved</option>
+                          </select>
+                          {warnings[issue.docId] && (
+                            <p className="text-red-500 text-xs mt-1 font-semibold">⚠️ {warnings[issue.docId]}</p>
+                          )}
+                        </div>
+
+                        {/* ESTIMATED TIME INPUT */}
+                        <div className="mt-3">
+                          <label className="text-[#9CA3AF] text-xs font-semibold block mb-1">⏱️ Set Estimated Resolution Time</label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              placeholder="e.g. 7"
+                              value={estResolutionTimes[issue.docId] !== undefined ? estResolutionTimes[issue.docId] : (issue.estimatedDays || "")}
+                              onChange={(e) => handleEstimatedDaysChange(issue.docId, e.target.value)}
+                              className="bg-[#1F2937] border border-[#374151] rounded-xl px-4 py-2 text-white w-32 text-sm focus:border-blue-500 focus:outline-none transition"
+                            />
+                            <span className="text-[#9CA3AF] text-sm">days</span>
+                            <button
+                              onClick={() => handleUpdateEstimatedDays(issue.docId)}
+                              className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-xl transition cursor-pointer h-[38px] flex items-center justify-center"
+                            >
+                              Update
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* OFFICER NOTE */}
+                        <div className="mt-3">
+                          <label className="text-[#9CA3AF] text-xs font-semibold block mb-1">📋 Department Updates</label>
+                          {issue.officerNote && (
+                            <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-blue-300 text-xs mb-2 leading-relaxed font-medium">
+                              {issue.officerNote}
+                            </div>
+                          )}
+                          <div className="flex flex-col sm:flex-row gap-3 items-end">
+                            <textarea
+                              placeholder="Add update note for citizen..."
+                              value={notes[issue.docId] || ""}
+                              onChange={(e) => handleNoteChange(issue.docId, e.target.value)}
+                              rows={2}
+                              className="bg-[#1F2937] border border-[#374151] rounded-xl px-4 py-2 text-white text-sm w-full focus:border-blue-500 focus:outline-none transition resize-none leading-relaxed"
+                            />
+                            <button
+                              onClick={() => handlePostNote(issue.docId)}
+                              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-xl text-xs transition duration-200 shrink-0 cursor-pointer w-full sm:w-auto h-[38px] flex items-center justify-center"
+                            >
+                              Post Update
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* WORK PHOTO UPLOAD */}
+                        <div className="mt-3">
+                          <label className="text-[#9CA3AF] text-xs font-semibold block mb-1">📸 Upload Work Progress Photo</label>
+                          
+                          {/* Hidden File Input */}
+                          <input
+                            type="file"
+                            id={`file-upload-${issue.docId}`}
+                            accept="image/*"
+                            onChange={(e) => handleUploadPhoto(issue.docId, e.target.files[0], issue.workPhotos || [])}
+                            className="hidden"
+                          />
+
+                          {/* Custom Upload Area */}
+                          <div
+                            onClick={() => document.getElementById(`file-upload-${issue.docId}`).click()}
+                            className="border-dashed border border-[#374151] hover:border-blue-500/50 rounded-xl p-4 text-center cursor-pointer bg-[#1F2937]/30 transition duration-200"
+                          >
+                            <span className="text-[#9CA3AF] text-sm">Click to upload work photo</span>
+                          </div>
+
+                          {/* Thumbnail Gallery */}
+                          {issue.workPhotos && issue.workPhotos.length > 0 && (
+                            <div className="flex gap-2 mt-2 flex-wrap">
+                              {issue.workPhotos.map((photo, idx) => (
+                                <img
+                                  key={idx}
+                                  src={photo}
+                                  alt=""
+                                  className="w-20 h-20 object-cover rounded-lg border border-[#374151] bg-gray-900"
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* PRIORITY FLAG */}
+                        {issue.severity !== "Critical" && (
+                          <div className="mt-3 pt-1">
+                            <button
+                              onClick={() => handleMarkCritical(issue.docId)}
+                              className="border border-red-500/50 text-red-400 hover:bg-red-500/10 rounded-lg px-4 py-2 text-sm font-semibold transition cursor-pointer"
+                            >
+                              🚨 Mark as Critical Priority
+                            </button>
                           </div>
                         )}
-
-                        <div className="mt-4 pt-3 border-t border-[#374151]/50 flex flex-col sm:flex-row gap-3 items-end">
-                          <textarea
-                            placeholder="Add update note for citizen..."
-                            value={notes[issue.docId] || ""}
-                            onChange={(e) => handleNoteChange(issue.docId, e.target.value)}
-                            rows={1}
-                            className="bg-[#1F2937] border border-[#374151] rounded-lg px-3 py-2 text-white text-sm w-full focus:border-blue-500 focus:outline-none transition resize-none leading-relaxed"
-                          />
-                          <button
-                            onClick={() => handlePostNote(issue.docId)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg text-xs transition duration-200 shrink-0 cursor-pointer w-full sm:w-auto h-[38px] flex items-center justify-center"
-                          >
-                            Post Update
-                          </button>
-                        </div>
                       </div>
                     ))
                   )}
