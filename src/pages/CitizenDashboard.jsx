@@ -8,6 +8,8 @@ import Report from "./Report";
 export default function CitizenDashboard() {
   const { user, userProfile } = useAuth();
   const [myIssues, setMyIssues] = useState([]);
+  const [allIssues, setAllIssues] = useState([]);
+  const [communityFilter, setCommunityFilter] = useState("All");
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("Dashboard");
 
@@ -44,6 +46,26 @@ export default function CitizenDashboard() {
     );
     return () => unsubscribe();
   }, [user?.uid]);
+
+  useEffect(() => {
+    if (activeTab !== 'community') return;
+    const issuesCollection = collection(db, "issues");
+    const unsubscribe = onSnapshot(
+      issuesCollection,
+      (snapshot) => {
+        const list = snapshot.docs.map((doc) => ({
+          docId: doc.id,
+          ...doc.data(),
+        }));
+        list.sort((a, b) => b.id - a.id);
+        setAllIssues(list);
+      },
+      (error) => {
+        console.error("Firestore error loading all issues:", error);
+      }
+    );
+    return () => unsubscribe();
+  }, [activeTab]);
 
   const handleUpvote = async (docId, currentUpvotes) => {
     try {
@@ -105,8 +127,21 @@ export default function CitizenDashboard() {
     { id: "Dashboard", label: "Dashboard", icon: "📊" },
     { id: "Report an Issue", label: "Report an Issue", icon: "🚨" },
     { id: "track", label: "Track My Reports", icon: "📍" },
-    { id: "Send Message", label: "Send Message", icon: "💬" }
+    { id: "Send Message", label: "Send Message", icon: "💬" },
+    { id: "community", label: "Community Feed", icon: "🌍" }
   ];
+
+  const getFilteredCommunityIssues = () => {
+    if (communityFilter === "All") {
+      return allIssues;
+    }
+    if (communityFilter === "Pending" || communityFilter === "Resolved") {
+      return allIssues.filter((i) => i.status === communityFilter);
+    }
+    return allIssues.filter((i) => i.category === communityFilter);
+  };
+
+  const filteredCommunityIssues = getFilteredCommunityIssues();
 
   return (
     <div className="min-h-screen bg-[#0A0F1E] text-[#F9FAFB] flex">
@@ -473,6 +508,101 @@ export default function CitizenDashboard() {
                     </button>
                   </form>
                 </div>
+              </div>
+            )}
+
+            {activeTab === "community" && (
+              <div className="space-y-6">
+                <div>
+                  <h1 className="text-2xl font-bold text-white">Community Issues Feed</h1>
+                  <p className="text-[#9CA3AF] text-sm mt-1">See what your neighbors are reporting</p>
+                </div>
+
+                {/* Filter Bar */}
+                <div className="flex gap-3 flex-wrap mt-4">
+                  {["All", "Pothole", "Water Leak", "Broken Streetlight", "Garbage Dumping", "Pending", "Resolved"].map((filter) => {
+                    const isActive = communityFilter === filter;
+                    return (
+                      <button
+                        key={filter}
+                        onClick={() => setCommunityFilter(filter)}
+                        className={
+                          isActive
+                            ? "bg-blue-600 text-white rounded-lg px-4 py-2 text-sm font-semibold transition cursor-pointer shadow-md shadow-blue-500/10"
+                            : "bg-[#111827] border border-[#374151] text-[#9CA3AF] hover:text-white rounded-lg px-4 py-2 text-sm transition cursor-pointer"
+                        }
+                      >
+                        {filter}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Issues Grid */}
+                {filteredCommunityIssues.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center bg-[#111827] border border-[#374151] rounded-2xl p-16 text-center mt-6">
+                    <span className="text-5xl mb-3">🗃️</span>
+                    <h3 className="text-white font-bold text-lg">No community issues yet</h3>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-4 mt-6">
+                    {filteredCommunityIssues.map((issue) => (
+                      <div
+                        key={issue.docId || issue.id}
+                        className="bg-[#111827] rounded-2xl border border-[#374151] overflow-hidden hover:border-blue-500/50 transition flex flex-col justify-between"
+                      >
+                        {/* Card Image */}
+                        <img
+                          src={issue.imagePreview}
+                          alt=""
+                          className="h-40 w-full object-cover bg-gray-900 border-b border-[#374151]/50"
+                        />
+
+                        {/* Card Body */}
+                        <div className="p-4 flex-1 flex flex-col justify-between">
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="bg-blue-500/10 text-blue-400 text-[10px] px-2 py-0.5 rounded-md border border-blue-500/20 font-bold uppercase tracking-wider">
+                                {issue.category}
+                              </span>
+                              <span className={getSeverityBadgeClass(issue.severity)}>
+                                {issue.severity}
+                              </span>
+                            </div>
+                            <p className="text-white text-sm line-clamp-2 mt-1 font-medium leading-relaxed">
+                              {issue.description}
+                            </p>
+                            <div className="text-xs text-[#9CA3AF] mt-2 flex items-center gap-1">
+                              <span>📍</span>
+                              <span className="truncate">{issue.location}</span>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 pt-3 border-t border-[#374151]/50">
+                            {/* Bottom Row */}
+                            <div className="flex items-center justify-between">
+                              <span className={`text-[10px] px-2 py-0.5 rounded-md border font-bold uppercase ${
+                                issue.status === "Resolved"
+                                  ? "bg-green-500/10 text-green-400 border-green-500/20"
+                                  : issue.status === "In Progress"
+                                  ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
+                                  : "bg-gray-500/10 text-gray-400 border-gray-500/20"
+                              }`}>
+                                {issue.status}
+                              </span>
+                              <span className="text-[#9CA3AF] text-xs font-semibold flex items-center gap-1">
+                                👍 {issue.upvotes || 0}
+                              </span>
+                            </div>
+                            <div className="text-xs text-[#6B7280] mt-2">
+                              Reported on {issue.date}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </>
