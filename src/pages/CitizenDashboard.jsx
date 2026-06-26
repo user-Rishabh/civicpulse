@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, doc, updateDoc } from "firebase/firestore";
+import { collection, onSnapshot, doc, updateDoc, query, where } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
 import { Link } from "react-router-dom";
@@ -7,7 +7,9 @@ import Report from "./Report";
 
 export default function CitizenDashboard() {
   const { user, userProfile } = useAuth();
-  const [issues, setIssues] = useState([]);
+  const [myIssues, setMyIssues] = useState([]);
+  const [allIssues, setAllIssues] = useState([]);
+  const [communityFilter, setCommunityFilter] = useState("All");
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("Dashboard");
 
@@ -20,6 +22,33 @@ export default function CitizenDashboard() {
   ]);
 
   useEffect(() => {
+    if (!user?.uid) {
+      setLoading(false);
+      return;
+    }
+    const issuesCollection = collection(db, "issues");
+    const q = query(issuesCollection, where("userId", "==", user.uid));
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const list = snapshot.docs.map((doc) => ({
+          docId: doc.id,
+          ...doc.data(),
+        }));
+        list.sort((a, b) => b.id - a.id);
+        setMyIssues(list);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Firestore error loading user issues:", error);
+        setLoading(false);
+      }
+    );
+    return () => unsubscribe();
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (activeTab !== 'community') return;
     const issuesCollection = collection(db, "issues");
     const unsubscribe = onSnapshot(
       issuesCollection,
@@ -28,20 +57,15 @@ export default function CitizenDashboard() {
           docId: doc.id,
           ...doc.data(),
         }));
-
-        // Sort: newest first
         list.sort((a, b) => b.id - a.id);
-        setIssues(list);
-        setLoading(false);
+        setAllIssues(list);
       },
       (error) => {
-        console.error("Firestore error in citizen dashboard:", error);
-        setLoading(false);
+        console.error("Firestore error loading all issues:", error);
       }
     );
-
     return () => unsubscribe();
-  }, []);
+  }, [activeTab]);
 
   const handleUpvote = async (docId, currentUpvotes) => {
     try {
@@ -77,9 +101,6 @@ export default function CitizenDashboard() {
     }, 1500);
   };
 
-  // Filter user's specific issues
-  const myIssues = issues.filter((i) => i.userId === user?.uid);
-
   // Statistics
   const totalCount = myIssues.length;
   const resolvedCount = myIssues.filter((i) => i.status === "Resolved").length;
@@ -105,9 +126,22 @@ export default function CitizenDashboard() {
   const tabs = [
     { id: "Dashboard", label: "Dashboard", icon: "📊" },
     { id: "Report an Issue", label: "Report an Issue", icon: "🚨" },
-    { id: "Track My Reports", label: "Track My Reports", icon: "📍" },
-    { id: "Send Message", label: "Send Message", icon: "💬" }
+    { id: "track", label: "Track My Reports", icon: "📍" },
+    { id: "Send Message", label: "Send Message", icon: "💬" },
+    { id: "community", label: "Community Feed", icon: "🌍" }
   ];
+
+  const getFilteredCommunityIssues = () => {
+    if (communityFilter === "All") {
+      return allIssues;
+    }
+    if (communityFilter === "Pending" || communityFilter === "Resolved") {
+      return allIssues.filter((i) => i.status === communityFilter);
+    }
+    return allIssues.filter((i) => i.category === communityFilter);
+  };
+
+  const filteredCommunityIssues = getFilteredCommunityIssues();
 
   return (
     <div className="min-h-screen bg-[#0A0F1E] text-[#F9FAFB] flex">
@@ -201,46 +235,56 @@ export default function CitizenDashboard() {
                   </div>
                 </div>
 
-                {/* Community Feed & Recent Activity */}
+                {/* My Recent Reports & Need to report something? Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="bg-[#111827] border border-[#374151] rounded-2xl p-6">
-                    <h2 className="text-xl font-bold text-white mb-4">Community Feed</h2>
-                    <div className="space-y-4">
-                      {issues.slice(0, 5).map((issue) => (
-                        <div
-                          key={issue.docId || issue.id}
-                          className="bg-[#0A0F1E]/50 rounded-xl p-3 flex items-center justify-between gap-4 border border-[#374151]/30"
-                        >
-                          <div className="flex items-center gap-3 min-w-0">
+                    <h2 className="text-xl font-bold text-white mb-4">My Recent Reports</h2>
+                    
+                    {myIssues.length === 0 ? (
+                      <p className="text-[#9CA3AF] text-sm">You haven't reported any issues yet.</p>
+                    ) : (
+                      <div className="space-y-4">
+                        {myIssues.slice(0, 3).map((issue) => (
+                          <div
+                            key={issue.docId || issue.id}
+                            className="bg-[#0A0F1E]/50 rounded-xl p-3 flex items-center gap-4 border border-[#374151]/30"
+                          >
                             <img
                               src={issue.imagePreview}
                               alt=""
                               className="w-12 h-12 object-cover rounded-lg shrink-0 border border-[#374151]/50 bg-gray-900"
                             />
-                            <div className="min-w-0">
-                              <span className="bg-blue-500/10 text-blue-400 text-[9px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider border border-blue-500/20">
-                                {issue.category}
-                              </span>
-                              <div className="text-xs text-[#9CA3AF] mt-1 truncate max-w-[150px]">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="bg-blue-500/10 text-blue-400 text-[9px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider border border-blue-500/20">
+                                  {issue.category}
+                                </span>
+                                <span className={`text-[9px] px-2 py-0.5 rounded-md font-bold border ${
+                                  issue.status === "Resolved"
+                                    ? "bg-green-500/10 text-green-400 border-green-500/20"
+                                    : issue.status === "In Progress"
+                                    ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
+                                    : "bg-gray-500/10 text-gray-400 border-gray-500/20"
+                                }`}>
+                                  {issue.status}
+                                </span>
+                              </div>
+                              <div className="text-xs text-[#9CA3AF] mt-1 truncate">
                                 📍 {issue.location}
                               </div>
                             </div>
                           </div>
-
-                          <button
-                            onClick={() => handleUpvote(issue.docId || issue.id, issue.upvotes)}
-                            className="bg-[#1F2937] hover:bg-[#374151] border border-[#374151] text-white hover:text-blue-400 font-semibold px-2.5 py-1.5 rounded-lg text-xs transition duration-200 flex items-center gap-1 shrink-0 cursor-pointer"
-                          >
-                            <span>👍</span>
-                            <span>{issue.upvotes || 0}</span>
-                          </button>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    )}
+                    
                     <div className="mt-4">
-                      <Link to="/feed" className="text-blue-400 hover:text-blue-300 text-xs font-semibold">
-                        View Full Feed →
-                      </Link>
+                      <button
+                        onClick={() => setActiveTab("track")}
+                        className="text-blue-400 hover:text-blue-300 text-xs font-semibold cursor-pointer"
+                      >
+                        View All My Reports →
+                      </button>
                     </div>
                   </div>
 
@@ -270,20 +314,16 @@ export default function CitizenDashboard() {
             )}
 
             {/* 3. TRACK MY REPORTS TAB */}
-            {activeTab === "Track My Reports" && (
+            {activeTab === "track" && (
               <div className="space-y-6">
                 <div>
                   <h1 className="text-2xl font-bold text-white">Track My Reports</h1>
-                  <p className="text-[#9CA3AF] text-sm mt-1">Monitor real-time progress on issues submitted by you</p>
                 </div>
 
                 {myIssues.length === 0 ? (
                   <div className="flex flex-col items-center justify-center bg-[#111827] border border-[#374151] rounded-2xl p-16 text-center">
                     <span className="text-5xl mb-3">📢</span>
-                    <h3 className="text-white font-bold text-lg">No issues reported yet</h3>
-                    <p className="text-[#9CA3AF] text-sm mt-1">
-                      Start by reporting your first civic issue
-                    </p>
+                    <h3 className="text-white font-bold text-lg">You haven't reported any issues yet</h3>
                     <button
                       onClick={() => setActiveTab("Report an Issue")}
                       className="mt-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl transition duration-200 text-sm shadow-md shadow-blue-500/10 cursor-pointer"
@@ -292,110 +332,123 @@ export default function CitizenDashboard() {
                     </button>
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-6">
                     {myIssues.map((issue) => (
                       <div
                         key={issue.docId || issue.id}
-                        className="bg-[#111827] rounded-2xl border border-[#374151] p-4 flex flex-col justify-between hover:border-blue-500/30 transition duration-200"
+                        className="bg-[#111827] rounded-2xl border border-[#374151] p-6 mb-6"
                       >
-                        <div className="flex flex-col md:flex-row gap-4 items-start justify-between">
-                          <div className="flex gap-4 items-start">
-                            <img
-                              src={issue.imagePreview}
-                              alt=""
-                              className="w-24 h-24 object-cover rounded-xl shrink-0 border border-[#374151]/50 bg-gray-900"
-                            />
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="bg-blue-500/10 text-blue-400 text-[10px] px-2 py-0.5 rounded-md border border-blue-500/20 font-bold uppercase tracking-wider">
-                                  {issue.category}
-                                </span>
-                                <span className={getSeverityBadgeClass(issue.severity)}>
-                                  {issue.severity}
-                                </span>
-                              </div>
-                              <p className="line-clamp-2 text-sm text-white font-medium">{issue.description}</p>
-                              <div className="text-xs text-[#9CA3AF] flex items-center gap-1 mt-1">
-                                <span>📍</span>
-                                <span className="truncate max-w-[200px] sm:max-w-xs">{issue.location}</span>
-                              </div>
-                              <div className="text-xs text-[#6B7280]">Reported on {issue.date}</div>
-                            </div>
-                          </div>
-
-                          {/* Stepper */}
-                          <div className="flex items-center gap-1.5 self-center md:self-start bg-[#0A0F1E]/50 px-4 py-3 rounded-xl border border-[#374151]/40 shrink-0">
-                            <div className="flex flex-col items-center px-1">
-                              <div className="w-4.5 h-4.5 rounded-full bg-green-500 flex items-center justify-center text-white text-[9px] font-bold">
-                                ✓
-                              </div>
-                              <span className="text-[9px] font-bold text-green-400 mt-1">Reported</span>
-                            </div>
-                            
-                            <div className="w-6 h-0.5 bg-green-500"></div>
-
-                            <div className="flex flex-col items-center px-1">
-                              <div
-                                className={`w-4.5 h-4.5 rounded-full flex items-center justify-center text-white text-[9px] font-bold ${
-                                  issue.status === "In Progress" || issue.status === "Resolved"
-                                    ? "bg-green-500"
-                                    : "bg-[#1F2937] border border-[#374151]"
-                                }`}
-                              >
-                                {issue.status === "In Progress" || issue.status === "Resolved" ? "✓" : "2"}
-                              </div>
-                              <span
-                                className={`text-[9px] font-bold mt-1 ${
-                                  issue.status === "In Progress" || issue.status === "Resolved"
-                                    ? "text-green-400"
-                                    : "text-[#6B7280]"
-                                }`}
-                              >
-                                In Progress
+                        {/* TOP SECTION */}
+                        <div className="flex gap-4">
+                          <img
+                            src={issue.imagePreview}
+                            alt=""
+                            className="w-32 h-32 object-cover rounded-xl shrink-0 border border-[#374151]/50 bg-gray-900"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="bg-blue-500/10 text-blue-400 text-[10px] px-2 py-0.5 rounded-md border border-blue-500/20 font-bold uppercase tracking-wider">
+                                {issue.category}
+                              </span>
+                              <span className={getSeverityBadgeClass(issue.severity)}>
+                                {issue.severity}
                               </span>
                             </div>
-
-                            <div
-                              className={`w-6 h-0.5 ${
-                                issue.status === "Resolved" ? "bg-green-500" : "bg-[#1F2937]"
-                              }`}
-                            ></div>
-
-                            <div className="flex flex-col items-center px-1">
-                              <div
-                                className={`w-4.5 h-4.5 rounded-full flex items-center justify-center text-white text-[9px] font-bold ${
-                                  issue.status === "Resolved"
-                                    ? "bg-green-500"
-                                    : "bg-[#1F2937] border border-[#374151]"
-                                }`}
-                              >
-                                {issue.status === "Resolved" ? "✓" : "3"}
-                              </div>
-                              <span
-                                className={`text-[9px] font-bold mt-1 ${
-                                  issue.status === "Resolved" ? "text-green-400" : "text-[#6B7280]"
-                                }`}
-                              >
-                                Resolved
-                              </span>
-                            </div>
+                            <p className="text-white text-sm mt-2">{issue.description}</p>
+                            <div className="text-xs text-[#9CA3AF] mt-1">📍 {issue.location}</div>
+                            <div className="text-xs text-[#6B7280] mt-1">📅 Reported: {issue.date}</div>
                           </div>
                         </div>
 
-                        {issue.officerNote && (
-                          <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 mt-3 text-blue-300 text-xs leading-relaxed font-medium">
-                            📋 Department Update: {issue.officerNote}
+                        {/* PROGRESS TRACKER */}
+                        <div className="mt-4 flex items-center w-full max-w-xl bg-[#0A0F1E]/40 px-6 py-4 rounded-xl border border-[#374151]/30">
+                          {/* Step 1 */}
+                          <div className="flex flex-col items-center shrink-0">
+                            <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white font-bold shadow-lg shadow-green-500/20">
+                              ✓
+                            </div>
+                            <span className="text-xs font-semibold text-green-400 mt-2">✅ Reported</span>
+                          </div>
+
+                          {/* Line 1 */}
+                          <div className={`flex-1 h-0.5 mx-4 ${
+                            issue.status === "In Progress" || issue.status === "Resolved" ? "bg-yellow-500" : "bg-[#374151]"
+                          }`} />
+
+                          {/* Step 2 */}
+                          <div className="flex flex-col items-center shrink-0">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${
+                              issue.status === "In Progress" || issue.status === "Resolved" 
+                                ? "bg-yellow-500 shadow-lg shadow-yellow-500/20" 
+                                : "bg-[#1F2937] border border-[#374151] text-[#9CA3AF]"
+                            }`}>
+                              {issue.status === "In Progress" || issue.status === "Resolved" ? "✓" : "2"}
+                            </div>
+                            <span className={`text-xs font-semibold mt-2 ${
+                              issue.status === "In Progress" || issue.status === "Resolved" ? "text-yellow-400" : "text-[#9CA3AF]"
+                            }`}>
+                              🔄 In Progress
+                            </span>
+                          </div>
+
+                          {/* Line 2 */}
+                          <div className={`flex-1 h-0.5 mx-4 ${
+                            issue.status === "Resolved" ? "bg-green-500" : "bg-[#374151]"
+                          }`} />
+
+                          {/* Step 3 */}
+                          <div className="flex flex-col items-center shrink-0">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${
+                              issue.status === "Resolved" 
+                                ? "bg-green-500 shadow-lg shadow-green-500/20" 
+                                : "bg-[#1F2937] border border-[#374151] text-[#9CA3AF]"
+                            }`}>
+                              {issue.status === "Resolved" ? "✓" : "3"}
+                            </div>
+                            <span className={`text-xs font-semibold mt-2 ${
+                              issue.status === "Resolved" ? "text-green-400" : "text-[#9CA3AF]"
+                            }`}>
+                              ✅ Resolved
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* OFFICER UPDATE BOX */}
+                        {issue.officerNote ? (
+                          <div className="mt-4 bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
+                            <div className="text-blue-400 font-semibold text-sm">📋 Department Update</div>
+                            <div className="text-white text-sm mt-1">{issue.officerNote}</div>
+                            <div className="text-[#6B7280] text-xs mt-2">Updated by Municipal Officer</div>
+                          </div>
+                        ) : (
+                          <div className="mt-4 bg-[#1F2937] rounded-xl p-4 border border-[#374151]">
+                            <div className="text-[#9CA3AF] text-sm">⏳ Awaiting department response...</div>
                           </div>
                         )}
 
-                        <div className="mt-4 pt-3 border-t border-[#374151]/50 flex items-center justify-between text-xs">
-                          <span className="text-amber-400 font-semibold">
-                            ⏳ Est. Resolution: {issue.estimated_resolution_days || 7} days
-                          </span>
-                          <div className="flex items-center gap-1 text-[#9CA3AF] font-medium">
-                            <span>👍 {issue.upvotes || 0} Upvotes</span>
+                        {/* WORK PROOF PHOTOS */}
+                        {issue.workPhotos && issue.workPhotos.length > 0 && (
+                          <div className="mt-4">
+                            <div className="text-sm text-[#9CA3AF] mb-2">Work Progress Photos</div>
+                            <div className="flex gap-2 flex-wrap">
+                              {issue.workPhotos.map((photoUrl, idx) => (
+                                <img
+                                  key={idx}
+                                  src={photoUrl}
+                                  alt={`Work progress ${idx + 1}`}
+                                  className="w-24 h-24 object-cover rounded-lg border border-[#374151]/50 bg-gray-900"
+                                />
+                              ))}
+                            </div>
                           </div>
-                        </div>
+                        )}
+
+                        {/* EST. RESOLUTION */}
+                        {(issue.estimatedDays !== undefined && issue.estimatedDays !== null) && (
+                          <div className="mt-3 bg-amber-500/10 border border-amber-500/20 rounded-lg px-4 py-2 inline-flex items-center gap-2">
+                            <span className="text-amber-400 text-sm">⏱️ Estimated Resolution: {issue.estimatedDays} days</span>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -455,6 +508,101 @@ export default function CitizenDashboard() {
                     </button>
                   </form>
                 </div>
+              </div>
+            )}
+
+            {activeTab === "community" && (
+              <div className="space-y-6">
+                <div>
+                  <h1 className="text-2xl font-bold text-white">Community Issues Feed</h1>
+                  <p className="text-[#9CA3AF] text-sm mt-1">See what your neighbors are reporting</p>
+                </div>
+
+                {/* Filter Bar */}
+                <div className="flex gap-3 flex-wrap mt-4">
+                  {["All", "Pothole", "Water Leak", "Broken Streetlight", "Garbage Dumping", "Pending", "Resolved"].map((filter) => {
+                    const isActive = communityFilter === filter;
+                    return (
+                      <button
+                        key={filter}
+                        onClick={() => setCommunityFilter(filter)}
+                        className={
+                          isActive
+                            ? "bg-blue-600 text-white rounded-lg px-4 py-2 text-sm font-semibold transition cursor-pointer shadow-md shadow-blue-500/10"
+                            : "bg-[#111827] border border-[#374151] text-[#9CA3AF] hover:text-white rounded-lg px-4 py-2 text-sm transition cursor-pointer"
+                        }
+                      >
+                        {filter}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Issues Grid */}
+                {filteredCommunityIssues.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center bg-[#111827] border border-[#374151] rounded-2xl p-16 text-center mt-6">
+                    <span className="text-5xl mb-3">🗃️</span>
+                    <h3 className="text-white font-bold text-lg">No community issues yet</h3>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-4 mt-6">
+                    {filteredCommunityIssues.map((issue) => (
+                      <div
+                        key={issue.docId || issue.id}
+                        className="bg-[#111827] rounded-2xl border border-[#374151] overflow-hidden hover:border-blue-500/50 transition flex flex-col justify-between"
+                      >
+                        {/* Card Image */}
+                        <img
+                          src={issue.imagePreview}
+                          alt=""
+                          className="h-40 w-full object-cover bg-gray-900 border-b border-[#374151]/50"
+                        />
+
+                        {/* Card Body */}
+                        <div className="p-4 flex-1 flex flex-col justify-between">
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="bg-blue-500/10 text-blue-400 text-[10px] px-2 py-0.5 rounded-md border border-blue-500/20 font-bold uppercase tracking-wider">
+                                {issue.category}
+                              </span>
+                              <span className={getSeverityBadgeClass(issue.severity)}>
+                                {issue.severity}
+                              </span>
+                            </div>
+                            <p className="text-white text-sm line-clamp-2 mt-1 font-medium leading-relaxed">
+                              {issue.description}
+                            </p>
+                            <div className="text-xs text-[#9CA3AF] mt-2 flex items-center gap-1">
+                              <span>📍</span>
+                              <span className="truncate">{issue.location}</span>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 pt-3 border-t border-[#374151]/50">
+                            {/* Bottom Row */}
+                            <div className="flex items-center justify-between">
+                              <span className={`text-[10px] px-2 py-0.5 rounded-md border font-bold uppercase ${
+                                issue.status === "Resolved"
+                                  ? "bg-green-500/10 text-green-400 border-green-500/20"
+                                  : issue.status === "In Progress"
+                                  ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
+                                  : "bg-gray-500/10 text-gray-400 border-gray-500/20"
+                              }`}>
+                                {issue.status}
+                              </span>
+                              <span className="text-[#9CA3AF] text-xs font-semibold flex items-center gap-1">
+                                👍 {issue.upvotes || 0}
+                              </span>
+                            </div>
+                            <div className="text-xs text-[#6B7280] mt-2">
+                              Reported on {issue.date}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </>
