@@ -82,26 +82,27 @@ export default function OfficerDashboard() {
       return;
     }
     const docId = issue.docId;
+    const estimatedDays = estDays;
     try {
       await updateDoc(doc(db, "issues", docId), {
-        estimatedDays: Number(estDays),
+        estimatedDays: Number(estimatedDays),
         resolutionPlan: resolutionPlan,
       });
 
       // Notification
       createInAppNotification(
         issue.id,
-        `Officer has set ${estDays} days for resolution of your ${issue.category} issue`,
+        `Officer has set ${estimatedDays} days for resolution of your ${issue.category} issue`,
         "progress"
       );
 
       await sendStatusNotification({
         citizenEmail: issue.userEmail,
-        citizenName: issue.reporter,
+        citizenName: issue.reporterName || 'Citizen',
         location: issue.location,
-        status: "Under Review - Resolution Planned",
-        officerNote: `Resolution Plan: ${resolutionPlan} (Est: ${estDays} days)`,
-        category: issue.category,
+        status: 'Resolution Planned',
+        officerNote: `Officer has reviewed your ${issue.category} issue. Estimated resolution time: ${estimatedDays} days. Plan: ${resolutionPlan}`,
+        category: issue.category
       });
 
       showToast("Citizen notified!");
@@ -118,26 +119,27 @@ export default function OfficerDashboard() {
       return;
     }
     const docId = issue.docId;
+    const selectedReason = cannotResolveReason;
     try {
       await updateDoc(doc(db, "issues", docId), {
-        cannotResolveReason: cannotResolveReason,
+        cannotResolveReason: selectedReason,
         cannotResolveDetails: cannotResolveDetails,
       });
 
       // Notification
       createInAppNotification(
         issue.id,
-        `Update on your ${issue.category} issue: ${cannotResolveReason}`,
+        `Update on your ${issue.category} issue: ${selectedReason}`,
         "delayed"
       );
 
       await sendStatusNotification({
         citizenEmail: issue.userEmail,
-        citizenName: issue.reporter,
+        citizenName: issue.reporterName || 'Citizen',
         location: issue.location,
-        status: `Delayed - ${cannotResolveReason}`,
-        officerNote: `Details: ${cannotResolveDetails}`,
-        category: issue.category,
+        status: 'Delayed',
+        officerNote: `Unfortunately your ${issue.category} issue cannot be resolved right now. Reason: ${selectedReason}. Details: ${cannotResolveDetails}`,
+        category: issue.category
       });
 
       showToast("Citizen notified!");
