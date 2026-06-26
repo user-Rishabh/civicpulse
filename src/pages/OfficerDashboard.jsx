@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { collection, onSnapshot, doc, updateDoc } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
+import { verifyInProgressImage, verifyResolvedImage } from "../lib/gemini";
 
 export default function OfficerDashboard() {
   const { userProfile } = useAuth();
@@ -12,6 +13,9 @@ export default function OfficerDashboard() {
   const [notes, setNotes] = useState({});
   const [estResolutionTimes, setEstResolutionTimes] = useState({});
   const [warnings, setWarnings] = useState({});
+  const [verifyLoading, setVerifyLoading] = useState({});
+  const [verifyError, setVerifyError] = useState({});
+  const [verifySuccess, setVerifySuccess] = useState({});
 
   // Review submission state
   const [reviewTitle, setReviewTitle] = useState("");
@@ -127,30 +131,63 @@ export default function OfficerDashboard() {
     }
   };
 
-  const handleUploadPhoto = (docId, file, existingPhotos = []) => {
+  const handleUploadPhoto = (docId, file, existingPhotos = [], category = "Other") => {
     if (!file) return;
+    setVerifyLoading((prev) => ({ ...prev, [docId]: true }));
+    setVerifyError((prev) => ({ ...prev, [docId]: "" }));
+    setVerifySuccess((prev) => ({ ...prev, [docId]: "" }));
+
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onloadend = async () => {
-      const base64Data = reader.result;
+      const dataUrl = reader.result;
       try {
-        const updatedPhotos = [...existingPhotos, base64Data];
-        await updateDoc(doc(db, "issues", docId), {
-          workPhotos: updatedPhotos,
-        });
-        const stored = localStorage.getItem("civicpulse_issues");
-        if (stored) {
-          const issuesList = JSON.parse(stored);
-          const index = issuesList.findIndex(
-            (i) => i.docId === docId || String(i.id) === String(docId)
-          );
-          if (index !== -1) {
-            issuesList[index].workPhotos = updatedPhotos;
-            localStorage.setItem("civicpulse_issues", JSON.stringify(issuesList));
+        const mimeType = dataUrl.split(";")[0].split(":")[1];
+        const base64Data = dataUrl.split(",")[1];
+
+        let result;
+        if (existingPhotos.length === 0) {
+          result = await verifyInProgressImage(base64Data, mimeType, category);
+        } else {
+          result = await verifyResolvedImage(base64Data, mimeType, category);
+        }
+
+        if (result && result.is_verified) {
+          const updatedPhotos = [...existingPhotos, dataUrl];
+          await updateDoc(doc(db, "issues", docId), {
+            workPhotos: updatedPhotos,
+          });
+
+          setVerifySuccess((prev) => ({
+            ...prev,
+            [docId]: result.reason || "Gemini Approved! Photo uploaded.",
+          }));
+
+          const stored = localStorage.getItem("civicpulse_issues");
+          if (stored) {
+            const issuesList = JSON.parse(stored);
+            const index = issuesList.findIndex(
+              (i) => i.docId === docId || String(i.id) === String(docId)
+            );
+            if (index !== -1) {
+              issuesList[index].workPhotos = updatedPhotos;
+              localStorage.setItem("civicpulse_issues", JSON.stringify(issuesList));
+            }
           }
+        } else {
+          setVerifyError((prev) => ({
+            ...prev,
+            [docId]: result?.reason || "AI Verification failed.",
+          }));
         }
       } catch (err) {
         console.error("Failed to upload progress photo:", err);
+        setVerifyError((prev) => ({
+          ...prev,
+          [docId]: err.message || "Failed to process image.",
+        }));
+      } finally {
+        setVerifyLoading((prev) => ({ ...prev, [docId]: false }));
       }
     };
   };
@@ -251,7 +288,7 @@ export default function OfficerDashboard() {
   const tabs = [
     { id: "Dashboard", label: "Dashboard", icon: "📊" },
     { id: "analyze", label: "Analyze Reports", icon: "📋" },
-    { id: "Submit Review", label: "Submit Review", icon: "✅" }
+    { id: "submit", label: "Submit Review", icon: "✅" }
   ];
 
   return (
@@ -370,9 +407,8 @@ export default function OfficerDashboard() {
               </div>
             )}
 
-            {/* 2. ANALYZE REPORTS TAB */}
             {activeTab === "analyze" && (
-              <div className="space-y-6">
+              <div className="max-w-4xl mx-auto space-y-6">
                 <div>
                   <h1 className="text-2xl font-bold text-white">Analyze Assigned Reports</h1>
                   <p className="text-[#9CA3AF] text-sm mt-1">View, track, and update all issues assigned to {officerDepartment}</p>
@@ -411,96 +447,115 @@ export default function OfficerDashboard() {
                         key={issue.docId || issue.id}
                         className="bg-[#111827] rounded-2xl border border-[#374151] p-5 mb-5 hover:border-blue-500/20 transition duration-200"
                       >
-                        {/* TOP ROW */}
+                        {/* TOP ROW: image (w-24 h-24) + details side by side */}
                         <div className="flex gap-4">
                           <img
                             src={issue.imagePreview}
                             alt=""
-                            className="w-28 h-28 object-cover rounded-xl shrink-0 border border-[#374151]/50 bg-gray-900"
+                            className="w-24 h-24 object-cover rounded-xl shrink-0 border border-[#374151]/50 bg-gray-900"
                           />
                           <div className="flex-1 min-w-0 space-y-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="bg-blue-500/10 text-blue-400 text-[10px] px-2 py-0.5 rounded-md border border-blue-500/20 font-bold uppercase tracking-wider">
-                                {issue.category}
-                              </span>
-                              <span className={getSeverityBadgeClass(issue.severity)}>
-                                {issue.severity}
-                              </span>
+                            <div className="flex items-center justify-between flex-wrap gap-2">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="bg-blue-500/10 text-blue-400 text-[10px] px-2 py-0.5 rounded-md border border-blue-500/20 font-bold uppercase tracking-wider">
+                                  {issue.category}
+                                </span>
+                                <span className={getSeverityBadgeClass(issue.severity)}>
+                                  {issue.severity}
+                                </span>
+                              </div>
+                              {/* Mark Critical button: smaller, right aligned */}
+                              {issue.severity !== "Critical" && (
+                                <button
+                                  onClick={() => handleMarkCritical(issue.docId)}
+                                  className="border border-red-500/50 text-red-400 hover:bg-red-500/10 rounded-lg px-2.5 py-1 text-xs font-semibold transition cursor-pointer"
+                                >
+                                  🚨 Mark Critical
+                                </button>
+                              )}
                             </div>
-                            <p className="text-white text-sm mt-1">{issue.description}</p>
-                            <div className="text-xs text-[#9CA3AF]">📍 {issue.location}</div>
-                            <div className="text-xs text-[#6B7280]">👤 Reporter: {issue.userEmail || "Anonymous"}</div>
-                            <div className="text-xs text-[#6B7280]">📅 Reported: {issue.date}</div>
-                          </div>
-                        </div>
-
-                        {/* STATUS DROPDOWN */}
-                        <div className="mt-3">
-                          <label className="text-[#9CA3AF] text-xs font-semibold block mb-1">Status</label>
-                          <select
-                            value={issue.status}
-                            onChange={(e) => handleStatusChange(issue.docId, e.target.value, issue.workPhotos || [])}
-                            className={`bg-[#1F2937] border rounded-lg px-3 py-2 text-white text-sm focus:outline-none transition cursor-pointer w-full md:w-48 ${getStatusBorderClass(
-                              issue.status
-                            )}`}
-                          >
-                            <option value="Pending">Pending</option>
-                            <option value="In Progress">In Progress</option>
-                            <option value="Resolved">Resolved</option>
-                          </select>
-                          {warnings[issue.docId] && (
-                            <p className="text-red-500 text-xs mt-1 font-semibold">⚠️ {warnings[issue.docId]}</p>
-                          )}
-                        </div>
-
-                        {/* ESTIMATED TIME INPUT */}
-                        <div className="mt-3">
-                          <label className="text-[#9CA3AF] text-xs font-semibold block mb-1">⏱️ Set Estimated Resolution Time</label>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="number"
-                              placeholder="e.g. 7"
-                              value={estResolutionTimes[issue.docId] !== undefined ? estResolutionTimes[issue.docId] : (issue.estimatedDays || "")}
-                              onChange={(e) => handleEstimatedDaysChange(issue.docId, e.target.value)}
-                              className="bg-[#1F2937] border border-[#374151] rounded-xl px-4 py-2 text-white w-32 text-sm focus:border-blue-500 focus:outline-none transition"
-                            />
-                            <span className="text-[#9CA3AF] text-sm">days</span>
-                            <button
-                              onClick={() => handleUpdateEstimatedDays(issue.docId)}
-                              className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-xl transition cursor-pointer h-[38px] flex items-center justify-center"
-                            >
-                              Update
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* OFFICER NOTE */}
-                        <div className="mt-3">
-                          <label className="text-[#9CA3AF] text-xs font-semibold block mb-1">📋 Department Updates</label>
-                          {issue.officerNote && (
-                            <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-blue-300 text-xs mb-2 leading-relaxed font-medium">
-                              {issue.officerNote}
+                            <p className="text-white text-sm font-medium leading-relaxed">{issue.description}</p>
+                            <div className="flex items-center gap-3 text-xs text-[#9CA3AF] flex-wrap">
+                              <span>📍 {issue.location}</span>
+                              <span className="text-[#6B7280]">👤 Reporter: {issue.userEmail || "Anonymous"}</span>
+                              <span className="text-[#6B7280]">📅 {issue.date}</span>
                             </div>
-                          )}
-                          <div className="flex flex-col sm:flex-row gap-3 items-end">
-                            <textarea
-                              placeholder="Add update note for citizen..."
-                              value={notes[issue.docId] || ""}
-                              onChange={(e) => handleNoteChange(issue.docId, e.target.value)}
-                              rows={2}
-                              className="bg-[#1F2937] border border-[#374151] rounded-xl px-4 py-2 text-white text-sm w-full focus:border-blue-500 focus:outline-none transition resize-none leading-relaxed"
-                            />
-                            <button
-                              onClick={() => handlePostNote(issue.docId)}
-                              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-xl text-xs transition duration-200 shrink-0 cursor-pointer w-full sm:w-auto h-[38px] flex items-center justify-center"
-                            >
-                              Post Update
-                            </button>
                           </div>
                         </div>
 
-                        {/* WORK PHOTO UPLOAD */}
-                        <div className="mt-3">
+                        {/* 2 column grid for controls */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4 pt-4 border-t border-[#374151]/30">
+                          {/* LEFT col: Status dropdown + Estimated days */}
+                          <div className="space-y-4">
+                            <div>
+                              <label className="text-[#9CA3AF] text-xs font-semibold block mb-1">Status</label>
+                              <select
+                                value={issue.status}
+                                onChange={(e) => handleStatusChange(issue.docId, e.target.value, issue.workPhotos || [])}
+                                className={`bg-[#1F2937] border rounded-lg px-3 py-2 text-white text-sm focus:outline-none transition cursor-pointer w-full ${getStatusBorderClass(
+                                  issue.status
+                                )}`}
+                              >
+                                <option value="Pending">Pending</option>
+                                <option value="In Progress">In Progress</option>
+                                <option value="Resolved">Resolved</option>
+                              </select>
+                              {warnings[issue.docId] && (
+                                <p className="text-red-500 text-xs mt-1 font-semibold">⚠️ {warnings[issue.docId]}</p>
+                              )}
+                            </div>
+
+                            <div>
+                              <label className="text-[#9CA3AF] text-xs font-semibold block mb-1">⏱️ Set Estimated Resolution Time</label>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="number"
+                                  placeholder="e.g. 7"
+                                  value={estResolutionTimes[issue.docId] !== undefined ? estResolutionTimes[issue.docId] : (issue.estimatedDays || "")}
+                                  onChange={(e) => handleEstimatedDaysChange(issue.docId, e.target.value)}
+                                  className="bg-[#1F2937] border border-[#374151] rounded-xl px-4 py-2 text-white w-28 text-sm focus:border-blue-500 focus:outline-none transition"
+                                />
+                                <span className="text-[#9CA3AF] text-xs">days</span>
+                                <button
+                                  onClick={() => handleUpdateEstimatedDays(issue.docId)}
+                                  className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-2 rounded-xl transition cursor-pointer h-[36px] flex items-center justify-center shrink-0"
+                                >
+                                  Update
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* RIGHT col: Officer note textarea + Post Update button */}
+                          <div className="flex flex-col justify-between">
+                            <div>
+                              <label className="text-[#9CA3AF] text-xs font-semibold block mb-1">📋 Department Updates</label>
+                              {issue.officerNote && (
+                                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-2.5 text-blue-300 text-xs mb-2 leading-relaxed font-medium">
+                                  {issue.officerNote}
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex flex-col gap-2">
+                              <textarea
+                                placeholder="Add update note for citizen..."
+                                value={notes[issue.docId] || ""}
+                                onChange={(e) => handleNoteChange(issue.docId, e.target.value)}
+                                rows={2}
+                                className="bg-[#1F2937] border border-[#374151] rounded-xl px-3 py-2 text-white text-sm w-full focus:border-blue-500 focus:outline-none transition resize-none leading-relaxed"
+                              />
+                              <button
+                                onClick={() => handlePostNote(issue.docId)}
+                                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-xl text-xs transition duration-200 cursor-pointer w-full h-[36px] flex items-center justify-center"
+                              >
+                                Post Update
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* WORK PHOTO UPLOAD: full width below, smaller dashed area p-3 */}
+                        <div className="mt-4 pt-4 border-t border-[#374151]/30">
                           <label className="text-[#9CA3AF] text-xs font-semibold block mb-1">📸 Upload Work Progress Photo</label>
                           
                           {/* Hidden File Input */}
@@ -508,19 +563,40 @@ export default function OfficerDashboard() {
                             type="file"
                             id={`file-upload-${issue.docId}`}
                             accept="image/*"
-                            onChange={(e) => handleUploadPhoto(issue.docId, e.target.files[0], issue.workPhotos || [])}
+                            onChange={(e) => handleUploadPhoto(issue.docId, e.target.files[0], issue.workPhotos || [], issue.category)}
                             className="hidden"
                           />
 
-                          {/* Custom Upload Area */}
+                          {/* Custom Upload Area: smaller dashed area p-3 */}
                           <div
-                            onClick={() => document.getElementById(`file-upload-${issue.docId}`).click()}
-                            className="border-dashed border border-[#374151] hover:border-blue-500/50 rounded-xl p-4 text-center cursor-pointer bg-[#1F2937]/30 transition duration-200"
+                            onClick={() => !verifyLoading[issue.docId] && document.getElementById(`file-upload-${issue.docId}`).click()}
+                            className={`border-dashed border border-[#374151] hover:border-blue-500/50 rounded-xl p-3 text-center bg-[#1F2937]/30 transition duration-200 ${
+                              verifyLoading[issue.docId] ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+                            }`}
                           >
-                            <span className="text-[#9CA3AF] text-sm">Click to upload work photo</span>
+                            <span className="text-[#9CA3AF] text-xs">
+                              {verifyLoading[issue.docId] ? "Verifying..." : "Click to upload work photo"}
+                            </span>
                           </div>
 
-                          {/* Thumbnail Gallery */}
+                          {/* Gemini Verification States */}
+                          {verifyLoading[issue.docId] && (
+                            <div className="text-blue-400 text-xs font-semibold animate-pulse mt-2 text-center">
+                              ✨ Gemini AI verifying photo...
+                            </div>
+                          )}
+                          {verifyError[issue.docId] && (
+                            <div className="text-red-400 text-xs font-semibold mt-2 text-center">
+                              ❌ Gemini Refused: {verifyError[issue.docId]}
+                            </div>
+                          )}
+                          {verifySuccess[issue.docId] && (
+                            <div className="text-green-400 text-xs font-semibold mt-2 text-center">
+                              ✅ Gemini Approved: {verifySuccess[issue.docId]}
+                            </div>
+                          )}
+
+                          {/* Thumbnail Gallery: w-16 h-16 */}
                           {issue.workPhotos && issue.workPhotos.length > 0 && (
                             <div className="flex gap-2 mt-2 flex-wrap">
                               {issue.workPhotos.map((photo, idx) => (
@@ -528,24 +604,12 @@ export default function OfficerDashboard() {
                                   key={idx}
                                   src={photo}
                                   alt=""
-                                  className="w-20 h-20 object-cover rounded-lg border border-[#374151] bg-gray-900"
+                                  className="w-16 h-16 object-cover rounded-lg border border-[#374151] bg-gray-900"
                                 />
                               ))}
                             </div>
                           )}
                         </div>
-
-                        {/* PRIORITY FLAG */}
-                        {issue.severity !== "Critical" && (
-                          <div className="mt-3 pt-1">
-                            <button
-                              onClick={() => handleMarkCritical(issue.docId)}
-                              className="border border-red-500/50 text-red-400 hover:bg-red-500/10 rounded-lg px-4 py-2 text-sm font-semibold transition cursor-pointer"
-                            >
-                              🚨 Mark as Critical Priority
-                            </button>
-                          </div>
-                        )}
                       </div>
                     ))
                   )}
@@ -554,73 +618,158 @@ export default function OfficerDashboard() {
             )}
 
             {/* 3. SUBMIT REVIEW TAB */}
-            {activeTab === "Submit Review" && (
-              <div className="max-w-2xl mx-auto space-y-6">
+            {activeTab === "submit" && (
+              <div className="max-w-4xl mx-auto space-y-6">
                 <div>
-                  <h1 className="text-2xl font-bold text-white">Submit Review</h1>
-                  <p className="text-[#9CA3AF] text-sm mt-1">Submit audit reports or review notes for higher municipal authorities</p>
+                  <h1 className="text-2xl font-bold text-white">Submit Work Review</h1>
+                  <p className="text-[#9CA3AF] text-sm mt-1">Upload proof photos to update issue progress</p>
                 </div>
 
-                <div className="bg-[#111827] border border-[#374151] rounded-2xl p-8 shadow-2xl">
-                  {reviewSuccess && (
-                    <div className="bg-green-500/10 border border-green-500/30 text-green-400 text-sm rounded-xl p-4 mb-6 font-medium text-center">
-                      ✅ Review submitted successfully!
+                {/* Issues List */}
+                <div className="space-y-4">
+                  {issues.filter(i => i.status === "In Progress" || i.status === "Resolved").length === 0 ? (
+                    <div className="flex flex-col items-center justify-center bg-[#111827] border border-[#374151] rounded-2xl p-16 text-center">
+                      <span className="text-5xl mb-4">🔍</span>
+                      <h3 className="text-white font-bold text-lg">No active issues to review</h3>
+                      <p className="text-[#9CA3AF] text-sm mt-1">
+                        Issues in progress or resolved will appear here for progress photo verification
+                      </p>
                     </div>
+                  ) : (
+                    issues
+                      .filter(i => i.status === "In Progress" || i.status === "Resolved")
+                      .map((issue) => {
+                        const workPhotos = issue.workPhotos || [];
+                        return (
+                          <div
+                            key={issue.docId || issue.id}
+                            className="bg-[#111827] rounded-2xl border border-[#374151] p-5 mb-4 hover:border-blue-500/20 transition duration-200"
+                          >
+                            {/* Issue Header Info */}
+                            <div className="flex gap-4">
+                              <img
+                                src={issue.imagePreview}
+                                alt=""
+                                className="w-24 h-24 object-cover rounded-xl shrink-0 border border-[#374151]/50 bg-gray-900"
+                              />
+                              <div className="flex-1 min-w-0 space-y-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="bg-blue-500/10 text-blue-400 text-[10px] px-2 py-0.5 rounded-md border border-blue-500/20 font-bold uppercase tracking-wider">
+                                    {issue.category}
+                                  </span>
+                                  <span className={`text-[10px] px-2 py-0.5 rounded-md border font-bold uppercase tracking-wider ${
+                                    issue.status === 'Resolved'
+                                      ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                                      : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+                                  }`}>
+                                    {issue.status}
+                                  </span>
+                                </div>
+                                <p className="text-white text-sm font-semibold mt-1 leading-relaxed">
+                                  {issue.description}
+                                </p>
+                                <p className="text-xs text-[#9CA3AF]">📍 {issue.location}</p>
+                              </div>
+                            </div>
+
+                            {/* WORK PHOTOS SECTION */}
+                            <div className="mt-4 pt-4 border-t border-[#374151]/30">
+                              <div className="flex justify-between items-center mb-2">
+                                <span className="text-sm text-[#9CA3AF]">
+                                  Progress Photos ({workPhotos.length}/2 uploaded)
+                                </span>
+                              </div>
+
+                              <div className="flex items-center gap-3 flex-wrap">
+                                {workPhotos.map((photo, idx) => (
+                                  <img
+                                    key={idx}
+                                    src={photo}
+                                    alt=""
+                                    className="w-20 h-20 rounded-lg object-cover border border-[#374151]"
+                                  />
+                                ))}
+                                {workPhotos.length < 2 && (
+                                  <>
+                                    <input
+                                      type="file"
+                                      id={`submit-upload-${issue.docId}`}
+                                      accept="image/*"
+                                      onChange={(e) => handleUploadPhoto(issue.docId, e.target.files[0], workPhotos, issue.category)}
+                                      className="hidden"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => !verifyLoading[issue.docId] && document.getElementById(`submit-upload-${issue.docId}`).click()}
+                                      className={`w-20 h-20 rounded-lg border border-dashed border-[#374151] flex flex-col items-center justify-center bg-[#1F2937]/20 transition duration-200 ${
+                                        verifyLoading[issue.docId]
+                                          ? "cursor-not-allowed opacity-50"
+                                          : "hover:border-blue-500/50 hover:bg-[#1F2937]/40 cursor-pointer"
+                                      }`}
+                                    >
+                                      <span className="text-lg font-bold">+</span>
+                                      <span className="text-[10px] font-semibold">
+                                        {verifyLoading[issue.docId] ? "Verifying" : "Upload"}
+                                      </span>
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+
+                              {/* Gemini Verification States */}
+                              {verifyLoading[issue.docId] && (
+                                <div className="text-blue-400 text-xs font-semibold animate-pulse mt-2">
+                                  ✨ Gemini AI verifying photo...
+                                </div>
+                              )}
+                              {verifyError[issue.docId] && (
+                                <div className="text-red-400 text-xs font-semibold mt-2">
+                                  ❌ Gemini Refused: {verifyError[issue.docId]}
+                                </div>
+                              )}
+                              {verifySuccess[issue.docId] && (
+                                <div className="text-green-400 text-xs font-semibold mt-2">
+                                  ✅ Gemini Approved: {verifySuccess[issue.docId]}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* COMPLETION STATUS & RESOLVE BUTTON */}
+                            <div className="flex items-center justify-between mt-4 pt-4 border-t border-[#374151]/30 flex-wrap gap-3">
+                              <div>
+                                {workPhotos.length === 0 && (
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20">
+                                    ⚠️ No proof uploaded
+                                  </span>
+                                )}
+                                {workPhotos.length === 1 && (
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+                                    🔄 Work Started - 1 photo uploaded
+                                  </span>
+                                )}
+                                {workPhotos.length >= 2 && (
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-500/10 text-green-400 border border-green-500/20">
+                                    ✅ Ready to mark Resolved
+                                  </span>
+                                )}
+                              </div>
+
+                              <button
+                                disabled={workPhotos.length < 2}
+                                onClick={() => handleStatusChange(issue.docId, "Resolved", workPhotos)}
+                                className={`px-4 py-2 rounded-xl text-xs font-semibold transition duration-200 cursor-pointer ${
+                                  workPhotos.length >= 2
+                                    ? "bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/10"
+                                    : "bg-[#1F2937] text-gray-500 border border-[#374151] cursor-not-allowed"
+                                }`}
+                              >
+                                Mark as Resolved ✅
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })
                   )}
-
-                  <form onSubmit={handleSubmitReview} className="space-y-5">
-                    <div>
-                      <label className="text-[#9CA3AF] text-sm font-medium mb-2 block">
-                        Review Subject
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={reviewTitle}
-                        onChange={(e) => setReviewTitle(e.target.value)}
-                        placeholder="e.g. Ward 4 Pothole Repair Audit"
-                        className="w-full bg-[#1F2937] border border-[#374151] rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none transition text-sm"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-[#9CA3AF] text-sm font-medium mb-2 block">
-                        Department
-                      </label>
-                      <select
-                        value={reviewDept}
-                        onChange={(e) => setReviewDept(e.target.value)}
-                        className="w-full bg-[#1F2937] border border-[#374151] rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none transition text-sm cursor-pointer"
-                      >
-                        <option value="BMC">BMC (Brihanmumbai Municipal Corporation)</option>
-                        <option value="MSEDCL">MSEDCL (Electricity Board)</option>
-                        <option value="NMMC">NMMC (Navi Mumbai Municipal Corp.)</option>
-                        <option value="PWD">PWD (Public Works Department)</option>
-                        <option value="Traffic Police">Traffic Police</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="text-[#9CA3AF] text-sm font-medium mb-2 block">
-                        Review Details / Notes
-                      </label>
-                      <textarea
-                        required
-                        rows={5}
-                        value={reviewDesc}
-                        onChange={(e) => setReviewDesc(e.target.value)}
-                        placeholder="Write detailed assessment reports or audit logs here..."
-                        className="w-full bg-[#1F2937] border border-[#374151] rounded-xl px-4 py-3 text-white focus:border-blue-500 focus:outline-none transition text-sm resize-none leading-relaxed"
-                      />
-                    </div>
-
-                    <button
-                      type="submit"
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 rounded-xl transition duration-200 text-sm shadow-lg shadow-blue-500/20 cursor-pointer"
-                    >
-                      Submit Review
-                    </button>
-                  </form>
                 </div>
               </div>
             )}
