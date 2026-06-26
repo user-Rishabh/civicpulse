@@ -9,7 +9,7 @@ import { motion } from "framer-motion";
 export default function Report({ onViewReports }) {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   
   // File and Analysis states
   const [file, setFile] = useState(null);
@@ -218,21 +218,22 @@ export default function Report({ onViewReports }) {
     setIsSaving(true);
     const id = Date.now();
     const newIssue = {
+      ...formData,
       id: id,
-      category: formData.category,
-      severity: formData.severity,
-      department: formData.department,
-      description: formData.description,
-      suggested_action: formData.suggested_action,
-      location: formData.location,
-      reporter: formData.reporter || "Anonymous",
-      imagePreview: preview,
-      status: "Pending",
-      upvotes: 0,
-      date: new Date().toISOString().split("T")[0],
-      estimated_resolution_days: Number(formData.estimated_resolution_days),
       userId: user.uid,
       userEmail: user.email,
+      reporterName: formData.reporter || userProfile?.name || "Anonymous",
+      reporter: formData.reporter || userProfile?.name || "Anonymous",
+      imagePreview: preview,
+      upvotes: 0,
+      status: "Pending",
+      createdAt: new Date().toISOString(),
+      date: new Date().toISOString().split("T")[0],
+      department: formData.department,
+      workPhotos: [],
+      officerNote: "",
+      estimatedDays: null,
+      estimated_resolution_days: Number(formData.estimated_resolution_days),
     };
 
     try {
