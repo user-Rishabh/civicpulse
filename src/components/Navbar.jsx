@@ -40,19 +40,7 @@ export default function Navbar() {
   const isActive = (path) => location.pathname === path;
 
   const getNavItems = () => {
-    if (!user) {
-      return [];
-    }
-
-    if (userProfile?.role === "officer") {
-      return [
-        { name: "Officer Panel", path: "/officer-dashboard" },
-      ];
-    } else {
-      return [
-        { name: "My Dashboard", path: "/citizen-dashboard" },
-      ];
-    }
+    return [];
   };
 
   const filteredNavItems = getNavItems();
