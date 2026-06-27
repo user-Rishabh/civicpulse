@@ -1728,7 +1728,7 @@ function UpvoteButton({ issue, onUpvote, isDark }) {
 }
 
 // Premium issue card with 3D tilt
-function CommunityIssueCard({ issue, onClick, onUpvote, isDark, textTheme, textMuted, textSubtle, getSeverityBadgeClass, index }) {
+function CommunityIssueCard({ issue, onClick, onUpvote, isDark, textTheme, textMuted, textSubtle, getSeverityBadgeClass, index, user, onVerifyClick }) {
   const cardRef = useRef(null);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const [hovered, setHovered] = useState(false);
@@ -1754,6 +1754,16 @@ function CommunityIssueCard({ issue, onClick, onUpvote, isDark, textTheme, textM
       if (frameRef.current) cancelAnimationFrame(frameRef.current);
     };
   }, []);
+
+  const isReporter = user && issue.userId === user.uid;
+  const alreadyVerified = issue.verifiedBy?.includes(user?.email);
+  const verificationsCount = issue.verificationCount || 0;
+  
+  // Calculate trust score
+  const trustScore = Math.min(100, Math.round((issue.aiConfidence || 85) + verificationsCount * 5));
+  const radius = 11;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (trustScore / 100) * circumference;
 
   return (
     <motion.div
@@ -1805,15 +1815,45 @@ function CommunityIssueCard({ issue, onClick, onUpvote, isDark, textTheme, textM
             className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent"
           />
         )}
+        
         {/* Overlay badges */}
-        <div className="absolute top-2 left-2 flex gap-1.5 flex-wrap">
+        <div className="absolute top-2 left-2 flex gap-1.5 flex-wrap z-20">
           <span className="bg-black/50 backdrop-blur-sm text-blue-300 text-[9px] px-2 py-0.5 rounded-full border border-blue-500/30 font-black uppercase">
             {issue.category}
           </span>
-          {issue.isCommunityVerified && (
-            <span className="bg-green-500/80 text-white text-[9px] px-2 py-0.5 rounded-full font-black">✅ Verified</span>
+          
+          {verificationsCount >= 3 && (
+            <div className="relative group/tooltip">
+              <motion.span 
+                animate={{
+                  boxShadow: ["0 0 4px rgba(16,185,129,0.3)", "0 0 14px rgba(16,185,129,0.7)", "0 0 4px rgba(16,185,129,0.3)"]
+                }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                className="bg-green-600/90 backdrop-blur-sm text-white text-[9px] px-2 py-0.5 rounded-full font-black flex items-center gap-1 cursor-help"
+              >
+                <span>✔</span>
+                <span>Community Verified</span>
+              </motion.span>
+
+              {/* Hover Tooltip */}
+              <div className="absolute top-full left-0 mt-1.5 hidden group-hover/tooltip:block bg-slate-950/90 border border-slate-700/50 backdrop-blur-xl text-white text-[9px] p-2 rounded-xl shadow-xl w-36 z-50 text-left font-semibold">
+                <div className="text-green-400 font-bold uppercase tracking-wide text-[7px] mb-1">Verified by</div>
+                {issue.verifiedBy && issue.verifiedBy.length > 0 ? (
+                  <div className="space-y-0.5">
+                    {issue.verifiedBy.map((email, idx) => (
+                      <div key={idx} className="truncate text-slate-300">
+                        • {email.split("@")[0]}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-slate-400">3 Nearby Citizens</div>
+                )}
+              </div>
+            </div>
           )}
         </div>
+        
         <div className="absolute top-2 right-2">
           <LiveStatusBadgeCommunity status={issue.status} />
         </div>
@@ -1840,10 +1880,79 @@ function CommunityIssueCard({ issue, onClick, onUpvote, isDark, textTheme, textM
           <span className="truncate font-semibold">{issue.location}</span>
         </div>
 
-        {/* Footer */}
-        <div className={`flex items-center justify-between pt-2.5 border-t ${isDark ? "border-slate-700/40" : "border-slate-100"} mt-auto`}>
-          <UpvoteButton issue={issue} onUpvote={onUpvote} isDark={isDark} />
-          <span className={`text-[10px] font-semibold ${isDark ? "text-slate-600" : "text-slate-400"}`}>
+        {/* Verification & Metrics Grid */}
+        <div className="grid grid-cols-5 gap-1 mt-1 border-t border-b py-2 border-slate-700/30 dark:border-white/5 text-[9px] font-bold text-center">
+          <div className="flex flex-col items-center">
+            <span className="text-xs">👍</span>
+            <span className={`mt-0.5 ${isDark ? "text-slate-300" : "text-slate-700"}`}>{issue.upvotes || 0}</span>
+            <span className="text-[7px] text-slate-500 font-medium">Support</span>
+          </div>
+          <div className="flex flex-col items-center">
+            <span className="text-xs">✔</span>
+            <span className={`mt-0.5 ${isDark ? "text-slate-300" : "text-slate-700"}`}>{verificationsCount}</span>
+            <span className="text-[7px] text-slate-500 font-medium">Verified</span>
+          </div>
+          <div className="flex flex-col items-center">
+            <span className="text-xs">🏛</span>
+            <span className={`mt-0.5 truncate max-w-full ${isDark ? "text-slate-300" : "text-slate-700"}`}>{issue.status || "Pending"}</span>
+            <span className="text-[7px] text-slate-500 font-medium">Status</span>
+          </div>
+          <div className="flex flex-col items-center">
+            <span className="text-xs">🚧</span>
+            <span className={`mt-0.5 ${isDark ? "text-slate-300" : "text-slate-700"}`}>{issue.severity || "Medium"}</span>
+            <span className="text-[7px] text-slate-500 font-medium">Priority</span>
+          </div>
+          <div className="flex flex-col items-center">
+            {/* Small circular progress */}
+            <div className="relative w-5 h-5 flex items-center justify-center">
+              <svg className="w-5 h-5 transform -rotate-90">
+                <circle cx="10" cy="10" r={radius} fill="none" stroke={isDark ? "#1F2937" : "#E2E8F0"} strokeWidth="2" />
+                <circle
+                  cx="10"
+                  cy="10"
+                  r={radius}
+                  fill="none"
+                  stroke="#10B981"
+                  strokeWidth="2"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={strokeDashoffset}
+                  strokeLinecap="round"
+                />
+              </svg>
+              <span className="absolute text-[7px] font-black text-emerald-400">{trustScore}%</span>
+            </div>
+            <span className="text-[7px] text-slate-500 font-medium mt-0.5">Trust</span>
+          </div>
+        </div>
+
+        {/* Footer Actions */}
+        <div className={`flex items-center justify-between gap-1 pt-2.5 mt-auto`}>
+          <div className="flex items-center gap-1.5">
+            <UpvoteButton issue={issue} onUpvote={onUpvote} isDark={isDark} />
+            
+            {user && !isReporter && issue.status !== "Resolved" && (
+              <motion.button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onVerifyClick(issue);
+                }}
+                whileHover={alreadyVerified ? {} : { scale: 1.05, boxShadow: "0 0 10px rgba(16,185,129,0.3)" }}
+                whileTap={alreadyVerified ? {} : { scale: 0.95 }}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full border text-[10px] font-black cursor-pointer transition-all ${
+                  alreadyVerified
+                    ? "bg-green-500/10 border-green-500/30 text-green-400 cursor-default pointer-events-none"
+                    : isDark
+                    ? "border-green-500/30 bg-green-500/5 text-green-400 hover:bg-green-500/15"
+                    : "border-green-400 bg-white text-green-600 hover:bg-green-50/50"
+                }`}
+              >
+                <span>✔</span>
+                <span>{alreadyVerified ? "Verified" : "Verify"}</span>
+              </motion.button>
+            )}
+          </div>
+          
+          <span className={`text-[9px] font-semibold ${isDark ? "text-slate-600" : "text-slate-400"}`}>
             {issue.date}
           </span>
         </div>
@@ -1940,7 +2049,6 @@ function TrendingCategories({ allIssues, isDark }) {
 function CommunityActivityTicker({ isDark }) {
   const activities = [
     "👍 Rahul supported a road damage report",
-    "📍 New citizen nearby reported same pothole",
     "🤖 AI merged 2 duplicate reports",
     "👷 Officer acknowledged streetlight complaint",
     "📸 Progress photo uploaded by department",
@@ -2066,7 +2174,7 @@ function PremiumCommunityFeed({
   selectedIssue, setSelectedIssue, handleUpvote,
   handleVerifyUpload, verifyLoading, verifyStatus,
   isDark, textTheme, textMuted, textSubtle, bgSurface, bgSurface2,
-  borderTheme, getSeverityBadgeClass, user, allIssues
+  borderTheme, getSeverityBadgeClass, user, allIssues, onVerifyClick
 }) {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-0">
@@ -2121,6 +2229,8 @@ function PremiumCommunityFeed({
                   textMuted={textMuted}
                   textSubtle={textSubtle}
                   getSeverityBadgeClass={getSeverityBadgeClass}
+                  user={user}
+                  onVerifyClick={onVerifyClick}
                 />
               ))}
             </div>
@@ -2302,6 +2412,10 @@ export default function CitizenDashboard() {
 
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [verifyStatus, setVerifyStatus] = useState(null);
+  const [verifyModalIssue, setVerifyModalIssue] = useState(null);
+  const [verifyStep, setVerifyStep] = useState("idle"); // idle, uploading, analyzing, comparing, gps, matching, success, error
+  const [verifyPhoto, setVerifyPhoto] = useState(null);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   const [communityIssues, setCommunityIssues] = useState([]);
 
@@ -2321,106 +2435,184 @@ export default function CitizenDashboard() {
     return () => unsub();
   }, []);
 
-  // Simulated real-time live activity notifications ticker
   const [liveToast, setLiveToast] = useState(null);
-  useEffect(() => {
-    const alerts = [
-      "🚧 AI verified pothole report near Bandra",
-      "⚡ Officer assigned to Dadar Water leak issue",
-      "✅ Issue resolved: Juhu Beach streetlight fixed",
-      "🔔 Citizen upvoted garbage dumping report in Ward 3"
-    ];
-    const ticker = setInterval(() => {
-      const alert = alerts[Math.floor(Math.random() * alerts.length)];
-      setLiveToast(alert);
-      setTimeout(() => setLiveToast(null), 3000);
-    }, 11000);
-    return () => clearInterval(ticker);
-  }, []);
 
   useEffect(() => {
     setVerifyStatus(null);
     setVerifyLoading(false);
-  }, [selectedIssue]);
+    setVerifyStep("idle");
+    setVerifyPhoto(null);
+    setShowConfetti(false);
+  }, [selectedIssue, verifyModalIssue]);
 
   const handleVerifyUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
+    const targetIssue = verifyModalIssue || selectedIssue;
+    if (!targetIssue) return;
+
     setVerifyLoading(true);
     setVerifyStatus(null);
+    setVerifyStep("uploading");
 
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onloadend = async () => {
       try {
         const dataUrl = reader.result;
+        setVerifyPhoto(dataUrl);
+
         const mimeType = dataUrl.split(";")[0].split(":")[1];
         const base64Data = dataUrl.split(",")[1];
 
-        const origUrl = selectedIssue.imagePreview;
+        const origUrl = targetIssue.imagePreview;
         if (!origUrl) {
           throw new Error("Original issue photo is missing.");
         }
         const origMimeType = origUrl.split(";")[0].split(":")[1];
         const origBase64 = origUrl.split(",")[1];
 
+        // 1. Analyze step
+        setVerifyStep("analyzing");
+        await new Promise(r => setTimeout(r, 1500));
+
+        // 2. Comparing step
+        setVerifyStep("comparing");
+        await new Promise(r => setTimeout(r, 1500));
+
         const comparison = await compareImagesForVerification(
           origBase64,
           origMimeType,
           base64Data,
           mimeType,
-          selectedIssue.category
+          targetIssue.category
         );
 
-        if (comparison.verified) {
-          setVerifyStatus({ success: true, reason: comparison.reason });
+        if (!comparison.verified) {
+          throw new Error(comparison.reason || "AI scene comparison check failed.");
+        }
 
+        // 3. GPS step
+        setVerifyStep("gps");
+        await new Promise(r => setTimeout(r, 1500));
+
+        // 4. Matching step
+        setVerifyStep("matching");
+        await new Promise(r => setTimeout(r, 1500));
+
+        const docId = targetIssue.docId || targetIssue.id;
+        const issueRef = doc(db, "issues", docId);
+        
+        const currentCount = targetIssue.verificationCount || 0;
+        const newCount = currentCount + 1;
+        const newVerifiedBy = [...(targetIssue.verifiedBy || []), user.email];
+        
+        const updates = {
+          verificationCount: newCount,
+          verifiedBy: arrayUnion(user.email)
+        };
+
+        if (newCount >= 3) {
+          updates.isCommunityVerified = true;
+          
           const bumpSeverity = (current) => {
             if (current === "Low") return "Medium";
             if (current === "Medium") return "High";
             return "Critical";
           };
-          const newSeverity = bumpSeverity(selectedIssue.severity);
-          const newCount = (selectedIssue.verificationCount || 0) + 1;
-
-          const issueRef = doc(db, "issues", selectedIssue.docId || selectedIssue.id);
-          await updateDoc(issueRef, {
-            isCommunityVerified: true,
-            verificationCount: newCount,
-            verifiedBy: arrayUnion(user.email),
-            severity: newSeverity
-          });
-
-          // Update points
-          const userRef = doc(db, "users", user.uid);
-          await updateDoc(userRef, {
-            points: (userProfile?.points || 0) + 200
-          });
-
-          // Create notification for officer
+          const newSeverity = bumpSeverity(targetIssue.severity);
+          updates.severity = newSeverity;
+          
           await addDoc(collection(db, "notifications"), {
             id: Date.now(),
-            issueId: selectedIssue.docId || selectedIssue.id,
-            message: `${newCount} citizens verified the ${selectedIssue.category} issue at ${selectedIssue.location}.`,
+            issueId: docId,
+            message: `🔥 Community Verified. Priority Increased. Verified by 3 Nearby Citizens at ${targetIssue.location}.`,
             type: "verification",
             read: false,
             createdAt: new Date().toISOString(),
             userEmail: "officer"
           });
-
-          // Fetch the updated issue to refresh modal view
-          const updatedDoc = await getDoc(issueRef);
-          if (updatedDoc.exists()) {
-            setSelectedIssue({ docId: updatedDoc.id, ...updatedDoc.data() });
-          }
-
         } else {
-          setVerifyStatus({ success: false, reason: comparison.reason });
+          await addDoc(collection(db, "notifications"), {
+            id: Date.now(),
+            issueId: docId,
+            message: `${newCount} citizens verified the ${targetIssue.category} issue at ${targetIssue.location}.`,
+            type: "verification",
+            read: false,
+            createdAt: new Date().toISOString(),
+            userEmail: "officer"
+          });
         }
+
+        await updateDoc(issueRef, updates);
+
+        setVerifyStatus({ success: true, reason: comparison.reason });
+        setVerifyStep("success");
+        setShowConfetti(true);
+
+        const userRef = doc(db, "users", user.uid);
+        await updateDoc(userRef, {
+          points: (userProfile?.points || 0) + 200
+        });
+
+        setLiveToast("✔ Thank you! Your verification helped increase community trust.");
+        setTimeout(() => setLiveToast(null), 4000);
+
+        setCommunityIssues(prev => 
+          prev.map(i => {
+            if (i.docId === docId || String(i.id) === String(docId)) {
+              return { 
+                ...i, 
+                verificationCount: newCount, 
+                verifiedBy: newVerifiedBy,
+                isCommunityVerified: newCount >= 3 ? true : (i.isCommunityVerified || false),
+                severity: newCount >= 3 ? updates.severity : i.severity
+              };
+            }
+            return i;
+          })
+        );
+
+        setIssues(prev => 
+          prev.map(i => {
+            if (i.docId === docId || String(i.id) === String(docId)) {
+              return { 
+                ...i, 
+                verificationCount: newCount, 
+                verifiedBy: newVerifiedBy,
+                isCommunityVerified: newCount >= 3 ? true : (i.isCommunityVerified || false),
+                severity: newCount >= 3 ? updates.severity : i.severity
+              };
+            }
+            return i;
+          })
+        );
+
+        if (selectedIssue && (selectedIssue.docId === docId || String(selectedIssue.id) === String(docId))) {
+          setSelectedIssue(prev => ({
+            ...prev,
+            verificationCount: newCount,
+            verifiedBy: newVerifiedBy,
+            isCommunityVerified: newCount >= 3 ? true : (prev.isCommunityVerified || false),
+            severity: newCount >= 3 ? updates.severity : prev.severity
+          }));
+        }
+
+        if (verifyModalIssue) {
+          setVerifyModalIssue(prev => ({
+            ...prev,
+            verificationCount: newCount,
+            verifiedBy: newVerifiedBy,
+            isCommunityVerified: newCount >= 3 ? true : (prev.isCommunityVerified || false),
+            severity: newCount >= 3 ? updates.severity : prev.severity
+          }));
+        }
+
       } catch (err) {
         console.error("Verification error:", err);
         setVerifyStatus({ success: false, reason: err.message || "Failed to analyze verification photo." });
+        setVerifyStep("error");
       } finally {
         setVerifyLoading(false);
       }
@@ -3289,6 +3481,10 @@ export default function CitizenDashboard() {
                 getSeverityBadgeClass={getSeverityBadgeClass}
                 user={user}
                 allIssues={communityIssues}
+                onVerifyClick={(issue) => {
+                  setVerifyModalIssue(issue);
+                  setVerifyStep("idle");
+                }}
               />
             )}
 
@@ -3335,6 +3531,248 @@ export default function CitizenDashboard() {
           </>
         )}
       </div>
+
+      {/* Community Verification Modal */}
+      <AnimatePresence>
+        {verifyModalIssue && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[9999] flex items-center justify-center p-4"
+            onClick={() => {
+              if (verifyStep === "idle" || verifyStep === "success" || verifyStep === "error") {
+                setVerifyModalIssue(null);
+              }
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 15 }}
+              transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              onClick={(e) => e.stopPropagation()}
+              className={`relative max-w-md w-full rounded-3xl border p-6 overflow-hidden ${
+                isDark ? "bg-[#111827]/90 border-white/10 text-white" : "bg-white border-slate-200 text-[#0F172A]"
+              } shadow-2xl backdrop-blur-2xl flex flex-col gap-4`}
+            >
+              
+              {/* Confetti Explosion Layer */}
+              {showConfetti && (
+                <div className="absolute inset-0 pointer-events-none overflow-hidden z-50 flex items-center justify-center">
+                  <div className="relative w-2 h-2">
+                    {Array.from({ length: 60 }).map((_, i) => {
+                      const color = ["#10B981", "#3B82F6", "#06B6D4", "#F59E0B", "#EF4444"][i % 5];
+                      const angle = (i / 60) * 2 * Math.PI;
+                      const distance = Math.random() * 180 + 40;
+                      const delay = Math.random() * 0.12;
+                      return (
+                        <motion.div
+                          key={i}
+                          initial={{ x: 0, y: 0, opacity: 1, scale: 1.5 }}
+                          animate={{
+                            x: Math.cos(angle) * distance,
+                            y: Math.sin(angle) * distance,
+                            opacity: 0,
+                            scale: 0.3
+                          }}
+                          transition={{ duration: 1.4, ease: "easeOut", delay }}
+                          className="absolute w-2.5 h-2.5 rounded-full"
+                          style={{ background: color }}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Close button */}
+              {(verifyStep === "idle" || verifyStep === "success" || verifyStep === "error") && (
+                <button
+                  onClick={() => setVerifyModalIssue(null)}
+                  className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center bg-white/5 border border-white/10 hover:bg-white/15 transition cursor-pointer text-white font-extrabold"
+                >
+                  ×
+                </button>
+              )}
+
+              {/* Header */}
+              <div className="text-left">
+                <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest block">Citizen Action Required</span>
+                <h3 className="text-lg font-black mt-1 flex items-center gap-1.5">
+                  <span>✔</span> Community Verification
+                </h3>
+              </div>
+
+              {/* Step: Idle (Initial details screen) */}
+              {verifyStep === "idle" && (
+                <div className="space-y-4 text-left">
+                  {/* Original image */}
+                  {verifyModalIssue.imagePreview && (
+                    <div className="relative h-44 rounded-2xl overflow-hidden border border-white/5 bg-slate-950/40">
+                      <img src={verifyModalIssue.imagePreview} alt="Original report" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                      <div className="absolute bottom-3 left-4">
+                        <span className="bg-black/60 backdrop-blur-md text-[9px] font-black text-blue-300 px-2 py-0.5 rounded-md border border-blue-500/30 uppercase">
+                          {verifyModalIssue.category}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Issue details list */}
+                  <div className={`p-4 rounded-2xl border text-xs space-y-2.5 ${isDark ? "bg-[#080D17]/80 border-white/5" : "bg-slate-50 border-slate-200"}`}>
+                    <div>
+                      <span className="text-slate-500 uppercase font-black text-[9px]">Issue</span>
+                      <div className="font-bold text-sm mt-0.5 line-clamp-1">{verifyModalIssue.description}</div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <span className="text-slate-500 uppercase font-black text-[9px]">Location</span>
+                        <div className="font-semibold mt-0.5 truncate">{verifyModalIssue.location.split(",")[0]}</div>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 uppercase font-black text-[9px]">Report Date</span>
+                        <div className="font-semibold mt-0.5">{verifyModalIssue.date || "Today"}</div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <span className="text-slate-500 uppercase font-black text-[9px]">Department</span>
+                        <div className="font-semibold mt-0.5 text-purple-400">🏛 {verifyModalIssue.department || "BMC Roads Div"}</div>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 uppercase font-black text-[9px]">Current Trust</span>
+                        <div className="font-semibold mt-0.5 text-emerald-400">
+                          {Math.min(100, Math.round((verifyModalIssue.aiConfidence || 85) + (verifyModalIssue.verificationCount || 0) * 5))}%
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Info alert box */}
+                  <div className="bg-blue-600/10 border border-blue-500/25 rounded-2xl p-3.5 flex items-start gap-2.5">
+                    <span className="text-lg">📢</span>
+                    <p className="text-[11px] leading-relaxed text-blue-300 font-semibold">
+                      "Visit the location and upload a recent photo confirming this issue still exists."
+                    </p>
+                  </div>
+
+                  {/* Image input buttons */}
+                  <div className="flex gap-3">
+                    <label className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold py-3.5 rounded-2xl text-xs cursor-pointer shadow-md shadow-blue-500/10 active:scale-95 transition-all">
+                      <span>📷</span>
+                      <span>Upload Photo</span>
+                      <input type="file" accept="image/*" className="hidden" onChange={handleVerifyUpload} />
+                    </label>
+                    <label className="flex-1 flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-extrabold py-3.5 rounded-2xl text-xs cursor-pointer active:scale-95 transition-all">
+                      <span>📸</span>
+                      <span>Take Photo</span>
+                      <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleVerifyUpload} />
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              {/* Step: Analyzing / Scanning (Interactive AI progress screen) */}
+              {(verifyStep !== "idle" && verifyStep !== "success" && verifyStep !== "error") && (
+                <div className="py-8 flex flex-col items-center justify-center gap-6">
+                  {/* Photo container with AI scanning beam animation */}
+                  <div className="relative w-36 h-36 rounded-2xl overflow-hidden border border-cyan-500/40 bg-slate-950 flex items-center justify-center">
+                    {verifyPhoto ? (
+                      <img src={verifyPhoto} alt="Verification" className="w-full h-full object-cover opacity-60" />
+                    ) : (
+                      <div className="animate-pulse text-2xl text-cyan-400">🤖</div>
+                    )}
+                    {/* Horizontal Scan Beam */}
+                    <motion.div
+                      animate={{ top: ["0%", "100%", "0%"] }}
+                      transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                      className="absolute inset-x-0 h-0.5 bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_8px_rgba(6,182,212,0.8)] z-10"
+                    />
+                  </div>
+
+                  {/* Current scanning phase message */}
+                  <div className="text-center space-y-2 w-full px-8">
+                    <span className="text-[10px] font-black text-cyan-400 uppercase tracking-widest block animate-pulse">
+                      Running Gemini Vision AI
+                    </span>
+                    <h4 className="text-sm font-black text-slate-100">
+                      {verifyStep === "uploading" && "Uploading verification photo..."}
+                      {verifyStep === "analyzing" && "Analyzing Image..."}
+                      {verifyStep === "comparing" && "Comparing Scene..."}
+                      {verifyStep === "gps" && "Checking GPS..."}
+                      {verifyStep === "matching" && "Matching Issue..."}
+                    </h4>
+
+                    {/* Progress indicator */}
+                    <div className="h-1.5 w-full rounded-full bg-slate-800 overflow-hidden relative border border-white/5">
+                      <motion.div
+                        animate={{
+                          width: 
+                            verifyStep === "uploading" ? "15%" :
+                            verifyStep === "analyzing" ? "40%" :
+                            verifyStep === "comparing" ? "65%" :
+                            verifyStep === "gps" ? "80%" : "95%"
+                        }}
+                        transition={{ duration: 0.8, ease: "easeOut" }}
+                        className="h-full bg-gradient-to-r from-blue-500 via-cyan-400 to-emerald-400 rounded-full"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Step: Success Screen */}
+              {verifyStep === "success" && (
+                <div className="py-6 flex flex-col items-center justify-center gap-4 text-center animate-fade-in">
+                  <div className="w-16 h-16 rounded-full bg-green-500/10 border border-green-500/30 flex items-center justify-center text-3xl animate-bounce">
+                    🎉
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-black text-green-400">Verification Successful!</h4>
+                    <p className="text-xs text-slate-400 mt-1 max-w-[280px] leading-relaxed font-semibold">
+                      {verifyStatus?.reason || "The upload was successfully cross-referenced with the original complaint."}
+                    </p>
+                  </div>
+                  <div className="bg-green-500/10 border border-green-500/25 rounded-2xl py-3.5 px-6 mt-2">
+                    <span className="text-[10px] font-black text-green-400 block uppercase tracking-wider">Rewards Earned</span>
+                    <span className="text-xl font-black text-white mt-1 block">+200 Points</span>
+                  </div>
+                  <button
+                    onClick={() => setVerifyModalIssue(null)}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white font-extrabold py-3.5 rounded-2xl text-xs mt-4 active:scale-95 transition-all shadow-md shadow-green-500/10 cursor-pointer"
+                  >
+                    Done
+                  </button>
+                </div>
+              )}
+
+              {/* Step: Error Screen */}
+              {verifyStep === "error" && (
+                <div className="py-6 flex flex-col items-center justify-center gap-4 text-center animate-fade-in">
+                  <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center text-3xl animate-pulse">
+                    ⚠️
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-black text-red-400">Verification Failed</h4>
+                    <p className="text-xs text-slate-400 mt-1 max-w-[280px] leading-relaxed font-semibold">
+                      {verifyStatus?.reason || "Verification image did not match the original issue."}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setVerifyStep("idle")}
+                    className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-extrabold py-3.5 rounded-2xl text-xs mt-4 active:scale-95 transition-all cursor-pointer"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              )}
+
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

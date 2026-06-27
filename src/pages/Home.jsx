@@ -782,7 +782,7 @@ const MOCK_ISSUES = [
 export default function Home() {
   const { user } = useAuth();
   const { isDark } = useTheme();
-  const [stats, setStats] = useState({ total: 428, resolved: 312 });
+  const [stats, setStats] = useState({ total: 428, resolved: 312, activeCitizens: 1250, resolutionTime: 1.8 });
   const [liveIssues, setLiveIssues] = useState(MOCK_ISSUES);
   
   // Sunrise city awakening sunlight sweep Easter Egg trigger
@@ -894,9 +894,31 @@ export default function Home() {
       const dbIssues = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       const totalDb = dbIssues.length;
       const resolvedDb = dbIssues.filter(i => (i.status || "").toLowerCase() === 'resolved').length;
+      
+      const uniqueUsers = new Set(dbIssues.map(i => i.userId).filter(Boolean));
+      const activeCitizensDb = uniqueUsers.size;
+      
+      let totalResolutionTimeMs = 0;
+      let resolvedCount = 0;
+      dbIssues.forEach(i => {
+        if ((i.status || "").toLowerCase() === 'resolved' && i.createdAt) {
+          const created = new Date(i.createdAt).getTime();
+          const resolvedTime = i.resolvedAt ? new Date(i.resolvedAt).getTime() : Date.now();
+          if (resolvedTime > created) {
+            totalResolutionTimeMs += (resolvedTime - created);
+            resolvedCount++;
+          }
+        }
+      });
+      const avgResolutionTimeDays = resolvedCount > 0 
+        ? parseFloat((totalResolutionTimeMs / (1000 * 60 * 60 * 24) / resolvedCount).toFixed(1))
+        : 1.8;
+
       setStats({
         total: 428 + totalDb,
-        resolved: 312 + resolvedDb
+        resolved: 312 + resolvedDb,
+        activeCitizens: 1250 + activeCitizensDb,
+        resolutionTime: avgResolutionTimeDays > 0 ? avgResolutionTimeDays : 1.8
       });
     }, (error) => {
       console.error("Failed to fetch real stats from Firestore, falling back to localStorage:", error);
@@ -906,8 +928,32 @@ export default function Home() {
           const issues = JSON.parse(stored);
           if (Array.isArray(issues)) {
             const totalVal = 428 + issues.length;
-            const resolvedVal = 312 + issues.filter(i => (i.status || "").toLowerCase() === 'resolved').length;
-            setStats({ total: totalVal, resolved: resolvedVal });
+            const resolvedIssues = issues.filter(i => (i.status || "").toLowerCase() === 'resolved');
+            const resolvedVal = 312 + resolvedIssues.length;
+            const uniqueUsers = new Set(issues.map(i => i.userId).filter(Boolean));
+            
+            let totalResolutionTimeMs = 0;
+            let resolvedCount = 0;
+            resolvedIssues.forEach(i => {
+              if (i.createdAt) {
+                const created = new Date(i.createdAt).getTime();
+                const resolvedTime = i.resolvedAt ? i.resolvedAt.seconds ? i.resolvedAt.seconds * 1000 : new Date(i.resolvedAt).getTime() : Date.now();
+                if (resolvedTime > created) {
+                  totalResolutionTimeMs += (resolvedTime - created);
+                  resolvedCount++;
+                }
+              }
+            });
+            const avgResolutionTimeDays = resolvedCount > 0
+              ? parseFloat((totalResolutionTimeMs / (1000 * 60 * 60 * 24) / resolvedCount).toFixed(1))
+              : 1.8;
+
+            setStats({
+              total: totalVal,
+              resolved: resolvedVal,
+              activeCitizens: 1250 + uniqueUsers.size,
+              resolutionTime: avgResolutionTimeDays > 0 ? avgResolutionTimeDays : 1.8
+            });
           }
         }
       } catch (e) {
@@ -1535,8 +1581,8 @@ export default function Home() {
           {[
             { value: stats.total, label: "Reports Submitted", suffix: "+", desc: "Verifiable reports filed", icon: <CameraIcon />, chartD: "M0,15 C20,10 40,25 60,8 C80,10 90,5 100,12" },
             { value: stats.resolved, label: "Issues Resolved", suffix: "", desc: "AI-verified resolutions", icon: <CheckCircleIcon />, chartD: "M0,18 C15,10 30,5 50,15 C70,12 85,2 100,5" },
-            { value: 1250, label: "Active Citizens", suffix: "+", desc: "Contributing to ward improvements", icon: <UsersIcon />, chartD: "M0,15 Q25,8 50,12 T100,2" },
-            { value: 1.8, label: "Resolution Time", suffix: " Days", decimals: 1, desc: "Average close-out delay", icon: <ClockIcon />, chartD: "M0,5 C30,15 70,5 100,18" }
+            { value: stats.activeCitizens, label: "Active Citizens", suffix: "+", desc: "Contributing to ward improvements", icon: <UsersIcon />, chartD: "M0,15 Q25,8 50,12 T100,2" },
+            { value: stats.resolutionTime, label: "Resolution Time", suffix: " Days", decimals: 1, desc: "Average close-out delay", icon: <ClockIcon />, chartD: "M0,5 C30,15 70,5 100,18" }
           ].map((stat, idx) => {
             const [bursts, setBursts] = useState([]);
             const triggerConfetti = () => {
