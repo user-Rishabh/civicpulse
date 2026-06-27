@@ -8,14 +8,24 @@ export default function CityHealthScore() {
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'issues'), (snap) => {
       setIssues(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, (error) => {
+      console.error("CityHealthScore Firestore read failed, falling back to localStorage:", error);
+      try {
+        const stored = localStorage.getItem("civicpulse_issues");
+        if (stored) {
+          setIssues(JSON.parse(stored));
+        }
+      } catch (err) {
+        console.error("Failed to parse localStorage issues:", err);
+      }
     });
     return () => unsubscribe();
   }, []);
 
   const total = issues.length;
-  const resolved = issues.filter(i => i.status === 'Resolved').length;
-  const critical = issues.filter(i => i.severity === 'Critical').length;
-  const pending = issues.filter(i => i.status === 'Pending').length;
+  const resolved = issues.filter(i => (i.status || "").toLowerCase() === 'resolved').length;
+  const critical = issues.filter(i => (i.severity || "").toLowerCase() === 'critical').length;
+  const pending = issues.filter(i => (i.status || "").toLowerCase() === 'pending').length;
 
   let score = 100;
   score -= pending * 3;

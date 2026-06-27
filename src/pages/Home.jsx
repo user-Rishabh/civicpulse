@@ -5,6 +5,8 @@ import { motion, AnimatePresence, useInView, useScroll, useSpring, useTransform,
 import { useTheme } from "../context/ThemeContext";
 import CityHealthScore from "../components/CityHealthScore";
 import IssueMap from "../components/IssueMap";
+import { collection, onSnapshot, query, limit } from "firebase/firestore";
+import { db } from "../lib/firebase";
 
 // Custom SVG Icons
 const ShieldCheckIcon = () => (
@@ -548,23 +550,76 @@ function WaveDivider() {
 
 // Floating Event Ticker Sidebar Panel
 function LiveSmartCityFeed() {
-  const events = [
+  const [events, setEvents] = useState([
     "📍 New pothole reported near Bandra West",
     "🚧 Water leakage detected at Dadar Market",
     "⚡ Streetlight repaired near Juhu Beach",
     "🚮 Garbage pile resolved in Ward 3",
     "🤖 AI assigned issue to BMC Roads Div",
     "✓ AI verified manhole cover resolution"
-  ];
+  ]);
   const [index, setIndex] = useState(0);
   const { isDark } = useTheme();
 
   useEffect(() => {
+    // Listen to real issues in Firestore
+    const q = query(collection(db, "issues"), limit(20));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const dbIssues = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      if (dbIssues.length > 0) {
+        // Construct real notifications
+        const realEvents = dbIssues.map(issue => {
+          const status = (issue.status || "").toLowerCase();
+          const category = issue.category || "Issue";
+          const location = issue.location || "Mumbai";
+          const shortLoc = location.split(",")[0].trim();
+          
+          if (status === "resolved") {
+            return `✅ ${category} resolved at ${shortLoc}`;
+          } else if (status === "in progress") {
+            return `⚡ ${category} repair in progress at ${shortLoc}`;
+          } else {
+            return `📍 New ${category} reported at ${shortLoc}`;
+          }
+        });
+        setEvents(realEvents);
+      }
+    }, (error) => {
+      console.error("Failed to fetch real telemetry from Firestore:", error);
+      // Fallback to local storage
+      try {
+        const stored = localStorage.getItem("civicpulse_issues");
+        if (stored) {
+          const issues = JSON.parse(stored);
+          if (Array.isArray(issues) && issues.length > 0) {
+            const localEvents = issues.map(issue => {
+              const status = (issue.status || "").toLowerCase();
+              const category = issue.category || "Issue";
+              const location = issue.location || "Mumbai";
+              const shortLoc = location.split(",")[0].trim();
+              if (status === "resolved") return `✅ ${category} resolved at ${shortLoc}`;
+              if (status === "in progress") return `⚡ ${category} repair in progress at ${shortLoc}`;
+              return `📍 New ${category} reported at ${shortLoc}`;
+            });
+            setEvents(localEvents);
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (events.length === 0) return;
     const timer = setInterval(() => {
       setIndex(prev => (prev + 1) % events.length);
     }, 7000);
     return () => clearInterval(timer);
-  }, []);
+  }, [events]);
 
   return (
     <div className="fixed bottom-6 left-6 z-[900] hidden sm:block">
@@ -835,19 +890,31 @@ export default function Home() {
   const lineTipTop = useTransform(lineScaleY, [0, 1], ["0%", "100%"]);
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem('civicpulse_issues');
-      if (stored) {
-        const issues = JSON.parse(stored);
-        if (Array.isArray(issues) && issues.length > 0) {
-          const totalVal = Math.max(428, 428 + issues.length);
-          const resolvedVal = Math.max(312, 312 + issues.filter(i => i.status === 'Resolved').length);
-          setStats({ total: totalVal, resolved: resolvedVal });
+    const unsubscribe = onSnapshot(collection(db, 'issues'), (snapshot) => {
+      const dbIssues = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const totalDb = dbIssues.length;
+      const resolvedDb = dbIssues.filter(i => (i.status || "").toLowerCase() === 'resolved').length;
+      setStats({
+        total: 428 + totalDb,
+        resolved: 312 + resolvedDb
+      });
+    }, (error) => {
+      console.error("Failed to fetch real stats from Firestore, falling back to localStorage:", error);
+      try {
+        const stored = localStorage.getItem('civicpulse_issues');
+        if (stored) {
+          const issues = JSON.parse(stored);
+          if (Array.isArray(issues)) {
+            const totalVal = 428 + issues.length;
+            const resolvedVal = 312 + issues.filter(i => (i.status || "").toLowerCase() === 'resolved').length;
+            setStats({ total: totalVal, resolved: resolvedVal });
+          }
         }
+      } catch (e) {
+        console.error("Failed to parse issues from localStorage:", e);
       }
-    } catch (e) {
-      console.error("Failed to parse issues from localStorage:", e);
-    }
+    });
+    return () => unsubscribe();
   }, []);
 
   const words = "Report Civic Issues. Create Real Change.".split(" ");
