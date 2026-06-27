@@ -1,12 +1,12 @@
 import { useEffect, useState, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link as RouterLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { motion, AnimatePresence, useInView, useScroll, useSpring, useTransform, useMotionValue } from "framer-motion";
 import { useTheme } from "../context/ThemeContext";
 import CityHealthScore from "../components/CityHealthScore";
 import IssueMap from "../components/IssueMap";
 
-// Reusable custom icons
+// Custom SVG Icons
 const ShieldCheckIcon = () => (
   <svg className="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
@@ -188,40 +188,141 @@ function Particles() {
   );
 }
 
-// Interactive Premium Glow Card supporting cursor-relative radial glow
+// Custom Cursor Trail Component
+function CustomCursor() {
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [cursorType, setCursorType] = useState("default"); // default, card, button, hero
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      setPosition({ x: e.clientX, y: e.clientY });
+    };
+
+    const handleMouseOver = (e) => {
+      const target = e.target;
+      if (!target) return;
+
+      const card = target.closest(".premium-glow-card, .glass-card");
+      const button = target.closest("a, button, [role='button']");
+      const heroIllustration = target.closest(".hero-illustration");
+
+      if (heroIllustration) {
+        setCursorType("hero");
+      } else if (button) {
+        setCursorType("button");
+      } else if (card) {
+        setCursorType("card");
+      } else {
+        setCursorType("default");
+      }
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseover", handleMouseOver);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseover", handleMouseOver);
+    };
+  }, []);
+
+  const springConfig = { stiffness: 450, damping: 25 };
+  const outerX = useSpring(position.x - 20, springConfig);
+  const outerY = useSpring(position.y - 20, springConfig);
+
+  return (
+    <>
+      {/* Inner Dot */}
+      <div
+        className="fixed top-0 left-0 w-2 h-2 rounded-full bg-blue-500 pointer-events-none z-[9999] -translate-x-1/2 -translate-y-1/2 hidden md:block"
+        style={{ left: position.x, top: position.y }}
+      />
+      {/* Outer Glow / Ring */}
+      <motion.div
+        className="fixed top-0 left-0 rounded-full pointer-events-none z-[9998] hidden md:block"
+        style={{
+          left: outerX,
+          top: outerY,
+          width: cursorType === "button" ? 40 : cursorType === "hero" ? 75 : 40,
+          height: cursorType === "button" ? 40 : cursorType === "hero" ? 75 : 40,
+          border: cursorType === "button" ? "2px solid #2563EB" : "none",
+          background: cursorType === "card" 
+            ? "radial-gradient(circle, rgba(6, 182, 212, 0.25) 0%, transparent 70%)" 
+            : cursorType === "hero" 
+            ? "radial-gradient(circle, rgba(37, 99, 235, 0.2) 0%, transparent 70%)" 
+            : cursorType === "button"
+            ? "transparent"
+            : "radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%)",
+          filter: cursorType === "button" ? "none" : "blur(4px)",
+          transition: "width 0.2s, height 0.2s, border 0.2s, background 0.2s"
+        }}
+      />
+    </>
+  );
+}
+
+// 3D Card Hover Tilt Wrapper
 function PremiumGlowCard({ children, className = "", hoverTilt = true }) {
+  const cardRef = useRef(null);
+  const [rotateX, setRotateX] = useState(0);
+  const [rotateY, setRotateY] = useState(0);
   const [coords, setCoords] = useState({ x: 0, y: 0 });
-  const [hovered, setHovered] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   const handleMouseMove = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    setCoords({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
-    });
+    if (!cardRef.current) return;
+    const rect = cardRef.current.getBoundingClientRect();
+    const width = rect.width;
+    const height = rect.height;
+    
+    // Coordinates from card center
+    const xVal = e.clientX - rect.left - width / 2;
+    const yVal = e.clientY - rect.top - height / 2;
+
+    // Angle rotation limits (-12 to 12 deg)
+    const rotX = hoverTilt ? -(yVal / (height / 2)) * 12 : 0;
+    const rotY = hoverTilt ? (xVal / (width / 2)) * 12 : 0;
+
+    setRotateX(rotX);
+    setRotateY(rotY);
+    setCoords({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+  };
+
+  const handleMouseLeave = () => {
+    setRotateX(0);
+    setRotateY(0);
+    setIsHovered(false);
   };
 
   return (
     <motion.div
+      ref={cardRef}
       onMouseMove={handleMouseMove}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      whileHover={hoverTilt ? { y: -10, rotate: 1, scale: 1.01 } : { y: -5 }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={handleMouseLeave}
+      animate={{
+        rotateX: rotateX,
+        rotateY: rotateY,
+        y: isHovered ? -10 : 0
+      }}
       transition={{ type: "spring", stiffness: 350, damping: 22 }}
-      className={`premium-glow-card group relative overflow-hidden p-8 flex flex-col items-start border border-white/5 bg-[#111827]/40 shadow-[0_4px_30px_rgba(0,0,0,0.4)] ${className}`}
+      style={{ transformStyle: "preserve-3d" }}
+      className={`premium-glow-card group relative p-8 flex flex-col items-start border border-white/5 bg-[#111827]/40 shadow-[0_4px_30px_rgba(0,0,0,0.4)] ${className}`}
     >
       {/* Radial glow layer centered on cursor coordinate */}
       <div 
         className="pointer-events-none absolute -inset-px opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10"
         style={{
-          background: `radial-gradient(150px circle at ${coords.x}px ${coords.y}px, rgba(37, 99, 235, 0.15), transparent 80%)`
+          background: `radial-gradient(160px circle at ${coords.x}px ${coords.y}px, rgba(37, 99, 235, 0.2), transparent 80%)`
         }}
       />
 
-      {/* Top border glow sweep line */}
+      {/* Rotating border glow indicator */}
       <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-blue-500 via-cyan-400 to-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10" />
 
-      {children}
+      {/* Content depth tilt wrapper */}
+      <div style={{ transform: "translateZ(30px)" }} className="w-full flex flex-col items-start relative z-20">
+        {children}
+      </div>
     </motion.div>
   );
 }
@@ -275,7 +376,6 @@ function TimelineStep({ item, idx, isLast, progressY }) {
   const stepRef = useRef(null);
   const isInView = useInView(stepRef, { once: true, margin: "-100px" });
 
-  // Dynamically calculate opacity fade based on scroll progress
   const opacity = isInView ? 1 : 0.4;
   const isPulsing = isInView;
 
@@ -299,9 +399,14 @@ function TimelineStep({ item, idx, isLast, progressY }) {
         >
           {item.icon}
         </motion.div>
-        <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-blue-600 text-white text-[9px] font-black flex items-center justify-center border border-[#030712]">
+        
+        {/* Flip Number badge */}
+        <motion.span 
+          whileHover={{ rotateY: 180 }}
+          className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-blue-600 text-white text-[9px] font-black flex items-center justify-center border border-[#030712] cursor-pointer"
+        >
           {item.step}
-        </span>
+        </motion.span>
       </div>
 
       {/* Details Card */}
@@ -318,25 +423,77 @@ function TimelineStep({ item, idx, isLast, progressY }) {
 
 // Mock issues for Leaflet Map Preview
 const MOCK_ISSUES = [
-  { id: "mock-1", category: "Pothole", severity: "Critical", status: "In Progress", description: "Deep crater causing traffic gridlock on Linking Road.", location: "Linking Road, Bandra West" },
-  { id: "mock-2", category: "Streetlight", severity: "Medium", status: "Resolved", description: "Streetlight flickering at night near the beach.", location: "Juhu Tara Road, Juhu" },
-  { id: "mock-3", category: "Garbage", severity: "High", status: "Under Investigation", description: "Pile of plastic wastes clogging the drainage.", location: "Dadar West Market" },
-  { id: "mock-4", category: "Water Leakage", severity: "High", status: "In Progress", description: "Water pipeline burst causing waste of drinking water.", location: "Colaba Causeway" },
-  { id: "mock-5", category: "Manhole", severity: "Critical", status: "In Progress", description: "Open sewer manhole near the station exit.", location: "Andheri East Station" }
+  { id: "mock-1", category: "Pothole", severity: "Critical", status: "In Progress", description: "Deep crater causing traffic gridlock on Linking Road.", location: "Linking Road, Bandra West", coordinates: [19.0596, 72.8295] },
+  { id: "mock-2", category: "Streetlight", severity: "Medium", status: "Resolved", description: "Streetlight flickering at night near the beach.", location: "Juhu Tara Road, Juhu", coordinates: [19.1136, 72.8697] },
+  { id: "mock-3", category: "Garbage", severity: "High", status: "Under Investigation", description: "Pile of plastic wastes clogging the drainage.", location: "Dadar West Market", coordinates: [19.0178, 72.8478] },
+  { id: "mock-4", category: "Water Leakage", severity: "High", status: "In Progress", description: "Water pipeline burst causing waste of drinking water.", location: "Colaba Causeway", coordinates: [19.0330, 72.8397] },
+  { id: "mock-5", category: "Manhole", severity: "Critical", status: "In Progress", description: "Open sewer manhole near the station exit.", location: "Andheri East Station", coordinates: [19.0760, 72.8777] }
 ];
+
+// Rating test star trigger
+const StarTwinkle = ({ idx }) => {
+  const randomDelayClass = idx % 3 === 0 
+    ? "animate-twinkle-1" 
+    : idx % 3 === 1 
+    ? "animate-twinkle-2" 
+    : "animate-twinkle-3";
+  return <StarIcon className={randomDelayClass} />;
+};
 
 export default function Home() {
   const { user } = useAuth();
   const [stats, setStats] = useState({ total: 428, resolved: 312 });
   const [liveIssues, setLiveIssues] = useState(MOCK_ISSUES);
-
-  // Looping popup notification
-  const [showNotification, setShowNotification] = useState(true);
+  
+  // Real-time simulated reports popped on the Leaflet preview
   useEffect(() => {
-    const timer = setInterval(() => {
-      setShowNotification(prev => !prev);
-    }, 4000);
-    return () => clearInterval(timer);
+    const reportInterval = setInterval(() => {
+      const types = ["Pothole", "Garbage", "Water Leakage", "Streetlight"];
+      const locations = ["Bandra West", "Juhu Beach", "Dadar West", "Colaba Causeway", "Andheri Station"];
+      const severities = ["Critical", "High", "Medium", "Low"];
+      const coordsArr = [
+        [19.0760, 72.8777], [19.0596, 72.8295], [19.1136, 72.8697],
+        [19.0178, 72.8478], [19.0330, 72.8397]
+      ];
+      
+      const newReport = {
+        id: `simulated-${Date.now()}`,
+        category: types[Math.floor(Math.random() * types.length)],
+        severity: severities[Math.floor(Math.random() * severities.length)],
+        status: "Pending",
+        description: "Simulated incoming citizen report synced live.",
+        location: locations[Math.floor(Math.random() * locations.length)],
+        coordinates: coordsArr[Math.floor(Math.random() * coordsArr.length)]
+      };
+      setLiveIssues(prev => [newReport, ...prev].slice(0, 10));
+    }, 7000);
+    return () => clearInterval(reportInterval);
+  }, []);
+
+  // Storytelling sequence timeline states
+  const [storyStep, setStoryStep] = useState(0);
+  useEffect(() => {
+    const timelineInterval = setInterval(() => {
+      setStoryStep(prev => (prev + 1) % 8);
+    }, 2800);
+    return () => clearInterval(timelineInterval);
+  }, []);
+
+  // Live Toast notification state popped randomly
+  const [toast, setToast] = useState(null);
+  useEffect(() => {
+    const alerts = [
+      "📍 Water leakage reported near Dadar West",
+      "🚧 Critical pothole reported in Bandra West",
+      "⚡ Streetlight repair verified in Juhu tara",
+      "🚮 Garbage pile resolved by BMC sanitation crew"
+    ];
+    const alertInterval = setInterval(() => {
+      const randomAlert = alerts[Math.floor(Math.random() * alerts.length)];
+      setToast(randomAlert);
+      setTimeout(() => setToast(null), 3000);
+    }, 9000);
+    return () => clearInterval(alertInterval);
   }, []);
 
   // Parallax mouse movements
@@ -356,12 +513,12 @@ export default function Home() {
     const mouseX = e.clientX - rect.left - width / 2;
     const mouseY = e.clientY - rect.top - height / 2;
 
-    parallaxX.set(mouseX / 25);
-    parallaxY.set(mouseY / 25);
+    parallaxX.set(mouseX / 30);
+    parallaxY.set(mouseY / 30);
     floatX1.set(mouseX / 15);
     floatY1.set(mouseY / 15);
-    floatX2.set(mouseX / 35);
-    floatY2.set(mouseY / 35);
+    floatX2.set(mouseX / 40);
+    floatY2.set(mouseY / 40);
   };
 
   const handleMouseLeave = () => {
@@ -391,7 +548,6 @@ export default function Home() {
           const totalVal = Math.max(428, 428 + issues.length);
           const resolvedVal = Math.max(312, 312 + issues.filter(i => i.status === 'Resolved').length);
           setStats({ total: totalVal, resolved: resolvedVal });
-          setLiveIssues([...issues, ...MOCK_ISSUES].slice(0, 10));
         }
       }
     } catch (e) {
@@ -399,27 +555,16 @@ export default function Home() {
     }
   }, []);
 
-  // Title reveal words
   const words = "Report Civic Issues. Create Real Change.".split(" ");
 
   return (
-    <div className="bg-[#030712] min-h-screen text-[#F8FAFC] relative overflow-hidden flex flex-col pt-16">
+    <div className="bg-[#030712] mesh-bg min-h-screen text-[#F8FAFC] relative overflow-hidden flex flex-col pt-16">
       
-      {/* GRID BACKGROUND */}
-      <div
-        className="absolute inset-0 opacity-[0.08] pointer-events-none z-0"
-        style={{
-          backgroundImage: "linear-gradient(rgba(59,130,246,0.15) 1.5px, transparent 1.5px), linear-gradient(90deg, rgba(59,130,246,0.15) 1.5px, transparent 1.5px)",
-          backgroundSize: "50px 50px",
-        }}
-      />
+      {/* Subtle Noise Filter Backdrop Overlay */}
+      <div className="noise-overlay" />
 
-      {/* GRADIENT BLOBS WITH FLOATING ANIMATION */}
-      <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
-        <div className="absolute top-[5%] left-[5%] w-[45vw] h-[45vw] bg-blue-600/10 rounded-full blur-[130px] animate-orb-float-1" />
-        <div className="absolute bottom-[25%] right-[5%] w-[40vw] h-[40vw] bg-emerald-600/5 rounded-full blur-[130px] animate-orb-float-2" />
-        <div className="absolute top-[45%] left-[45%] w-[35vw] h-[35vw] bg-cyan-600/5 rounded-full blur-[120px] animate-orb-float-3" />
-      </div>
+      {/* Global Mouse Pointer Glowing dot and ring trailing wrapper */}
+      <CustomCursor />
 
       {/* HERO SECTION */}
       <section 
@@ -431,21 +576,34 @@ export default function Home() {
         {/* Left Side: Copywriting & CTA */}
         <div className="lg:col-span-6 flex flex-col text-left">
           
-          {/* Tag */}
+          {/* Tag (Hover blinks robot eye) */}
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 text-blue-400 px-3.5 py-1.5 rounded-full text-xs font-semibold tracking-wide w-fit mb-6"
+            whileHover="hover"
+            className="inline-flex items-center gap-2.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 px-3.5 py-1.5 rounded-full text-xs font-semibold tracking-wide w-fit mb-6 cursor-help"
           >
-            <span className="flex h-2 w-2 relative">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-            </span>
-            Hyperlocal Issue Classification Engine
+            <motion.svg className="w-5 h-5 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+              <rect x="5" y="8" width="14" height="11" rx="2" />
+              <path d="M9 16h6" />
+              <motion.ellipse
+                variants={{ hover: { ry: 0.1 } }}
+                transition={{ duration: 0.15 }}
+                cx="9" cy="12" rx="1.5" ry="1.5"
+                fill="currentColor"
+              />
+              <motion.ellipse
+                variants={{ hover: { ry: 0.1 } }}
+                transition={{ duration: 0.15 }}
+                cx="15" cy="12" rx="1.5" ry="1.5"
+                fill="currentColor"
+              />
+            </motion.svg>
+            <span>Gemini AI verification engine</span>
           </motion.div>
 
-          {/* Word by word Headline */}
+          {/* Word by word Headline with slow gradient shifts */}
           <div className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight leading-[1.08] text-white">
             <motion.div
               initial="hidden"
@@ -454,7 +612,7 @@ export default function Home() {
                 hidden: { opacity: 0 },
                 visible: {
                   opacity: 1,
-                  transition: { staggerChildren: 0.1, delayChildren: 0.1 }
+                  transition: { staggerChildren: 0.12, delayChildren: 0.2 }
                 }
               }}
             >
@@ -498,14 +656,14 @@ export default function Home() {
           >
             <motion.div 
               whileHover="hover" 
-              whileTap={{ scale: 0.97 }} 
+              whileTap={{ scale: 0.95 }} 
               className="w-full sm:w-auto"
             >
-              <Link
+              <RouterLink
                 to={user ? "/report" : "/login"}
                 className="relative overflow-hidden group flex items-center justify-center gap-2.5 w-full sm:w-auto bg-[#2563EB] hover:bg-blue-600 text-white font-extrabold px-8 py-4 rounded-2xl text-base shadow-[0_0_15px_rgba(37,99,235,0.3)] hover:shadow-[0_0_30px_rgba(37,99,235,0.6)] border border-blue-400/25 transition-all duration-300"
               >
-                <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_ease-out]" />
+                <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_ease-out]" />
                 <span>Report Issue</span>
                 <motion.span
                   variants={{ hover: { x: 5 } }}
@@ -514,20 +672,20 @@ export default function Home() {
                 >
                   <ArrowRightIcon className="w-4.5 h-4.5" />
                 </motion.span>
-              </Link>
+              </RouterLink>
             </motion.div>
 
             <motion.div 
               whileHover="hover" 
-              whileTap={{ scale: 0.97 }} 
+              whileTap={{ scale: 0.95 }} 
               className="w-full sm:w-auto"
             >
-              <Link
+              <RouterLink
                 to={user ? "/dashboard" : "/login"}
                 className="flex items-center justify-center gap-2.5 w-full sm:w-auto border border-white/10 hover:border-blue-500 bg-white/5 hover:bg-white/10 text-white font-extrabold px-8 py-4 rounded-2xl text-base transition duration-300"
               >
                 Explore Dashboard
-              </Link>
+              </RouterLink>
             </motion.div>
           </motion.div>
 
@@ -556,14 +714,24 @@ export default function Home() {
 
         </div>
 
-        {/* Right Side: Floating Dashboard Mockup with Mouse Parallax */}
-        <div className="lg:col-span-6 relative w-full flex items-center justify-center mt-8 lg:mt-0">
+        {/* Right Side: Floating Dashboard Mockup with Mouse Parallax & Storytelling */}
+        <div className="lg:col-span-6 relative w-full flex items-center justify-center mt-8 lg:mt-0 hero-illustration">
           <motion.div
             style={{ x: parallaxX, y: parallaxY }}
             className="w-full max-w-lg premium-glow-card rounded-[22px] p-6 shadow-2xl relative border border-white/8 bg-[#111827]/40 backdrop-blur-xl z-10 overflow-hidden"
           >
-            {/* Horizontal AI Scan Line */}
-            <div className="absolute left-0 right-0 h-[2.5px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent z-20 animate-scan pointer-events-none" />
+            {/* Horizontal AI Scan Line (Active when storyStep is scanning >= 3) */}
+            <AnimatePresence>
+              {storyStep >= 3 && (
+                <motion.div 
+                  initial={{ top: "0%" }}
+                  animate={{ top: "100%" }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                  className="absolute left-0 right-0 h-[2.5px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent z-20 pointer-events-none shadow-[0_0_8px_rgba(6,182,212,0.8)]"
+                />
+              )}
+            </AnimatePresence>
 
             {/* Top window UI Controls */}
             <div className="flex items-center gap-2 mb-5">
@@ -586,7 +754,7 @@ export default function Home() {
                 {/* Soft severity pulse */}
                 <motion.span 
                   animate={{ opacity: [1, 0.5, 1], scale: [1, 1.02, 1] }}
-                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                  transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
                   className="bg-red-500/10 text-red-400 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md border border-red-500/20"
                 >
                   Critical
@@ -598,6 +766,23 @@ export default function Home() {
                 <div className="absolute top-2 left-2 bg-black/75 backdrop-blur-md text-white text-[9px] font-extrabold px-2.5 py-1 rounded-md border border-white/5 z-10">
                   📍 19.0760° N, 72.8777° E
                 </div>
+                
+                {/* Simulated Object Detection Box (Appears at step 3) */}
+                <AnimatePresence>
+                  {storyStep >= 3 && (
+                    <motion.div
+                      initial={{ scale: 0.9, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.9, opacity: 0 }}
+                      className="absolute inset-x-12 inset-y-10 border-2 border-dashed border-red-500 z-10 flex flex-col items-start p-1"
+                    >
+                      <span className="bg-red-500 text-white text-[7px] font-bold px-1.5 py-0.5 rounded uppercase">
+                        Detected: Pothole
+                      </span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
                 <svg className="w-12 h-12 text-slate-700 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
@@ -613,12 +798,14 @@ export default function Home() {
                 <div className="bg-[#030712] rounded-xl p-3 border border-white/5">
                   <span className="text-[#64748B] font-extrabold uppercase text-[9px] tracking-wider">Verification Score</span>
                   <div className="text-emerald-400 font-bold mt-0.5">
-                    <CountUp to={98.7} decimals={1} suffix="%" />
+                    {storyStep >= 4 ? <CountUp to={98.7} decimals={1} suffix="%" /> : "0.0%"}
                   </div>
                 </div>
                 <div className="bg-[#030712] rounded-xl p-3 border border-white/5">
                   <span className="text-[#64748B] font-extrabold uppercase text-[9px] tracking-wider">Assigned Ward</span>
-                  <div className="text-white font-bold mt-0.5">BMC H-West (Bandra)</div>
+                  <div className="text-white font-bold mt-0.5">
+                    {storyStep >= 6 ? "BMC H-West (Bandra)" : "Calculating..."}
+                  </div>
                 </div>
                 <div className="bg-[#030712] rounded-xl p-3 border border-white/5">
                   <span className="text-[#64748B] font-extrabold uppercase text-[9px] tracking-wider">Est. Resolution</span>
@@ -631,27 +818,33 @@ export default function Home() {
             <div className="mt-4 text-left bg-slate-950/40 rounded-xl p-3.5 border border-white/5">
               <div className="flex justify-between text-xs text-[#94A3B8] mb-1.5 font-bold">
                 <span>Verification & Dispatch Pipeline</span>
-                <span className="text-cyan-400">In Progress</span>
+                <span className="text-cyan-400 uppercase tracking-widest text-[9px] font-black">
+                  {storyStep === 7 ? "Resolved" : "Active"}
+                </span>
               </div>
               <div className="bg-slate-900 rounded-full h-1.5 w-full overflow-hidden relative">
-                {/* Continuous moving bar */}
-                <motion.div
-                  animate={{ x: ["-100%", "100%"] }}
-                  transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                  className="absolute left-0 top-0 h-full w-1/3 bg-gradient-to-r from-transparent via-cyan-400 to-transparent"
-                />
+                {/* Continuous progress filling */}
                 <motion.div
                   initial={{ width: "0%" }}
-                  animate={{ width: "75%" }}
-                  transition={{ duration: 2, ease: "easeInOut" }}
-                  className="bg-gradient-to-r from-blue-500 via-cyan-400 to-emerald-500 rounded-full h-1.5"
+                  animate={{ 
+                    width: storyStep === 0 ? "0%" 
+                      : storyStep === 1 ? "15%" 
+                      : storyStep === 2 ? "30%" 
+                      : storyStep === 3 ? "45%" 
+                      : storyStep === 4 ? "60%" 
+                      : storyStep === 5 ? "75%" 
+                      : storyStep === 6 ? "90%" 
+                      : "100%" 
+                  }}
+                  transition={{ duration: 0.8, ease: "easeInOut" }}
+                  className="bg-gradient-to-r from-blue-500 via-cyan-400 to-emerald-400 rounded-full h-1.5"
                 />
               </div>
               <div className="flex justify-between items-center text-[10px] text-slate-500 font-extrabold uppercase mt-2">
-                <span>Upload</span>
-                <span>AI verified</span>
-                <span className="text-cyan-400">BMC Dispatched</span>
-                <span>Fixed</span>
+                <span className={storyStep >= 1 ? "text-cyan-400" : ""}>Upload</span>
+                <span className={storyStep >= 4 ? "text-cyan-400" : ""}>AI verified</span>
+                <span className={storyStep >= 6 ? "text-cyan-400" : ""}>BMC Dispatched</span>
+                <span className={storyStep >= 7 ? "text-emerald-400" : ""}>Resolved</span>
               </div>
             </div>
           </motion.div>
@@ -660,9 +853,12 @@ export default function Home() {
           {/* Card A: Detected Category */}
           <motion.div
             style={{ x: floatX1, y: floatY1 }}
-            animate={{ y: [0, -10, 0] }}
-            transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute -top-6 -right-2 bg-slate-900/90 border border-white/10 rounded-2xl p-4.5 shadow-2xl z-20 flex items-center gap-3.5 text-left backdrop-blur-md"
+            animate={{ 
+              y: [0, -14, 0],
+              rotate: [0, 2, 0]
+            }}
+            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute -top-6 -right-2 bg-[#07111F]/90 border border-white/10 rounded-2xl p-4.5 shadow-2xl z-20 flex items-center gap-3.5 text-left backdrop-blur-md"
           >
             <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
               <CpuIcon />
@@ -673,16 +869,15 @@ export default function Home() {
             </div>
           </motion.div>
 
-          {/* Card B: Looping notification popups */}
+          {/* Card B: Storytelling status popup (fades in/out on sequence) */}
           <div className="absolute -bottom-8 -left-6 z-20">
             <AnimatePresence mode="wait">
-              {showNotification ? (
+              {storyStep >= 5 && (
                 <motion.div
-                  key="verified"
-                  initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                  initial={{ opacity: 0, scale: 0.95, y: 15 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9, y: 10 }}
-                  transition={{ duration: 0.3 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 15 }}
+                  transition={{ duration: 0.4 }}
                   className="bg-slate-900/90 border border-white/10 rounded-2xl p-4 shadow-2xl flex items-center gap-3 text-left backdrop-blur-md"
                 >
                   <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 relative flex items-center justify-center">
@@ -690,26 +885,10 @@ export default function Home() {
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                   </div>
                   <div>
-                    <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Notification</div>
-                    <div className="text-xs font-black text-white mt-0.5">Issue Verified &bull; BMC</div>
-                  </div>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="dispatched"
-                  initial={{ opacity: 0, scale: 0.9, y: 10 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9, y: 10 }}
-                  transition={{ duration: 0.3 }}
-                  className="bg-slate-900/90 border border-white/10 rounded-2xl p-4 shadow-2xl flex items-center gap-3 text-left backdrop-blur-md"
-                >
-                  <div className="w-3.5 h-3.5 rounded-full bg-blue-500 relative flex items-center justify-center">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-                  </div>
-                  <div>
-                    <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Notification</div>
-                    <div className="text-xs font-black text-white mt-0.5">Crew Dispatched &bull; Ward 4</div>
+                    <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Pipeline Notification</div>
+                    <div className="text-xs font-black text-white mt-0.5">
+                      {storyStep === 5 ? "Gemini detected Road Damage" : storyStep === 6 ? "Routed to BMC Roads Division" : "Issue Closed: Verified Fixed ✅"}
+                    </div>
                   </div>
                 </motion.div>
               )}
@@ -719,8 +898,11 @@ export default function Home() {
           {/* Card C: Floating Verification Score */}
           <motion.div
             style={{ x: floatX2, y: floatY2 }}
-            animate={{ scale: [1, 1.04, 1] }}
-            transition={{ duration: 6.5, repeat: Infinity, ease: "easeInOut" }}
+            animate={{ 
+              scale: [1, 1.05, 1],
+              y: [0, 8, 0]
+            }}
+            transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
             className="absolute bottom-16 -right-8 hidden sm:flex bg-slate-950 text-white rounded-xl px-4 py-3 shadow-2xl z-20 border border-white/10 text-left items-center gap-2 backdrop-blur-md"
           >
             <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-xs font-black text-emerald-400">
@@ -734,8 +916,29 @@ export default function Home() {
         </div>
       </section>
 
-      {/* TRUST SECTION */}
-      <section className="relative z-10 border-y border-white/5 bg-slate-950/20 py-10">
+      {/* Live Toast Popups (appears randomly every few seconds) */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, x: 50, scale: 0.95 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: 50, scale: 0.95 }}
+            className="fixed bottom-6 right-6 bg-slate-950/90 border border-blue-500/35 text-white rounded-2xl px-5 py-4 shadow-[0_4px_30px_rgba(59,130,246,0.15)] backdrop-blur-xl z-[999] text-sm font-black flex items-center gap-3"
+          >
+            <div className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse" />
+            <span>{toast}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* TRUST SECTION (Slide Left scroll animation) */}
+      <motion.section 
+        initial={{ opacity: 0, x: -100 }}
+        whileInView={{ opacity: 1, x: 0 }}
+        viewport={{ once: true, margin: "-100px" }}
+        transition={{ type: "spring", stiffness: 100, damping: 20 }}
+        className="relative z-10 border-y border-white/5 bg-slate-950/20 py-10"
+      >
         <div className="max-w-7xl mx-auto px-6 md:px-8">
           <p className="text-center text-xs uppercase font-extrabold tracking-widest text-slate-500 mb-6">
             Engineered for Modern Governance & Citizen Co-operation
@@ -758,14 +961,14 @@ export default function Home() {
             ))}
           </div>
         </div>
-      </section>
+      </motion.section>
 
-      {/* FEATURES SECTION (Stagger Reveal) */}
+      {/* FEATURES SECTION (Stagger Zoom reveal) */}
       <section className="relative z-10 py-24 px-6 md:px-8 max-w-7xl mx-auto w-full text-center">
         
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, scale: 0.9 }}
+          whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
         >
@@ -780,7 +983,7 @@ export default function Home() {
           </p>
         </motion.div>
 
-        {/* Feature Cards Grid (Staggered Reveal with Radial glow hover) */}
+        {/* Feature Cards Grid (Staggered Reveal with 3D cursor-tilt) */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-16 text-left">
           {[
             {
@@ -818,7 +1021,7 @@ export default function Home() {
               key={idx}
               className="animate-border-rotate"
             >
-              <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-6 transition-all duration-300 group-hover:bg-blue-500/10 group-hover:scale-110 group-hover:rotate-6 text-blue-400 z-10">
+              <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-6 transition-all duration-300 group-hover:bg-blue-500/10 group-hover:scale-110 group-hover:rotate-[360deg] text-blue-400 z-10">
                 {feat.icon}
               </div>
               <h3 className="text-xl font-bold text-white transition-colors duration-300 group-hover:text-blue-400 z-10">{feat.title}</h3>
@@ -884,63 +1087,106 @@ export default function Home() {
         </div>
       </section>
 
-      {/* STATISTICS SECTION */}
+      {/* STATISTICS SECTION (confetti burst + self drawing SVG chart) */}
       <section className="relative z-10 py-24 px-6 md:px-8 max-w-7xl mx-auto w-full">
         {/* City Health Score Widget */}
         <div className="mb-16">
           <CityHealthScore />
         </div>
 
-        {/* Counter cards (with self-drawing sparklines on view) */}
+        {/* Counter cards (with self-drawing sparklines on view and hover confetti triggers) */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 text-center">
           {[
             { value: stats.total, label: "Reports Submitted", suffix: "+", desc: "Verifiable reports filed", icon: <CameraIcon />, chartD: "M0,15 C20,10 40,25 60,8 C80,10 90,5 100,12" },
             { value: stats.resolved, label: "Issues Resolved", suffix: "", desc: "AI-verified resolutions", icon: <CheckCircleIcon />, chartD: "M0,18 C15,10 30,5 50,15 C70,12 85,2 100,5" },
             { value: 1250, label: "Active Citizens", suffix: "+", desc: "Contributing to ward improvements", icon: <UsersIcon />, chartD: "M0,15 Q25,8 50,12 T100,2" },
             { value: 1.8, label: "Resolution Time", suffix: " Days", decimals: 1, desc: "Average close-out delay", icon: <ClockIcon />, chartD: "M0,5 C30,15 70,5 100,18" }
-          ].map((stat, idx) => (
-            <PremiumGlowCard
-              key={idx}
-              className="bg-slate-900/30 flex flex-col items-center"
-            >
-              <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center mb-4 text-blue-400 z-10 group-hover:rotate-12 transition-transform duration-300">
-                {stat.icon}
-              </div>
-              <div className="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400 tracking-tight z-10 group-hover:scale-105 transition-transform duration-300">
-                <CountUp to={stat.value} decimals={stat.decimals || 0} suffix={stat.suffix} />
-              </div>
-              <div className="font-extrabold text-sm md:text-base text-white mt-3 z-10">
-                {stat.label}
-              </div>
-              <div className="text-xs text-slate-500 font-bold mt-1 uppercase tracking-wider z-10">
-                {stat.desc}
-              </div>
-              
-              {/* Self-drawing SVG sparkline */}
-              <div className="w-full mt-5 relative z-10 opacity-70 group-hover:opacity-100 transition-opacity duration-300">
-                <svg className="w-full h-8 overflow-visible" viewBox="0 0 100 20">
-                  <motion.path
-                    initial={{ pathLength: 0 }}
-                    whileInView={{ pathLength: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 1.8, ease: "easeInOut", delay: idx * 0.15 }}
-                    d={stat.chartD}
-                    fill="none"
-                    stroke="url(#sparkline-grad)"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                  />
-                  <defs>
-                    <linearGradient id="sparkline-grad" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor="#2563EB" />
-                      <stop offset="50%" stopColor="#06B6D4" />
-                      <stop offset="100%" stopColor="#10B981" />
-                    </linearGradient>
-                  </defs>
-                </svg>
-              </div>
-            </PremiumGlowCard>
-          ))}
+          ].map((stat, idx) => {
+            const [bursts, setBursts] = useState([]);
+            const triggerConfetti = () => {
+              const newBursts = Array.from({ length: 12 }).map((_, i) => ({
+                id: i,
+                color: ["#3b82f6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444"][i % 5],
+                angle: (i / 12) * 2 * Math.PI,
+                distance: Math.random() * 40 + 20
+              }));
+              setBursts(newBursts);
+              setTimeout(() => setBursts([]), 1000);
+            };
+
+            return (
+              <PremiumGlowCard
+                key={idx}
+                hoverTilt={false}
+                className="bg-slate-900/30 flex flex-col items-center overflow-visible cursor-pointer"
+              >
+                <div 
+                  onMouseEnter={triggerConfetti}
+                  className="w-full flex flex-col items-center relative"
+                >
+                  {/* Confetti particles */}
+                  {bursts.map((b) => (
+                    <motion.div
+                      key={b.id}
+                      initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
+                      animate={{
+                        x: Math.cos(b.angle) * b.distance,
+                        y: Math.sin(b.angle) * b.distance,
+                        opacity: 0,
+                        scale: 0.5
+                      }}
+                      transition={{ duration: 0.8, ease: "easeOut" }}
+                      className="absolute w-1.5 h-1.5 rounded-full pointer-events-none z-30"
+                      style={{ background: b.color }}
+                    />
+                  ))}
+
+                  <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center mb-4 text-blue-400 z-10 group-hover:scale-110 transition-transform duration-300">
+                    {stat.icon}
+                  </div>
+                  
+                  <motion.div 
+                    whileHover={{ scale: 1.05 }}
+                    className="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400 tracking-tight z-10"
+                  >
+                    <CountUp to={stat.value} decimals={stat.decimals || 0} suffix={stat.suffix} />
+                  </motion.div>
+                  
+                  <div className="font-extrabold text-sm md:text-base text-white mt-3 z-10">
+                    {stat.label}
+                  </div>
+                  
+                  <div className="text-xs text-slate-500 font-bold mt-1 uppercase tracking-wider z-10">
+                    {stat.desc}
+                  </div>
+                  
+                  {/* Self-drawing SVG sparkline */}
+                  <div className="w-full mt-5 relative z-10 opacity-70 group-hover:opacity-100 transition-opacity duration-300">
+                    <svg className="w-full h-8 overflow-visible" viewBox="0 0 100 20">
+                      <motion.path
+                        initial={{ pathLength: 0 }}
+                        whileInView={{ pathLength: 1 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 1.8, ease: "easeInOut", delay: idx * 0.15 }}
+                        d={stat.chartD}
+                        fill="none"
+                        stroke="url(#sparkline-grad)"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                      />
+                      <defs>
+                        <linearGradient id="sparkline-grad" x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0%" stopColor="#2563EB" />
+                          <stop offset="50%" stopColor="#06B6D4" />
+                          <stop offset="100%" stopColor="#10B981" />
+                        </linearGradient>
+                      </defs>
+                    </svg>
+                  </div>
+                </div>
+              </PremiumGlowCard>
+            );
+          })}
         </div>
       </section>
 
@@ -949,7 +1195,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-6 md:px-8 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           
           {/* Map Info Block */}
-          <div className="lg:col-span-4 text-left">
+          <div className="lg:col-span-4 text-left group">
             <div className="inline-flex items-center gap-2 bg-[#2563EB]/10 border border-blue-500/20 text-blue-400 px-3.5 py-1.5 rounded-full text-xs font-semibold tracking-wide w-fit mb-5">
               Ward GIS Interface
             </div>
@@ -960,13 +1206,20 @@ export default function Home() {
               Track live pothole reports, broken streetlights, water leaks, and municipal activities mapped down to exact coordinates. Click on marker popups to inspect severity.
             </p>
             <div className="mt-8">
-              <Link
+              <RouterLink
                 to={user ? "/feed" : "/login"}
                 className="inline-flex items-center justify-center gap-2 bg-[#2563EB] hover:bg-blue-600 text-white font-extrabold px-6 py-3.5 rounded-xl text-sm transition duration-300 shadow-md shadow-blue-500/20"
               >
                 <span>Explore Live Issues</span>
                 <ArrowRightIcon className="w-4 h-4" />
-              </Link>
+              </RouterLink>
+            </div>
+            
+            {/* Easter Egg: driving car across card bottom when hovered */}
+            <div className="w-full relative h-6 overflow-hidden mt-6 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white/5 rounded-full border border-white/5">
+              <span className="absolute bottom-0.5 left-0 pointer-events-none text-xs animate-drive">
+                🚗
+              </span>
             </div>
           </div>
 
@@ -1000,7 +1253,6 @@ export default function Home() {
 
         {/* Infinite Marquee row */}
         <div className="w-full relative overflow-hidden py-4 select-none">
-          {/* Gradient Masks to fade edges */}
           <div className="absolute left-0 top-0 bottom-0 w-24 bg-gradient-to-r from-[#030712] to-transparent z-20 pointer-events-none" />
           <div className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-[#030712] to-transparent z-20 pointer-events-none" />
 
@@ -1061,11 +1313,11 @@ export default function Home() {
               >
                 {/* Rating stars with Twinkle animations */}
                 <div className="flex gap-1 mb-4 z-10 relative">
-                  <StarIcon className="animate-twinkle-1" />
-                  <StarIcon className="animate-twinkle-2" />
-                  <StarIcon className="animate-twinkle-3" />
-                  <StarIcon className="animate-twinkle-1" />
-                  <StarIcon className="animate-twinkle-2" />
+                  <StarTwinkle idx={0} />
+                  <StarTwinkle idx={1} />
+                  <StarTwinkle idx={2} />
+                  <StarTwinkle idx={3} />
+                  <StarTwinkle idx={4} />
                 </div>
                 
                 {/* Quote */}
@@ -1150,25 +1402,25 @@ export default function Home() {
 
           <div className="flex flex-col sm:flex-row gap-4 mt-10 w-full sm:w-auto justify-center">
             <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }} className="w-full sm:w-auto">
-              <Link
+              <RouterLink
                 to={user ? "/report" : "/login"}
                 className="bg-white hover:bg-slate-100 text-[#030712] font-black px-10 py-4.5 rounded-2xl text-base shadow-2xl flex items-center justify-center gap-2 w-full sm:w-auto transition duration-300"
               >
                 Start Reporting
-              </Link>
+              </RouterLink>
             </motion.div>
 
             <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }} className="w-full sm:w-auto">
-              <Link
+              <RouterLink
                 to="/feed"
-                className="bg-blue-800/30 hover:bg-blue-800/50 text-white border border-white/10 font-black px-10 py-4.5 rounded-2xl text-base flex items-center justify-center gap-2 w-full sm:w-auto transition duration-300"
+                className="bg-blue-800/40 hover:bg-blue-800/60 text-white border border-white/10 font-black px-10 py-4.5 rounded-2xl text-base flex items-center justify-center gap-2 w-full sm:w-auto transition duration-300"
               >
                 Learn More
-              </Link>
+              </RouterLink>
             </motion.div>
           </div>
 
-          <p className="text-blue-400/60 text-xs font-black uppercase tracking-widest mt-6">
+          <p className="text-blue-200/60 text-xs font-black uppercase tracking-widest mt-6">
             Free forever for citizens &bull; AI Verified &bull; Real-time GIS
           </p>
         </div>
@@ -1180,7 +1432,7 @@ export default function Home() {
           
           {/* Brand Info */}
           <div className="col-span-2 flex flex-col text-left">
-            <Link to="/" className="flex items-center gap-2 group mb-4">
+            <RouterLink to="/" className="flex items-center gap-2 group mb-4">
               <div className="bg-blue-600 rounded-lg w-8 h-8 flex items-center justify-center text-sm text-white font-bold">
                 ⚡
               </div>
@@ -1188,7 +1440,7 @@ export default function Home() {
                 <span className="font-black text-xl text-white">Civic</span>
                 <span className="text-blue-500 font-black text-xl">Pulse</span>
               </div>
-            </Link>
+            </RouterLink>
             <p className="text-xs font-medium leading-relaxed max-w-sm mb-6 text-slate-400">
               AI-powered hyperlocal civic issue reporting platform bridging citizens and ward officials. Reclaiming accountability, one report at a time.
             </p>
@@ -1201,9 +1453,9 @@ export default function Home() {
           <div className="text-left flex flex-col">
             <h5 className="font-extrabold text-xs text-white uppercase tracking-wider mb-4">Product</h5>
             <ul className="space-y-2.5 text-xs font-semibold">
-              <li><Link to="/report" className="hover:text-blue-500 text-slate-400">File a Report</Link></li>
-              <li><Link to="/feed" className="hover:text-blue-500 text-slate-400">Live Feed</Link></li>
-              <li><Link to="/dashboard" className="hover:text-blue-500 text-slate-400">Citizen Panel</Link></li>
+              <li><RouterLink to="/report" className="hover:text-blue-500 text-slate-400">File a Report</RouterLink></li>
+              <li><RouterLink to="/feed" className="hover:text-blue-500 text-slate-400">Live Feed</RouterLink></li>
+              <li><RouterLink to="/dashboard" className="hover:text-blue-500 text-slate-400">Citizen Panel</RouterLink></li>
               <li><a href="#how-it-works" className="hover:text-blue-500 text-slate-400">How It Works</a></li>
             </ul>
           </div>
