@@ -57,30 +57,31 @@ export default function Report({ onViewReports }) {
   });
 
   const loadingSteps = [
-    file?.type?.startsWith("video/") 
-      ? "Uploading video frame to Gemini Vision..." 
-      : "Uploading image to Gemini Vision...",
-    "Identifying issue type and category...",
-    "Assessing severity level...",
-    "Determining responsible department...",
-    "Generating action recommendations...",
-    "Checking for duplicate reports..."
+    "Gemini Vision initialized...",
+    "Image received",
+    "Detecting infrastructure damage...",
+    "GPS metadata extracted",
+    "Classifying issue...",
+    "Severity calculated...",
+    "Matching department...",
+    "Analysis complete",
   ];
 
-  // Animate the progress steps when analyzing
+  // Animate the progress steps when analyzing — 700ms per step matching animation delays
   useEffect(() => {
     if (loading) {
       setLoadingStepIdx(0);
       const interval = setInterval(() => {
         setLoadingStepIdx((prev) => {
-          if (prev < 5) return prev + 1;
+          if (prev < 7) return prev + 1;
           clearInterval(interval);
           return prev;
         });
-      }, 800);
+      }, 700);
       return () => clearInterval(interval);
     }
   }, [loading]);
+
 
   const handleDivClick = () => {
     fileInputRef.current.click();
@@ -626,46 +627,176 @@ export default function Report({ onViewReports }) {
                 )
               )}
 
-              {/* LOADING STATE */}
+              {/* ── PREMIUM AI ANALYSIS TERMINAL ─────────────────────────── */}
               {loading && (
-                <div className={`${t.surface} rounded-2xl border ${t.border} p-8 text-center mt-6`}>
-                  {/* Spinner container */}
-                  <div className="w-16 h-16 mx-auto bg-blue-500/10 rounded-full flex items-center justify-center">
-                    <div className="animate-spin border-4 border-blue-500 border-t-transparent rounded-full w-8 h-8"></div>
-                  </div>
-                  <h3 className="text-blue-400 font-bold mt-6 text-lg">
-                    {file?.type?.startsWith("video/") 
-                      ? "Video uploaded — analyzing first frame with Gemini..." 
-                      : "Gemini is analyzing your photo..."}
-                  </h3>
-                  <p className={`${t.muted} text-sm mt-1 max-w-sm mx-auto font-medium`}>
-                    Identifying issue type, severity, and responsible department
-                  </p>
+                <motion.div
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, ease: "easeOut" }}
+                  className={`relative overflow-hidden rounded-2xl border mt-6 ${
+                    isDark
+                      ? "bg-[#060D1A] border-[#1E3A5F]"
+                      : "bg-[#F0F7FF] border-[#BFDBFE]"
+                  }`}
+                >
+                  {/* Scanning beam that sweeps top-to-bottom */}
+                  <motion.div
+                    animate={{ top: ["0%", "100%", "0%"] }}
+                    transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                    className="absolute left-0 right-0 h-[2px] z-10 pointer-events-none"
+                    style={{
+                      background:
+                        "linear-gradient(90deg, transparent, rgba(6,182,212,0.6), rgba(37,99,235,0.8), rgba(6,182,212,0.6), transparent)"
+                    }}
+                  />
 
-                  {/* Progress steps (800ms delays) */}
-                  <div className={"mt-8 text-left max-w-md mx-auto space-y-3.5 border-t " + t.border + "/50 pt-6"}>
-                    {loadingSteps.map((step, idx) => {
-                      let icon = "○";
-                      let colorClass = "text-[#6B7280]";
-                      
-                      if (idx < loadingStepIdx) {
-                        icon = "✓";
-                        colorClass = "text-green-400 font-bold";
-                      } else if (idx === loadingStepIdx) {
-                        icon = "...";
-                        colorClass = "text-blue-400 animate-pulse font-bold";
-                      }
-                      
-                      return (
-                        <div key={idx} className={`flex items-center gap-3 text-sm transition-colors duration-300 ${colorClass}`}>
-                          <span className="w-6 text-center select-none font-bold">{icon}</span>
-                          <span>{step}</span>
+                  {/* Corner grid decorations */}
+                  <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-cyan-500/40 rounded-tl-2xl" />
+                  <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-cyan-500/40 rounded-tr-2xl" />
+                  <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-cyan-500/40 rounded-bl-2xl" />
+                  <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-cyan-500/40 rounded-br-2xl" />
+
+                  <div className="relative z-20 p-6 md:p-8">
+                    {/* Header row */}
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-3">
+                        {/* Pulsing AI orb */}
+                        <div className="relative w-10 h-10 flex items-center justify-center">
+                          <motion.div
+                            animate={{ scale: [1, 1.35, 1], opacity: [0.4, 0.1, 0.4] }}
+                            transition={{ duration: 1.8, repeat: Infinity }}
+                            className="absolute inset-0 rounded-full bg-blue-500"
+                          />
+                          <motion.div
+                            animate={{ scale: [1, 1.18, 1], opacity: [0.6, 0.2, 0.6] }}
+                            transition={{ duration: 1.4, repeat: Infinity, delay: 0.3 }}
+                            className="absolute inset-0 rounded-full bg-cyan-400"
+                          />
+                          <span className="relative text-lg z-10">🤖</span>
                         </div>
-                      );
-                    })}
+                        <div>
+                          <div className={`font-black text-sm tracking-widest uppercase ${isDark ? "text-cyan-400" : "text-blue-600"}`}>
+                            Gemini Vision AI
+                          </div>
+                          <div className={`text-xs font-semibold mt-0.5 ${isDark ? "text-slate-500" : "text-slate-400"}`}>
+                            Neural analysis engine v2.0
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Live indicator */}
+                      <div className="flex items-center gap-2">
+                        <motion.div
+                          animate={{ opacity: [1, 0.2, 1] }}
+                          transition={{ duration: 1, repeat: Infinity }}
+                          className="w-2.5 h-2.5 rounded-full bg-red-500"
+                        />
+                        <span className={`text-xs font-black uppercase tracking-widest ${isDark ? "text-red-400" : "text-red-500"}`}>
+                          LIVE
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Terminal output area */}
+                    <div className={`rounded-xl border font-mono text-xs p-4 space-y-2.5 ${
+                      isDark
+                        ? "bg-black/60 border-[#1E3A5F]"
+                        : "bg-white/70 border-[#BFDBFE]"
+                    }`}>
+                      {/* Prompt line */}
+                      <div className={`text-[10px] mb-3 font-semibold uppercase tracking-widest ${isDark ? "text-slate-600" : "text-slate-400"}`}>
+                        $ civicpulse --analyze --mode=deep_scan
+                      </div>
+
+                      {[
+                        { emoji: "🤖", text: "Gemini Vision initialized...",          color: "text-cyan-400",   delay: 0    },
+                        { emoji: "📷", text: "Image received",                        color: "text-blue-400",   delay: 0.7  },
+                        { emoji: "🔍", text: "Detecting infrastructure damage...",    color: "text-purple-400", delay: 1.4  },
+                        { emoji: "📍", text: "GPS metadata extracted",               color: "text-sky-400",    delay: 2.1  },
+                        { emoji: "🧠", text: "Classifying issue...",                  color: "text-indigo-400", delay: 2.8  },
+                        { emoji: "⚠️",  text: "Severity calculated...",               color: "text-amber-400",  delay: 3.5  },
+                        { emoji: "🏛",  text: "Matching department...",               color: "text-green-400",  delay: 4.2  },
+                        { emoji: "✅",  text: "Analysis complete",                   color: "text-emerald-400",delay: 4.9  },
+                      ].map((item, i) => (
+                        <motion.div
+                          key={i}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.3, delay: item.delay }}
+                          className="flex items-center gap-2.5"
+                        >
+                          {/* Status dot */}
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ delay: item.delay + 0.1, type: "spring", stiffness: 300 }}
+                            className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                              i < 7 ? "bg-current opacity-70" : "bg-emerald-400"
+                            } ${item.color}`}
+                          />
+
+                          {/* Emoji */}
+                          <motion.span
+                            initial={{ scale: 0.5, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            transition={{ delay: item.delay + 0.05 }}
+                            className="text-sm shrink-0"
+                          >
+                            {item.emoji}
+                          </motion.span>
+
+                          {/* Text with typewriter reveal */}
+                          <motion.span
+                            initial={{ width: 0, opacity: 0 }}
+                            animate={{ width: "auto", opacity: 1 }}
+                            transition={{ duration: 0.5, delay: item.delay + 0.1 }}
+                            className={`overflow-hidden whitespace-nowrap font-bold ${item.color}`}
+                          >
+                            {item.text}
+                          </motion.span>
+
+                          {/* Trailing cursor only on last visible step */}
+                          {i === Math.min(loadingStepIdx, 7) && (
+                            <motion.span
+                              animate={{ opacity: [1, 0, 1] }}
+                              transition={{ duration: 0.7, repeat: Infinity }}
+                              className={`ml-1 font-black ${item.color}`}
+                            >
+                              █
+                            </motion.span>
+                          )}
+                        </motion.div>
+                      ))}
+                    </div>
+
+                    {/* Progress bar */}
+                    <div className={`mt-5 h-1.5 rounded-full overflow-hidden ${isDark ? "bg-slate-800" : "bg-slate-200"}`}>
+                      <motion.div
+                        initial={{ width: "0%" }}
+                        animate={{ width: `${Math.min(((loadingStepIdx + 1) / 8) * 100, 95)}%` }}
+                        transition={{ duration: 0.6, ease: "easeOut" }}
+                        className="h-full rounded-full bg-gradient-to-r from-blue-500 via-cyan-400 to-emerald-400 relative"
+                      >
+                        <motion.div
+                          animate={{ x: ["0%", "100%"] }}
+                          transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
+                          className="absolute inset-y-0 w-8 bg-gradient-to-r from-transparent via-white/40 to-transparent"
+                        />
+                      </motion.div>
+                    </div>
+                    <div className={`flex justify-between mt-1.5 text-[10px] font-bold ${isDark ? "text-slate-600" : "text-slate-400"}`}>
+                      <span>Processing...</span>
+                      <motion.span
+                        animate={{ opacity: [0.5, 1, 0.5] }}
+                        transition={{ duration: 1, repeat: Infinity }}
+                      >
+                        {Math.min(Math.round(((loadingStepIdx + 1) / 8) * 100), 95)}%
+                      </motion.span>
+                    </div>
                   </div>
-                </div>
+                </motion.div>
               )}
+
 
               {/* ANALYSIS COMPLETE */}
               {!loading && analysis && (

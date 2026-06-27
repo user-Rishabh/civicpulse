@@ -7,6 +7,308 @@ import { sendStatusNotification, createInAppNotification } from "../lib/notifica
 import IssueMap from "../components/IssueMap";
 import { useTheme } from "../context/ThemeContext";
 import CityHealthScore from "../components/CityHealthScore";
+import { motion, AnimatePresence } from "framer-motion";
+
+// Particles for backdrop
+function Particles() {
+  const [items, setItems] = useState([]);
+  const { isDark } = useTheme();
+
+  useEffect(() => {
+    setItems(
+      Array.from({ length: 14 }).map((_, i) => ({
+        id: i,
+        left: `${Math.random() * 100}%`,
+        top: `${Math.random() * 100}%`,
+        size: Math.random() * 3 + 2,
+        duration: Math.random() * 8 + 6,
+        delay: Math.random() * 3
+      }))
+    );
+  }, []);
+
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden">
+      {items.map((p) => (
+        <motion.div
+          key={p.id}
+          animate={{
+            y: [0, -100, 0],
+            x: [0, Math.random() * 30 - 15, 0],
+            opacity: [0, 0.4, 0]
+          }}
+          transition={{
+            duration: p.duration,
+            repeat: Infinity,
+            delay: p.delay,
+            ease: "easeInOut"
+          }}
+          style={{
+            position: "absolute",
+            left: p.left,
+            top: p.top,
+            width: `${p.size}px`,
+            height: `${p.size}px`,
+            borderRadius: "50%",
+            background: isDark ? "rgba(6, 182, 212, 0.3)" : "rgba(37, 99, 235, 0.2)",
+            boxShadow: isDark ? "0 0 6px rgba(6, 182, 212, 0.5)" : "0 0 6px rgba(37, 99, 235, 0.25)"
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// AI Neural Network Backdrop
+function AINetwork() {
+  const { isDark } = useTheme();
+  return (
+    <svg className="absolute inset-0 w-full h-full opacity-[0.045] pointer-events-none z-0" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="100" cy="200" r="4" fill="#3b82f6" />
+      <circle cx="300" cy="150" r="4.5" fill="#06b6d4" className="animate-ping" />
+      <circle cx="500" cy="280" r="4.5" fill="#10b981" />
+      <circle cx="700" cy="180" r="5" fill="#3b82f6" />
+      <circle cx="900" cy="320" r="4" fill="#06b6d4" />
+      
+      <line x1="100" y1="200" x2="300" y2="150" stroke={isDark ? "#64748b" : "#cbd5e1"} strokeWidth="1" />
+      <line x1="300" y1="150" x2="500" y2="280" stroke={isDark ? "#64748b" : "#cbd5e1"} strokeWidth="1" />
+      <line x1="500" y1="280" x2="700" y2="180" stroke={isDark ? "#64748b" : "#cbd5e1"} strokeWidth="1" />
+      <line x1="700" y1="180" x2="900" y2="320" stroke={isDark ? "#64748b" : "#cbd5e1"} strokeWidth="1" />
+
+      <motion.circle
+        cx="100" cy="200" r="3" fill={isDark ? "#67e8f9" : "#2563eb"}
+        animate={{
+          cx: [100, 300, 500, 700, 900],
+          cy: [200, 150, 280, 180, 320]
+        }}
+        transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+      />
+    </svg>
+  );
+}
+
+// Curved data flow path guides
+function DataFlowParticles() {
+  const { isDark } = useTheme();
+  return (
+    <svg className="absolute top-[25%] left-0 w-full h-[50%] opacity-[0.035] pointer-events-none z-0" viewBox="0 0 1000 400">
+      <path id="curve-path-1" d="M -50,200 C 250,50 450,350 1050,200" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
+      <motion.circle r="3.5" fill={isDark ? "#3b82f6" : "#2563eb"} style={{ offsetPath: "path('M -50,200 C 250,50 450,350 1050,200')" }}>
+        <animateMotion dur="11s" repeatCount="indefinite" rotate="auto" />
+      </motion.circle>
+      <motion.circle r="3" fill={isDark ? "#10b981" : "#14b8a6"} style={{ offsetPath: "path('M -50,200 C 250,50 450,350 1050,200')" }}>
+        <animateMotion dur="15s" repeatCount="indefinite" begin="4s" rotate="auto" />
+      </motion.circle>
+    </svg>
+  );
+}
+
+// 10-Layer AI Smart City Background Component
+function LivingCityBackground() {
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [isMobile, setIsMobile] = useState(false);
+  const { isDark } = useTheme();
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    
+    const handleMouseMove = (e) => {
+      setMousePos({ x: e.clientX, y: e.clientY });
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => {
+      window.removeEventListener("resize", checkMobile);
+      window.removeEventListener("mousemove", handleMouseMove);
+    };
+  }, []);
+
+  const transitionConfig = { duration: 0.9, ease: "easeInOut" };
+
+  return (
+    <motion.div 
+      animate={{
+        backgroundColor: isDark ? "#030712" : "#FFFFFF"
+      }}
+      transition={transitionConfig}
+      className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0"
+    >
+      {!isMobile && (
+        <motion.div 
+          animate={{ opacity: isDark ? 0.15 : 0.08 }}
+          transition={transitionConfig}
+          className="absolute inset-0 filter blur-[90px] z-0"
+        >
+          <div className="absolute top-[10%] left-[20%] w-[40vw] h-[40vw] rounded-full bg-blue-600/35 animate-blob-1" />
+          <div className="absolute bottom-[20%] right-[15%] w-[45vw] h-[45vw] rounded-full bg-purple-600/25 animate-blob-2" />
+          <div className="absolute top-[45%] left-[45%] w-[35vw] h-[35vw] rounded-full bg-cyan-600/30 animate-blob-1" />
+        </motion.div>
+      )}
+
+      <motion.div 
+        animate={{
+          opacity: isDark ? 0.06 : 0.045
+        }}
+        transition={transitionConfig}
+        className={`absolute inset-0 z-0 ${isDark ? "hex-grid-bg" : "light-hex-grid"}`} 
+      />
+
+      <AINetwork />
+      <DataFlowParticles />
+      <Particles />
+
+      <motion.div 
+        animate={{ opacity: isDark ? 0.06 : 0.09 }}
+        transition={transitionConfig}
+        className="absolute inset-0 overflow-hidden z-0"
+      >
+        <div className="absolute -top-[50%] -left-[20%] w-[150%] h-[200%] bg-gradient-to-tr from-transparent via-cyan-500/30 to-transparent pointer-events-none animate-ray transform -rotate-12" />
+      </motion.div>
+
+      {!isMobile && (
+        <div 
+          className="absolute inset-0 z-[1] transition-opacity duration-300"
+          style={{
+            background: isDark
+              ? `radial-gradient(450px circle at ${mousePos.x}px ${mousePos.y}px, transparent 40%, rgba(3, 7, 18, 0.45) 85%)`
+              : `radial-gradient(450px circle at ${mousePos.x}px ${mousePos.y}px, rgba(37, 99, 235, 0.03) 0%, transparent 60%)`
+          }}
+        />
+      )}
+    </motion.div>
+  );
+}
+
+// 3D Card Hover Tilt Wrapper
+function PremiumGlowCard({ children, className = "", hoverTilt = true }) {
+  const cardRef = useRef(null);
+  const [rotateX, setRotateX] = useState(0);
+  const [rotateY, setRotateY] = useState(0);
+  const [coords, setCoords] = useState({ x: 0, y: 0 });
+  const [isHovered, setIsHovered] = useState(false);
+  const { isDark } = useTheme();
+
+  const handleMouseMove = (e) => {
+    if (!cardRef.current) return;
+    const rect = cardRef.current.getBoundingClientRect();
+    const width = rect.width;
+    const height = rect.height;
+    
+    const xVal = e.clientX - rect.left - width / 2;
+    const yVal = e.clientY - rect.top - height / 2;
+
+    const rotX = hoverTilt ? -(yVal / (height / 2)) * 10 : 0;
+    const rotY = hoverTilt ? (xVal / (width / 2)) * 10 : 0;
+
+    setRotateX(rotX);
+    setRotateY(rotY);
+    setCoords({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+  };
+
+  const handleMouseLeave = () => {
+    setRotateX(0);
+    setRotateY(0);
+    setIsHovered(false);
+  };
+
+  return (
+    <motion.div
+      ref={cardRef}
+      onMouseMove={handleMouseMove}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={handleMouseLeave}
+      animate={{
+        rotateX: rotateX,
+        rotateY: rotateY,
+        y: isHovered ? -8 : 0,
+        backgroundColor: isDark ? "rgba(17, 24, 39, 0.4)" : "rgba(255, 255, 255, 0.8)",
+        borderColor: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(226, 232, 240, 0.8)",
+        boxShadow: isDark 
+          ? (isHovered ? "0 10px 40px rgba(59, 130, 246, 0.12)" : "0 4px 30px rgba(0, 0, 0, 0.4)") 
+          : (isHovered ? "0 15px 35px rgba(37, 99, 235, 0.06)" : "0 8px 30px rgba(0, 0, 0, 0.03)")
+      }}
+      transition={{ 
+        rotateX: { type: "spring", stiffness: 350, damping: 22 },
+        rotateY: { type: "spring", stiffness: 350, damping: 22 },
+        backgroundColor: { duration: 0.9, ease: "easeInOut" },
+        borderColor: { duration: 0.9, ease: "easeInOut" },
+        boxShadow: { duration: 0.9, ease: "easeInOut" }
+      }}
+      style={{ transformStyle: "preserve-3d" }}
+      className={`premium-glow-card group relative p-6 flex flex-col justify-between border backdrop-blur-md rounded-2xl ${className}`}
+    >
+      <div 
+        className="pointer-events-none absolute -inset-px opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10"
+        style={{
+          background: isDark 
+            ? `radial-gradient(140px circle at ${coords.x}px ${coords.y}px, rgba(37, 99, 235, 0.2), transparent 80%)`
+            : `radial-gradient(140px circle at ${coords.x}px ${coords.y}px, rgba(37, 99, 235, 0.08), transparent 80%)`
+        }}
+      />
+      <div style={{ transform: "translateZ(25px)" }} className="w-full flex flex-col justify-between relative z-20">
+        {children}
+      </div>
+    </motion.div>
+  );
+}
+
+// CountUp Animation
+function CountUp({ to, duration = 1.4 }) {
+  const [count, setCount] = useState(0);
+  const hasRun = useRef(false);
+
+  useEffect(() => {
+    if (hasRun.current) return;
+    hasRun.current = true;
+    if (to === 0) return;
+    const steps = 40;
+    const inc = to / steps;
+    let cur = 0;
+    const delay = (duration * 1000) / steps;
+    const timer = setInterval(() => {
+      cur = Math.min(cur + inc, to);
+      setCount(Math.round(cur));
+      if (cur >= to) clearInterval(timer);
+    }, delay);
+    return () => clearInterval(timer);
+  }, [to, duration]);
+
+  return <span>{count}</span>;
+}
+
+// Custom Cursor Glow
+function CustomCursor() {
+  const [pos, setPos] = useState({ x: -200, y: -200 });
+  const { isDark } = useTheme();
+
+  useEffect(() => {
+    const move = (e) => setPos({ x: e.clientX, y: e.clientY });
+    window.addEventListener("mousemove", move);
+    return () => window.removeEventListener("mousemove", move);
+  }, []);
+
+  if (typeof window !== "undefined" && window.innerWidth < 768) return null;
+
+  return (
+    <div
+      className="pointer-events-none fixed z-[9999] mix-blend-screen"
+      style={{
+        left: pos.x - 150,
+        top: pos.y - 150,
+        width: 300,
+        height: 300,
+        borderRadius: "50%",
+        background: isDark
+          ? "radial-gradient(circle, rgba(37,99,235,0.07) 0%, transparent 70%)"
+          : "radial-gradient(circle, rgba(37,99,235,0.04) 0%, transparent 70%)",
+        transition: "left 0.08s linear, top 0.08s linear"
+      }}
+    />
+  );
+}
 
 export default function OfficerDashboard() {
   const { userProfile } = useAuth();
@@ -408,41 +710,84 @@ export default function OfficerDashboard() {
     { id: "map", label: "Issue Map" },
   ];
 
+  const tabIcons = {
+    Dashboard: "⊞",
+    analyze: "🔍",
+    messages: "✉",
+    submit: "✓",
+    map: "🗺️",
+  };
+
   return (
-    <div className={`min-h-screen ${bgPrimary} ${textTheme} flex relative transition-colors duration-300`}>
+    <motion.div
+      animate={{
+        color: isDark ? "#F8FAFC" : "#0F172A",
+        backgroundColor: isDark ? "#030712" : "#FFFFFF"
+      }}
+      transition={{ duration: 0.9, ease: "easeInOut" }}
+      className="min-h-screen flex relative overflow-hidden"
+    >
+      {/* Subtle Noise Filter Backdrop Overlay */}
+      <div className="noise-overlay" />
+
+      {/* 10-Layer AI Smart City Background */}
+      <LivingCityBackground />
+
+      {/* Global Mouse Spotlight */}
+      <CustomCursor />
+
       {/* Toast Alert */}
-      {toastMsg && (
-        <div className="fixed bottom-5 right-5 bg-green-600 border border-green-500 text-white px-5 py-3 rounded-xl shadow-2xl z-50 text-sm font-semibold animate-pulse">
-          {toastMsg}
-        </div>
-      )}
+      <AnimatePresence>
+        {toastMsg && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            className="fixed bottom-5 right-5 bg-green-600 border border-green-500 text-white px-5 py-3 rounded-xl shadow-2xl z-50 text-sm font-semibold"
+          >
+            {toastMsg}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Sidebar */}
-      <div className={`fixed left-0 top-0 w-64 h-screen ${bgSidebar} border-r ${borderSidebar} pt-20 flex flex-col z-30 transition-colors duration-300`}>
+      <motion.div
+        animate={{
+          backgroundColor: isDark ? "rgba(13, 17, 23, 0.9)" : "rgba(248, 250, 252, 0.95)",
+          borderColor: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(226, 232, 240, 0.8)"
+        }}
+        transition={{ duration: 0.9 }}
+        className="w-64 border-r h-screen fixed left-0 top-0 pt-20 flex flex-col z-30"
+      >
         {/* App Logo */}
-        <div className="text-blue-400 font-bold text-xl px-6 mb-4 mt-4">
-          CivicPulse
+        <div className="text-blue-500 font-black text-xl px-6 mb-4 mt-4 tracking-wider flex items-center gap-2">
+          <span>🛡️</span> CivicPulse
         </div>
 
         {/* Officer Info */}
-        <div className="px-6 mb-6">
+        <div className={`px-4 pb-6 border-b ${borderSidebar} mt-2`}>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center text-white font-black text-base shrink-0">
+            <motion.div
+              animate={{ y: [0, -4, 0] }}
+              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+              className="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center text-white font-black text-base shrink-0 shadow-lg"
+            >
               {(userProfile?.name || "O")[0].toUpperCase()}
-            </div>
+            </motion.div>
             <div className="min-w-0">
-              <div className={`text-sm font-bold ${textTheme} truncate`}>{userProfile?.name || "Officer"}</div>
-              <div className="mt-1">
-                <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-full px-2.5 py-0.5 text-[10px] font-bold">
+              <div className={`text-sm font-black ${textTheme} truncate`}>{userProfile?.name || "Officer"}</div>
+              <div className="mt-1 flex items-center gap-1.5">
+                <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider">
                   {officerDepartment} Dept
                 </span>
+                <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse shrink-0" />
               </div>
             </div>
           </div>
         </div>
 
         {/* Navigation Items */}
-        <nav className="flex-1 space-y-1">
+        <nav className="flex-1 mt-6 px-3 space-y-1">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
             const isMessagesTab = tab.id === "messages";
@@ -458,26 +803,46 @@ export default function OfficerDashboard() {
               <div
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-6 py-3 flex items-center justify-between gap-3 cursor-pointer rounded-r-xl mr-3 font-semibold text-sm transition-all duration-200 ${
-                  isActive
-                    ? "bg-blue-600 text-white shadow-md shadow-blue-500/10"
-                    : `${textMuted} hover:${textTheme} hover:${bgSurface2}`
-                }`}
+                className="relative group px-1"
               >
-                <span>{tab.label}</span>
-                {isMessagesTab && unreadCount > 0 && (
-                  <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0">
-                    {unreadCount}
+                <motion.div
+                  whileHover={{ x: 6 }}
+                  animate={{
+                    backgroundColor: isActive ? "#2563eb" : "transparent"
+                  }}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all text-sm font-semibold relative overflow-hidden ${
+                    isActive
+                      ? "text-white shadow-lg shadow-blue-500/20"
+                      : `${isDark ? "text-slate-400 hover:text-white" : "text-[#475569] hover:text-[#0F172A]"} hover:bg-slate-200/50 dark:hover:bg-slate-800/50`
+                  }`}
+                >
+                  {isActive && (
+                    <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full animate-[shimmer_2s_infinite_linear]" />
+                  )}
+
+                  <span className={`absolute left-0 top-3 bottom-3 w-1 rounded-r-md bg-blue-500 transition-transform duration-300 origin-left ${
+                    isActive ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100"
+                  }`} />
+
+                  <span className="text-base transition-transform duration-300 group-hover:rotate-12">
+                    {tabIcons[tab.id] || "⊞"}
                   </span>
-                )}
+                  <span className="flex-1">{tab.label}</span>
+
+                  {unreadCount > 0 && (
+                    <span className="bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shrink-0">
+                      {unreadCount}
+                    </span>
+                  )}
+                </motion.div>
               </div>
             );
           })}
         </nav>
-      </div>
+      </motion.div>
 
       {/* Main Content Area */}
-      <div className="flex-1 ml-64 pt-20 px-8 pb-20 min-w-0">
+      <div className="flex-1 ml-64 pt-20 px-8 pb-20 min-w-0 relative z-10">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-32">
             <div className="animate-spin border-4 border-blue-500 border-t-transparent rounded-full w-10 h-10 mb-4"></div>
@@ -544,21 +909,25 @@ export default function OfficerDashboard() {
               const insights = generateInsights(assignedIssues);
 
               return (
-                <div className="max-w-6xl mx-auto animate-fadeIn">
+                <div className="max-w-6xl mx-auto space-y-6">
 
                   {/* ── HEADER ── */}
-                  <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center text-white font-black text-base shrink-0">
-                        {(userProfile?.name || "O")[0].toUpperCase()}
-                      </div>
+                      <motion.div
+                        animate={{ rotate: [0, 360] }}
+                        transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+                        className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white text-lg shrink-0 shadow-lg shadow-blue-500/20"
+                      >
+                        ⚙️
+                      </motion.div>
                       <div>
-                        <div className="text-xl font-bold text-white leading-tight">{userProfile?.name || "Officer"}</div>
+                        <h1 className={`text-2xl font-black ${textTheme}`}>Command Center Dashboard</h1>
                         <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-[#9CA3AF] text-sm">{officerDepartment} Department</span>
+                          <span className={`${textMuted} text-xs font-semibold`}>{officerDepartment} Department Operations</span>
                           <span className="flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
-                            <span className="text-green-400 text-xs font-semibold">Live</span>
+                            <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+                            <span className="text-green-400 text-[10px] font-black uppercase tracking-wider">Operational</span>
                           </span>
                         </div>
                       </div>
@@ -568,19 +937,23 @@ export default function OfficerDashboard() {
                       <div className="relative">
                         <button
                           onClick={() => setNotifOpen(!notifOpen)}
-                          className="relative w-10 h-10 flex items-center justify-center rounded-xl border border-[#374151] hover:border-amber-500/50 bg-[#111827] text-white transition cursor-pointer font-medium"
+                          className={`relative w-10 h-10 flex items-center justify-center rounded-xl border transition cursor-pointer font-medium ${
+                            isDark ? "bg-[#111827] border-[#374151] hover:border-blue-500/50" : "bg-white border-slate-200 hover:border-blue-500/40"
+                          }`}
                         >
-                          <span className="text-lg">&#x1F514;</span>
+                          <span className="text-lg">🔔</span>
                           {notifications.filter(n => !n.read).length > 0 && (
-                            <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow">
+                            <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow animate-bounce">
                               {notifications.filter(n => !n.read).length}
                             </span>
                           )}
                         </button>
                         {notifOpen && (
-                          <div className="absolute right-0 mt-2 w-80 bg-[#111827] border border-[#374151] rounded-2xl p-4 shadow-2xl z-50 text-left">
-                            <div className="flex items-center justify-between mb-3 border-b border-[#1F2937] pb-2">
-                              <span className="font-bold text-sm text-white">Verification Alerts</span>
+                          <div className={`absolute right-0 mt-2 w-80 rounded-2xl p-4 shadow-2xl z-50 text-left border ${
+                            isDark ? "bg-[#111827] border-[#374151]" : "bg-white border-slate-200"
+                          }`}>
+                            <div className={`flex items-center justify-between mb-3 border-b pb-2 ${isDark ? "border-[#1F2937]" : "border-slate-100"}`}>
+                              <span className={`font-bold text-sm ${textTheme}`}>Verification Alerts</span>
                               {notifications.filter(n => !n.read).length > 0 && (
                                 <button
                                   onClick={async () => {
@@ -588,7 +961,7 @@ export default function OfficerDashboard() {
                                       await updateDoc(doc(db, "notifications", n.docId), { read: true });
                                     }
                                   }}
-                                  className="text-amber-400 text-xs font-semibold hover:text-amber-300 cursor-pointer"
+                                  className="text-blue-400 text-xs font-semibold hover:text-blue-300 cursor-pointer"
                                 >
                                   Mark all read
                                 </button>
@@ -596,7 +969,7 @@ export default function OfficerDashboard() {
                             </div>
                             <div className="max-h-72 overflow-y-auto space-y-2">
                               {notifications.length === 0 ? (
-                                <p className="text-xs text-center py-4 text-[#9CA3AF]">No notifications yet</p>
+                                <p className={`text-xs text-center py-4 ${textMuted}`}>No notifications yet</p>
                               ) : (
                                 notifications.map(notif => (
                                   <div
@@ -604,12 +977,12 @@ export default function OfficerDashboard() {
                                     onClick={async () => {
                                       await updateDoc(doc(db, "notifications", notif.docId), { read: true });
                                     }}
-                                    className={`rounded-xl p-3 cursor-pointer transition bg-[#1F2937] hover:bg-[#374151]/50 ${
-                                      !notif.read ? 'border-l-4 border-amber-500' : ''
-                                    }`}
+                                    className={`rounded-xl p-3 cursor-pointer transition ${
+                                      isDark ? "bg-[#1F2937] hover:bg-[#374151]/50" : "bg-slate-50 hover:bg-slate-100/70"
+                                    } ${!notif.read ? 'border-l-4 border-blue-500' : ''}`}
                                   >
-                                    <p className="text-xs leading-relaxed text-white">{notif.message}</p>
-                                    <p className="text-[10px] mt-1 text-[#6B7280]">
+                                    <p className={`text-xs leading-relaxed ${textTheme}`}>{notif.message}</p>
+                                    <p className={`text-[10px] mt-1 ${textSubtle}`}>
                                       {new Date(notif.createdAt).toLocaleString()}
                                     </p>
                                   </div>
@@ -621,10 +994,10 @@ export default function OfficerDashboard() {
                       </div>
 
                       <div>
-                        <div className="text-white text-sm font-semibold">
+                        <div className={`text-sm font-black ${textTheme}`}>
                           {liveTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                         </div>
-                        <div className="text-[#9CA3AF] text-xs mt-0.5">
+                        <div className={`text-xs mt-0.5 ${textMuted}`}>
                           {liveTime.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
                         </div>
                       </div>
@@ -634,56 +1007,67 @@ export default function OfficerDashboard() {
                   <CityHealthScore />
 
                   {/* ── STATS CARDS ── */}
-                  <div className="grid grid-cols-4 gap-4 mb-6">
+                  <div className="grid grid-cols-4 gap-4">
                     {[
-                      { icon: '📋', label: 'Total Assigned', count: totalAssigned,    color: 'bg-blue-500/20 text-blue-400',   bar: 'bg-blue-500',   pct: 100 },
-                      { icon: '⏳', label: 'Pending',        count: pendingCount,      color: 'bg-gray-500/20 text-gray-400',   bar: 'bg-gray-400',   pct: totalAssigned > 0 ? (pendingCount / totalAssigned) * 100 : 0 },
-                      { icon: '⚡', label: 'In Progress',    count: inProgressCount,   color: 'bg-yellow-500/20 text-yellow-400',bar: 'bg-yellow-500', pct: totalAssigned > 0 ? (inProgressCount / totalAssigned) * 100 : 0 },
-                      { icon: '✅', label: 'Resolved',       count: resolvedCount,     color: 'bg-green-500/20 text-green-400', bar: 'bg-green-500',  pct: totalAssigned > 0 ? (resolvedCount / totalAssigned) * 100 : 0 },
+                      { icon: '📋', label: 'Total Assigned', count: totalAssigned,    color: 'bg-blue-500/10 text-blue-400 border-blue-500/20',   bar: 'bg-blue-500',   pct: 100 },
+                      { icon: '⏳', label: 'Pending',        count: pendingCount,      color: 'bg-amber-500/10 text-amber-400 border-amber-500/20',   bar: 'bg-amber-500',   pct: totalAssigned > 0 ? (pendingCount / totalAssigned) * 100 : 0 },
+                      { icon: '⚡', label: 'In Progress',    count: inProgressCount,   color: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',bar: 'bg-cyan-500', pct: totalAssigned > 0 ? (inProgressCount / totalAssigned) * 100 : 0 },
+                      { icon: '✅', label: 'Resolved',       count: resolvedCount,     color: 'bg-green-500/10 text-green-400 border-green-500/20', bar: 'bg-green-500',  pct: totalAssigned > 0 ? (resolvedCount / totalAssigned) * 100 : 0 },
                     ].map(({ icon, label, count, color, bar, pct }) => (
-                      <div key={label} className="bg-[#111827] rounded-xl border border-[#1F2937] p-4 hover:border-blue-500/20 transition-all">
+                      <PremiumGlowCard key={label} className="p-4" hoverTilt={true}>
                         <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-xl ${color} flex items-center justify-center text-lg shrink-0`}>{icon}</div>
-                          <div className="min-w-0">
-                            <div className="text-2xl font-black text-white leading-none">{count}</div>
-                            <div className="text-[#9CA3AF] text-xs mt-0.5">{label}</div>
+                          <div className={`w-10 h-10 rounded-xl border ${color} flex items-center justify-center text-lg shrink-0`}>{icon}</div>
+                          <div className="min-w-0 text-left">
+                            <div className={`text-2xl font-black ${textTheme} leading-none`}><CountUp to={count} /></div>
+                            <div className={`text-xs mt-1 font-bold ${textMuted}`}>{label}</div>
                           </div>
                         </div>
-                        <div className="mt-3 bg-[#1F2937] rounded-full h-1 overflow-hidden">
-                          <div className={`${bar} h-1 rounded-full transition-all duration-700`} style={{ width: `${pct}%` }} />
+                        <div className={`mt-3 rounded-full h-1 overflow-hidden ${isDark ? "bg-slate-800" : "bg-slate-100"}`}>
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${pct}%` }}
+                            transition={{ duration: 1, ease: "easeOut" }}
+                            className={`${bar} h-1 rounded-full`}
+                          />
                         </div>
-                      </div>
+                      </PremiumGlowCard>
                     ))}
                   </div>
 
                   {/* ── QUICK ACTIONS ── */}
-                  <div className="grid grid-cols-2 gap-4 mb-6">
-                    <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex items-center justify-between gap-3">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className={`border rounded-2xl p-4 flex items-center justify-between gap-3 text-left ${
+                      isDark ? "bg-red-500/5 border-red-500/20" : "bg-red-50 border-red-200"
+                    }`}>
                       <div className="flex items-center gap-2">
                         <div className="relative shrink-0">
-                          <span className="block w-2.5 h-2.5 bg-red-500 rounded-full"></span>
-                          <span className="absolute inset-0 w-2.5 h-2.5 bg-red-500 rounded-full animate-ping opacity-75"></span>
+                          <span className="block w-2.5 h-2.5 bg-red-500 rounded-full" />
+                          <span className="absolute inset-0 w-2.5 h-2.5 bg-red-500 rounded-full animate-ping opacity-75" />
                         </div>
                         <div>
-                          <div className="text-white font-semibold text-sm">{pendingCount} Action{pendingCount !== 1 ? 's' : ''} Required</div>
-                          <div className="text-red-400/70 text-xs">Awaiting officer review</div>
+                          <div className={`font-black text-sm ${isDark ? "text-red-300" : "text-red-800"}`}>{pendingCount} Action{pendingCount !== 1 ? 's' : ''} Required</div>
+                          <div className={`text-xs ${isDark ? "text-red-400/60" : "text-red-600/70"}`}>Awaiting officer review</div>
                         </div>
                       </div>
                       <button onClick={() => { setActiveTab('submit'); setSubTab('Pending'); }}
-                        className="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition cursor-pointer shrink-0">
+                        className="bg-red-600 hover:bg-red-700 text-white text-xs font-black px-4 py-2 rounded-xl transition cursor-pointer shrink-0 shadow-lg shadow-red-500/15">
                         Review →
                       </button>
                     </div>
-                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 flex items-center justify-between gap-3">
+                    <div className={`border rounded-2xl p-4 flex items-center justify-between gap-3 text-left ${
+                      isDark ? "bg-blue-500/5 border-blue-500/20" : "bg-blue-50 border-blue-200"
+                    }`}>
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center text-base shrink-0">💬</div>
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-base shrink-0 ${
+                          isDark ? "bg-blue-500/15 text-blue-400" : "bg-blue-100 text-blue-600"
+                        }`}>💬</div>
                         <div>
-                          <div className="text-white font-semibold text-sm">{allChats.length} Conversation{allChats.length !== 1 ? 's' : ''}</div>
-                          <div className="text-blue-400/70 text-xs">Messages from citizens</div>
+                          <div className={`font-black text-sm ${isDark ? "text-blue-300" : "text-blue-800"}`}>{allChats.length} Conversation{allChats.length !== 1 ? 's' : ''}</div>
+                          <div className={`text-xs ${isDark ? "text-blue-400/60" : "text-blue-600/70"}`}>Messages from citizens</div>
                         </div>
                       </div>
                       <button onClick={() => setActiveTab('messages')}
-                        className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition cursor-pointer shrink-0">
+                        className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-black px-4 py-2 rounded-xl transition cursor-pointer shrink-0 shadow-lg shadow-blue-500/15">
                         Open →
                       </button>
                     </div>
@@ -693,127 +1077,101 @@ export default function OfficerDashboard() {
                   <div className="grid grid-cols-5 gap-4">
 
                     {/* RECENT ACTIVITY (col-span-3) */}
-                    <div className="col-span-3 bg-[#111827] rounded-xl border border-[#1F2937] overflow-hidden">
-                      <div className="flex items-center justify-between px-4 py-3 border-b border-[#1F2937]">
-                        <span className="text-base font-bold text-white">Recent Activity</span>
-                        <span className="text-[#6B7280] text-xs">{recentIssues.length} issues</span>
+                    <div className={`col-span-3 rounded-2xl border overflow-hidden ${
+                      isDark ? "bg-[#111827]/80 border-white/5" : "bg-white/95 border-slate-200"
+                    }`}>
+                      <div className={`flex items-center justify-between px-4 py-3.5 border-b ${isDark ? "border-[#1F2937]" : "border-slate-100"}`}>
+                        <span className={`text-sm font-black ${textTheme}`}>Recent Activities</span>
+                        <span className={`text-xs font-bold ${textMuted}`}>{recentIssues.length} total</span>
                       </div>
-                      {recentIssues.length === 0 ? (
-                        <div className="px-4 py-10 text-center text-[#9CA3AF] text-sm">No activity yet.</div>
-                      ) : (
-                        recentIssues.map((issue, idx) => (
-                          <div
-                             key={issue.docId || issue.id}
-                             className={`flex items-center gap-3 px-4 py-3 hover:bg-[#1F2937] transition ${
-                               idx < recentIssues.length - 1 ? 'border-b border-[#1F2937]/50' : ''
-                             }`}
-                          >
-                            {/* Status icon */}
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0 ${
-                              issue.status === 'Resolved' ? 'bg-green-500/20 text-green-400' :
-                              issue.status === 'In Progress' ? 'bg-yellow-500/20 text-yellow-400' :
-                              'bg-gray-500/20 text-gray-400'
-                            }`}>
-                              {issue.status === 'Resolved' ? '✅' : issue.status === 'In Progress' ? '🔄' : '⏳'}
-                            </div>
-                            {/* Info */}
-                            <div className="flex-1 min-w-0">
-                              <div className="text-white text-sm font-medium truncate">
-                                {issue.category} · {issue.location}
+                      <div className="divide-y divide-slate-800/40">
+                        {recentIssues.length === 0 ? (
+                          <div className={`px-4 py-10 text-center text-sm ${textMuted}`}>No activity yet.</div>
+                        ) : (
+                          recentIssues.map((issue, idx) => (
+                            <div
+                               key={issue.docId || issue.id}
+                               className={`flex items-center gap-3 px-4 py-3 hover:bg-blue-500/5 transition duration-200`}
+                            >
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0 ${
+                                issue.status === 'Resolved' ? 'bg-green-500/10 text-green-400 border border-green-500/25' :
+                                issue.status === 'In Progress' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/25' :
+                                'bg-amber-500/10 text-amber-400 border border-amber-500/25'
+                              }`}>
+                                {issue.status === 'Resolved' ? '✅' : issue.status === 'In Progress' ? '⚡' : '⏳'}
                               </div>
-                              <div className="text-[#6B7280] text-xs truncate">{issue.userEmail || 'Anonymous'}</div>
+                              <div className="flex-1 min-w-0 text-left">
+                                <div className={`text-sm font-bold truncate ${textTheme}`}>
+                                  {issue.category} · {issue.location}
+                                </div>
+                                <div className={`text-xs truncate ${textSubtle}`}>{issue.userEmail || 'Anonymous'}</div>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                                  issue.status === 'Resolved' ? 'bg-green-500/10 text-green-400' :
+                                  issue.status === 'In Progress' ? 'bg-cyan-500/10 text-cyan-400' :
+                                  'bg-amber-500/10 text-amber-400'
+                                }`}>{issue.status}</span>
+                                <div className={`text-[10px] font-bold ${textSubtle} mt-1`}>{issue.date || '—'}</div>
+                              </div>
                             </div>
-                            {/* Status + date */}
-                            <div className="text-right shrink-0">
-                              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                                issue.status === 'Resolved' ? 'bg-green-500/10 text-green-400' :
-                                issue.status === 'In Progress' ? 'bg-yellow-500/10 text-yellow-400' :
-                                'bg-gray-500/10 text-gray-400'
-                              }`}>{issue.status}</span>
-                              <div className="text-[#6B7280] text-xs mt-1">{issue.date || '—'}</div>
-                            </div>
-                          </div>
-                        ))
-                      )}
+                          ))
+                        )}
+                      </div>
                     </div>
 
-                    {/* RIGHT COLUMN (col-span-2): Category Heatmap + Performance */}
+                    {/* RIGHT COLUMN (col-span-2) */}
                     <div className="col-span-2 flex flex-col gap-4">
-
                       {/* Issue Breakdown */}
-                      <div className="bg-[#111827] rounded-xl border border-[#1F2937] p-4">
-                        <div className="text-base font-bold text-white mb-4">Issue Breakdown</div>
-                        {categoryCounts.map(({ name, count }) => (
-                          <div key={name} className="flex items-center gap-3 mb-3">
-                            <span className="text-[#9CA3AF] text-xs w-32 truncate shrink-0">{name}</span>
-                            <div className="flex-1 bg-[#1F2937] rounded-full h-2 overflow-hidden">
-                              <div
-                                className="bg-blue-500 rounded-full h-2 transition-all duration-700"
-                                style={{ width: `${totalAssigned > 0 ? (count / totalAssigned) * 100 : 0}%` }}
-                              />
+                      <div className={`rounded-2xl border p-4 text-left ${
+                        isDark ? "bg-[#111827]/80 border-white/5" : "bg-white/95 border-slate-200"
+                      }`}>
+                        <div className={`text-sm font-black mb-4 ${textTheme}`}>Issue Breakdown</div>
+                        <div className="space-y-3">
+                          {categoryCounts.map(({ name, count }) => (
+                            <div key={name} className="flex items-center gap-3">
+                              <span className={`text-xs font-bold w-24 truncate shrink-0 ${textMuted}`}>{name}</span>
+                              <div className={`flex-1 rounded-full h-1.5 overflow-hidden ${isDark ? "bg-slate-800" : "bg-slate-100"}`}>
+                                <motion.div
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${totalAssigned > 0 ? (count / totalAssigned) * 100 : 0}%` }}
+                                  transition={{ duration: 1, ease: "easeOut" }}
+                                  className="bg-blue-500 rounded-full h-1.5"
+                                />
+                              </div>
+                              <span className={`text-xs font-black w-5 text-right shrink-0 ${textTheme}`}>{count}</span>
                             </div>
-                            <span className="text-white text-xs w-5 text-right shrink-0">{count}</span>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
 
-                      {/* Predictive Insights */}
-                      <div className="bg-[#111827] rounded-xl border border-[#1F2937] p-4 mt-4">
-                        <div className="text-base font-bold text-white">AI Predictive Insights</div>
-                        <div className="text-[#9CA3AF] text-xs mt-1">Based on current reporting trends</div>
-                        <div className="mt-4">
+                      {/* AI Predictive Insights */}
+                      <div className={`rounded-2xl border p-4 text-left ${
+                        isDark ? "bg-[#111827]/80 border-white/5" : "bg-white/95 border-slate-200"
+                      }`}>
+                        <div className={`text-sm font-black ${textTheme}`}>AI Predictive Insights</div>
+                        <div className={`text-[10px] font-bold ${textMuted}`}>Based on current city trends</div>
+                        <div className="mt-3 space-y-2">
                           {insights.map((insight, idx) => {
-                            const bgClass = {
-                              blue: "bg-blue-500/20",
-                              red: "bg-red-500/20",
-                              cyan: "bg-cyan-500/20",
-                              green: "bg-green-500/20"
-                            }[insight.color] || "bg-gray-500/20";
-                            
+                            const colorStyle = {
+                              blue: isDark ? "bg-blue-500/10 border-blue-500/20 text-blue-400" : "bg-blue-50 border-blue-200 text-blue-600",
+                              red: isDark ? "bg-red-500/10 border-red-500/20 text-red-400" : "bg-red-50 border-red-200 text-red-600",
+                              cyan: isDark ? "bg-cyan-500/10 border-cyan-500/20 text-cyan-400" : "bg-cyan-50 border-cyan-200 text-cyan-600",
+                              green: isDark ? "bg-green-500/10 border-green-500/20 text-green-400" : "bg-green-50 border-green-200 text-green-600",
+                            }[insight.color] || "bg-gray-500/10 text-gray-400";
+
                             return (
-                              <div key={idx} className="flex items-start gap-3 p-3 bg-[#1F2937] rounded-xl mb-2">
-                                <div className={`w-8 h-8 rounded-lg ${bgClass} flex items-center justify-center text-sm shrink-0`}>
-                                  {insight.icon}
-                                </div>
+                              <div key={idx} className={`flex items-start gap-2.5 p-2.5 rounded-xl border ${colorStyle}`}>
+                                <span className="text-base shrink-0 mt-0.5">{insight.icon}</span>
                                 <div className="min-w-0 flex-1">
-                                  <div className="text-white text-sm font-semibold">{insight.title}</div>
-                                  <div className="text-[#9CA3AF] text-xs mt-0.5">{insight.desc}</div>
+                                  <div className="text-xs font-black truncate">{insight.title}</div>
+                                  <div className={`text-[10px] font-semibold mt-0.5 opacity-80`}>{insight.desc}</div>
                                 </div>
                               </div>
                             );
                           })}
                         </div>
                       </div>
-
-                      {/* Department Performance */}
-                      <div className="grid grid-cols-1 gap-3">
-                        {/* Avg Resolution Time */}
-                        <div className="bg-[#111827] rounded-xl border border-[#1F2937] p-4">
-                          <div className="text-3xl font-black text-blue-400">4.2</div>
-                          <div className="text-[#9CA3AF] text-xs mt-0.5">days average</div>
-                          <div className="text-[#6B7280] text-xs mt-1">Based on resolved issues</div>
-                          <div className="mt-2 bg-[#1F2937] rounded-full h-1 overflow-hidden">
-                            <div className="bg-blue-500 h-1 rounded-full" style={{ width: '42%' }} />
-                          </div>
-                        </div>
-
-                        {/* Resolution Rate + Upvotes side by side */}
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="bg-[#111827] rounded-xl border border-[#1F2937] p-4">
-                            <div className="text-2xl font-black text-green-400">{resolvedPercent}%</div>
-                            <div className="text-[#9CA3AF] text-xs mt-0.5">resolved</div>
-                            <div className="mt-2 bg-[#1F2937] rounded-full h-1 overflow-hidden">
-                              <div className="bg-green-500 h-1 rounded-full transition-all duration-700" style={{ width: `${resolvedPercent}%` }} />
-                            </div>
-                          </div>
-                          <div className="bg-[#111827] rounded-xl border border-[#1F2937] p-4">
-                            <div className="text-2xl font-black text-amber-400">{totalUpvotes}</div>
-                            <div className="text-[#9CA3AF] text-xs mt-0.5">upvotes</div>
-                            <div className="text-[#6B7280] text-xs mt-1">Community</div>
-                          </div>
-                        </div>
-                      </div>
-
                     </div>
                   </div>
 
@@ -824,27 +1182,34 @@ export default function OfficerDashboard() {
 
             {/* 2. ANALYZE REPORTS TAB */}
             {activeTab === "analyze" && (
-              <div className="max-w-4xl mx-auto space-y-6 animate-fadeIn">
-                <div>
-                  <h1 className={`text-2xl font-bold ${textTheme}`}>Analyze Reports</h1>
-                  <p className={`${textMuted} text-sm mt-1`}>
-                    View all reported civic issues assigned to {officerDepartment}
+              <div className="max-w-4xl mx-auto space-y-6">
+                <div className="text-left">
+                  <h1 className={`text-2xl font-black ${textTheme}`}>Analyze Reports</h1>
+                  <p className={`${textMuted} text-xs font-bold mt-1`}>
+                    Verify reported civic issues assigned to {officerDepartment} department
                   </p>
                 </div>
 
-                {/* Premium Filter Tabs */}
-                <div className={`${bgSurface} rounded-2xl p-1 flex gap-1 w-fit`}>
-                  {['All', 'Critical', 'High', 'Medium', 'Low'].map((f) => (
-                    <button
+                {/* Filter chips */}
+                <div className="flex gap-2 flex-wrap">
+                  {['All', 'Critical', 'High', 'Medium', 'Low'].map((f, i) => (
+                    <motion.button
                       key={f}
-                      className={`px-5 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                      whileHover={{ scale: 1.04 }}
+                      whileTap={{ scale: 0.96 }}
+                      className={`px-4 py-2 rounded-full text-xs font-black border transition cursor-pointer ${
                         f === 'All'
-                          ? 'bg-blue-600 text-white shadow-lg'
-                          : `${textMuted} hover:text-white hover:${bgSurface2}`
+                          ? 'bg-blue-600 border-blue-500 text-white shadow-lg'
+                          : isDark
+                          ? 'bg-[#111827] border-slate-700/60 text-slate-400 hover:border-blue-500/40 hover:text-blue-400'
+                          : 'bg-white border-slate-200 text-slate-500 hover:border-blue-400 hover:text-blue-600'
                       }`}
                     >
                       {f}
-                    </button>
+                    </motion.button>
                   ))}
                 </div>
 
@@ -858,9 +1223,9 @@ export default function OfficerDashboard() {
                     </div>
                   ) : (
                     assignedIssues.map((issue) => (
-                      <div
+                      <PremiumGlowCard
                         key={issue.docId || issue.id}
-                        className={`${bgSurface} rounded-2xl border ${borderTheme} p-5 mb-4 max-w-4xl mx-auto flex flex-col gap-4 transition-colors duration-300 ${
+                        className={`p-5 relative ${
                           issue.severity === 'Critical' ? 'border-l-4 border-l-red-500' :
                           issue.severity === 'High' ? 'border-l-4 border-l-orange-500' :
                           issue.severity === 'Medium' ? 'border-l-4 border-l-yellow-500' :
@@ -868,26 +1233,26 @@ export default function OfficerDashboard() {
                         }`}
                       >
                         {/* TOP Section */}
-                        <div className="flex gap-4">
+                        <div className="flex gap-4 items-start text-left">
                           <img
                             src={issue.imagePreview}
                             alt=""
-                            className={`w-28 h-28 object-cover rounded-xl shrink-0 border ${borderTheme} bg-gray-900`}
+                            className={`w-28 h-28 object-cover rounded-xl shrink-0 border ${borderTheme} bg-gray-900 shadow-sm`}
                           />
                           <div className="flex-1 min-w-0 space-y-2">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="bg-blue-500/10 text-blue-400 text-[10px] px-2 py-0.5 rounded-md border border-blue-500/20 font-bold uppercase tracking-wider">
+                              <span className="bg-blue-500/10 text-blue-400 text-[10px] px-2 py-0.5 rounded-md border border-blue-500/20 font-black uppercase tracking-wider">
                                 {issue.category}
                               </span>
                               <span className={getSeverityBadgeClass(issue.severity)}>
                                 {issue.severity}
                               </span>
                             </div>
-                            <p className={`${textTheme} text-sm font-medium leading-relaxed`}>
+                            <p className={`${textTheme} text-sm font-semibold leading-relaxed`}>
                               {issue.description}
                             </p>
-                            <div className="flex items-center gap-3 text-xs flex-wrap">
-                              <span className={textMuted}>Location: {issue.location}</span>
+                            <div className="flex items-center gap-3 text-[11px] flex-wrap font-medium">
+                              <span className={textMuted}>📍 {issue.location}</span>
                               <span className={textSubtle}>
                                 Reporter: {issue.userEmail || "Anonymous"}
                               </span>
@@ -897,31 +1262,31 @@ export default function OfficerDashboard() {
                         </div>
 
                         {/* AI SUMMARY BOX */}
-                        <div className={`${bgSurface2} rounded-xl p-4 mt-3 border ${borderTheme}`}>
+                        <div className={`rounded-xl p-4 mt-4 border text-left ${isDark ? "bg-[#070E1A]/60 border-cyan-500/15" : "bg-cyan-50/50 border-cyan-200"}`}>
                           <div className="grid grid-cols-3 gap-4">
                             <div>
-                              <div className={`text-[10px] uppercase font-bold ${textSubtle} tracking-wider`}>
+                              <div className={`text-[9px] uppercase font-black ${textSubtle} tracking-widest`}>
                                 Department
                               </div>
-                              <div className="text-blue-400 text-sm font-semibold mt-1">
+                              <div className="text-blue-400 text-xs font-black mt-1">
                                 {issue.department || "BMC"}
                               </div>
                             </div>
                             <div>
-                              <div className={`text-[10px] uppercase font-bold ${textSubtle} tracking-wider`}>
+                              <div className={`text-[9px] uppercase font-black ${textSubtle} tracking-widest`}>
                                 Est. Resolution
                               </div>
-                              <div className="text-amber-400 text-sm font-semibold mt-1">
+                              <div className="text-amber-400 text-xs font-black mt-1">
                                 {issue.estimatedDays !== undefined && issue.estimatedDays !== null
                                   ? `${issue.estimatedDays} Days`
                                   : "Not Set"}
                               </div>
                             </div>
                             <div>
-                              <div className={`text-[10px] uppercase font-bold ${textSubtle} tracking-wider`}>
+                              <div className={`text-[9px] uppercase font-black ${textSubtle} tracking-widest`}>
                                 AI Suggested Action
                               </div>
-                              <div className={`${textMuted} text-xs mt-1 leading-relaxed`}>
+                              <div className={`${textMuted} text-[11px] font-semibold mt-1 leading-relaxed`}>
                                 {issue.suggested_action || "None"}
                               </div>
                             </div>
@@ -929,15 +1294,15 @@ export default function OfficerDashboard() {
                         </div>
 
                         {/* Bottom Action Row */}
-                        <div className="flex justify-between items-center mt-2">
+                        <div className="flex justify-between items-center mt-4 pt-3 border-t border-slate-800/40">
                           {/* Current Status read-only badge */}
                           <span
-                            className={`text-xs font-semibold px-3 py-1 rounded-full border ${
+                            className={`text-[10px] font-black px-2.5 py-1 rounded-full border ${
                               issue.status === "Resolved"
                                 ? "bg-green-500/10 text-green-400 border-green-500/20"
                                 : issue.status === "In Progress"
-                                ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
-                                : "bg-gray-500/10 text-gray-400 border-gray-500/20"
+                                ? "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                                : "bg-amber-500/10 text-amber-400 border-amber-500/20"
                             }`}
                           >
                             {issue.status}
@@ -946,17 +1311,17 @@ export default function OfficerDashboard() {
                           {/* Action Button or Conditional Badges */}
                           <div>
                             {issue.estimatedDays !== undefined && issue.estimatedDays !== null ? (
-                              <span className="bg-green-500/10 border border-green-500/30 text-green-400 rounded-lg px-4 py-2 text-xs font-bold uppercase tracking-wider">
+                              <span className="bg-green-500/10 border border-green-500/30 text-green-400 rounded-lg px-4 py-2 text-xs font-black uppercase tracking-wider">
                                 Resolution set: {issue.estimatedDays} days
                               </span>
                             ) : issue.cannotResolveReason ? (
-                              <span className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg px-4 py-2 text-xs font-bold uppercase tracking-wider">
+                              <span className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg px-4 py-2 text-xs font-black uppercase tracking-wider">
                                 Delayed: {issue.cannotResolveReason}
                               </span>
                             ) : (
                               <button
                                 onClick={() => handleToggleExpand(issue.docId)}
-                                className="border border-blue-500/50 text-blue-400 rounded-lg px-4 py-2 text-sm hover:bg-blue-500/10 transition cursor-pointer font-semibold bg-transparent"
+                                className="border border-blue-500/50 text-blue-400 rounded-xl px-4 py-2 text-xs hover:bg-blue-500/10 transition cursor-pointer font-black bg-transparent"
                               >
                                 {expandedIssueId === issue.docId ? "Cancel" : "Set Estimated Resolution"}
                               </button>
@@ -966,15 +1331,17 @@ export default function OfficerDashboard() {
 
                         {/* Interactive Click-to-Expand Form */}
                         {expandedIssueId === issue.docId && (
-                          <div className={`${bgSurface2} rounded-xl p-4 border ${borderTheme} mt-3 animate-fadeIn`}>
+                          <div className={`rounded-xl p-4 border mt-4 text-left ${isDark ? "bg-[#1C2533] border-[#374151]" : "bg-slate-50 border-slate-200"}`}>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               {/* Option 1: Set Resolution Timeline */}
-                              <div className={`${bgSurface} border ${borderTheme} hover:border-green-500/60 rounded-xl p-4 transition duration-200 flex flex-col justify-between`}>
+                              <div className={`border rounded-xl p-4 transition duration-200 flex flex-col justify-between ${
+                                isDark ? "bg-[#111827] border-[#374151]" : "bg-white border-slate-200"
+                              }`}>
                                 <div className="space-y-3">
-                                  <h4 className={`${textTheme} font-semibold text-sm`}>Set Resolution Timeline</h4>
-                                  <p className={`${textMuted} text-xs`}>I can resolve this issue</p>
+                                  <h4 className={`${textTheme} font-black text-sm`}>Set Resolution Timeline</h4>
+                                  <p className={`${textMuted} text-xs font-medium`}>I can resolve this issue</p>
                                   <div>
-                                    <label className={`${textMuted} text-[10px] uppercase font-bold block mb-1`}>
+                                    <label className={`${textMuted} text-[9px] uppercase font-black block mb-1 tracking-widest`}>
                                       Estimated days to resolve
                                     </label>
                                     <input
@@ -982,44 +1349,52 @@ export default function OfficerDashboard() {
                                       min="1"
                                       value={estDays}
                                       onChange={(e) => setEstDays(e.target.value)}
-                                      className={`${bgPrimary} border ${borderTheme} rounded-lg px-3 py-2 ${textTheme} w-24 text-sm focus:border-green-500 focus:outline-none`}
+                                      className={`border rounded-lg px-3 py-2 ${textTheme} w-24 text-xs focus:border-green-500 focus:outline-none ${
+                                        isDark ? "bg-[#1F2937] border-[#374151]" : "bg-[#F8FAFC] border-slate-200"
+                                      }`}
                                       placeholder="e.g. 5"
                                     />
                                   </div>
                                   <div>
-                                    <label className={`${textMuted} text-[10px] uppercase font-bold block mb-1`}>
+                                    <label className={`${textMuted} text-[9px] uppercase font-black block mb-1 tracking-widest`}>
                                       Resolution plan
                                     </label>
                                     <textarea
                                       value={resolutionPlan}
                                       onChange={(e) => setResolutionPlan(e.target.value)}
                                       placeholder="Describe how you plan to resolve this..."
-                                      className={`${bgPrimary} border ${borderTheme} rounded-lg px-3 py-2 ${textTheme} w-full text-sm resize-none focus:border-green-500 focus:outline-none`}
+                                      className={`border rounded-lg px-3 py-2 ${textTheme} w-full text-xs resize-none focus:border-green-500 focus:outline-none ${
+                                        isDark ? "bg-[#1F2937] border-[#374151]" : "bg-[#F8FAFC] border-slate-200"
+                                      }`}
                                       rows={2}
                                     />
                                   </div>
                                 </div>
                                 <button
                                   onClick={() => handleConfirmResolution(issue)}
-                                  className="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded-lg px-4 py-2 mt-3 cursor-pointer transition w-full"
+                                  className="bg-green-600 hover:bg-green-700 text-white text-xs font-black rounded-lg px-4 py-2.5 mt-3 cursor-pointer transition w-full"
                                 >
-                                  Confirm & Notify Citizen
+                                  Confirm &amp; Notify Citizen
                                 </button>
                               </div>
 
                               {/* Option 2: Cannot Resolve Now */}
-                              <div className={`${bgSurface} border ${borderTheme} hover:border-red-500/60 rounded-xl p-4 transition duration-200 flex flex-col justify-between`}>
+                              <div className={`border rounded-xl p-4 transition duration-200 flex flex-col justify-between ${
+                                isDark ? "bg-[#111827] border-[#374151]" : "bg-white border-slate-200"
+                              }`}>
                                 <div className="space-y-3">
-                                  <h4 className={`${textTheme} font-semibold text-sm`}>Cannot Resolve Now</h4>
-                                  <p className={`${textMuted} text-xs`}>I cannot resolve this right now</p>
+                                  <h4 className={`${textTheme} font-black text-sm`}>Cannot Resolve Now</h4>
+                                  <p className={`${textMuted} text-xs font-medium`}>I cannot resolve this right now</p>
                                   <div>
-                                    <label className={`${textMuted} text-[10px] uppercase font-bold block mb-1`}>
+                                    <label className={`${textMuted} text-[9px] uppercase font-black block mb-1 tracking-widest`}>
                                       Reason
                                     </label>
                                     <select
                                       value={cannotResolveReason}
                                       onChange={(e) => setCannotResolveReason(e.target.value)}
-                                      className={`${bgPrimary} border ${borderTheme} rounded-lg px-3 py-2 ${textTheme} w-full text-sm focus:border-red-500 focus:outline-none cursor-pointer`}
+                                      className={`border rounded-lg px-3 py-2 ${textTheme} w-full text-xs focus:border-red-500 focus:outline-none cursor-pointer ${
+                                        isDark ? "bg-[#1F2937] border-[#374151]" : "bg-[#F8FAFC] border-slate-200"
+                                      }`}
                                     >
                                       <option value="Budget Constraints">Budget Constraints</option>
                                       <option value="Requires Higher Authority Approval">
@@ -1034,29 +1409,31 @@ export default function OfficerDashboard() {
                                     </select>
                                   </div>
                                   <div>
-                                    <label className={`${textMuted} text-[10px] uppercase font-bold block mb-1`}>
+                                    <label className={`${textMuted} text-[9px] uppercase font-black block mb-1 tracking-widest`}>
                                       Additional details
                                     </label>
                                     <textarea
                                       value={cannotResolveDetails}
                                       onChange={(e) => setCannotResolveDetails(e.target.value)}
                                       placeholder="Provide reasons, dependencies or delay details..."
-                                      className={`${bgPrimary} border ${borderTheme} rounded-lg px-3 py-2 ${textTheme} w-full text-sm resize-none focus:border-red-500 focus:outline-none`}
+                                      className={`border rounded-lg px-3 py-2 ${textTheme} w-full text-xs resize-none focus:border-red-500 focus:outline-none ${
+                                        isDark ? "bg-[#1F2937] border-[#374151]" : "bg-[#F8FAFC] border-slate-200"
+                                      }`}
                                       rows={2}
                                     />
                                   </div>
                                 </div>
                                 <button
                                   onClick={() => handleCannotResolve(issue)}
-                                  className="bg-red-600/80 hover:bg-red-700 text-white text-xs font-semibold rounded-lg px-4 py-2 mt-3 cursor-pointer transition w-full"
+                                  className="bg-red-600 hover:bg-red-700 text-white text-xs font-black rounded-lg px-4 py-2.5 mt-3 cursor-pointer transition w-full"
                                 >
-                                  Submit & Notify Citizen
+                                  Submit &amp; Notify Citizen
                                 </button>
                               </div>
                             </div>
                           </div>
                         )}
-                      </div>
+                      </PremiumGlowCard>
                     ))
                   )}
                 </div>
@@ -1065,10 +1442,10 @@ export default function OfficerDashboard() {
 
             {/* 3. SUBMIT REVIEW TAB */}
             {activeTab === "submit" && (
-              <div className="max-w-4xl mx-auto space-y-6 animate-fadeIn">
-                <div>
-                  <h1 className={`text-2xl font-bold ${textTheme}`}>Submit Review</h1>
-                  <p className={`${textMuted} text-sm mt-1`}>
+              <div className="max-w-4xl mx-auto space-y-6">
+                <div className="text-left">
+                  <h1 className={`text-2xl font-black ${textTheme}`}>Submit Review</h1>
+                  <p className={`${textMuted} text-xs font-bold mt-1`}>
                     Review work progress and verify issue resolution for {officerDepartment}
                   </p>
                 </div>
@@ -1085,14 +1462,14 @@ export default function OfficerDashboard() {
                       <button
                         key={tabName}
                         onClick={() => setSubTab(tabName)}
-                        className={`flex items-center gap-2 py-3 px-3 text-sm font-semibold cursor-pointer border-b-2 transition duration-200 ${
+                        className={`flex items-center gap-2 py-3 px-3 text-xs font-black cursor-pointer border-b-2 transition duration-200 ${
                           isActive
-                            ? "border-blue-500 text-white"
+                            ? "border-blue-500 text-blue-500"
                             : `border-transparent ${textMuted} hover:text-white`
                         }`}
                       >
                         {tabName}
-                        <span className={`${color} text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[1.1rem] text-center`}>
+                        <span className={`${color} text-white text-[9px] font-black px-1.5 py-0.5 rounded-full min-w-[1.1rem] text-center`}>
                           {count}
                         </span>
                       </button>
@@ -1103,56 +1480,55 @@ export default function OfficerDashboard() {
                 {/* Sub-tab content */}
                 <div className="space-y-6 mt-4">
                   {subTab === "Pending" && (
-                    <div className="space-y-4">
+                    <div className="space-y-4 text-left">
                       {assignedIssues.filter((i) => i.status === "Pending").length === 0 ? (
-                        <div className={`${bgSurface} border ${borderTheme} rounded-2xl p-16 text-center ${textMuted}`}>
-                          No pending issues.
+                        <div className={`border rounded-2xl p-16 text-center ${isDark ? "bg-[#111827]/80 border-white/5" : "bg-white/95 border-slate-200"} ${textMuted}`}>
+                          No pending issues to upload work-started proof for.
                         </div>
                       ) : (
                         assignedIssues
                           .filter((i) => i.status === "Pending")
                           .map((issue) => (
-                            <div
+                            <PremiumGlowCard
                               key={issue.docId || issue.id}
-                              className={`${bgSurface} rounded-2xl border ${borderTheme} p-5 mb-4 max-w-4xl mx-auto`}
+                              className="p-5 flex flex-col gap-4"
                             >
                               {/* TOP details */}
-                              <div className="flex gap-4">
+                              <div className="flex gap-4 items-start">
                                 <img
                                   src={issue.imagePreview}
                                   alt=""
-                                  className={`w-28 h-28 object-cover rounded-xl shrink-0 border ${borderTheme} bg-gray-900`}
+                                  className={`w-28 h-28 object-cover rounded-xl shrink-0 border ${borderTheme} bg-gray-900 shadow-sm`}
                                 />
                                 <div className="flex-1 min-w-0 space-y-2">
                                   <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="bg-blue-500/10 text-blue-400 text-[10px] px-2 py-0.5 rounded-md border border-blue-500/20 font-bold uppercase tracking-wider">
+                                    <span className="bg-blue-500/10 text-blue-400 text-[10px] px-2 py-0.5 rounded-md border border-blue-500/20 font-black uppercase tracking-wider">
                                       {issue.category}
                                     </span>
                                     <span className={getSeverityBadgeClass(issue.severity)}>
                                       {issue.severity}
                                     </span>
                                   </div>
-                                  <p className={`${textTheme} text-sm font-medium leading-relaxed`}>
+                                  <p className={`${textTheme} text-sm font-semibold leading-relaxed`}>
                                     {issue.description}
                                   </p>
-                                  <div className="flex items-center gap-3 text-xs flex-wrap">
-                                    <span className={textMuted}>Location: {issue.location}</span>
+                                  <div className="flex items-center gap-3 text-[11px] flex-wrap font-medium">
+                                    <span className={textMuted}>📍 {issue.location}</span>
                                     <span className={textSubtle}>
                                       Reporter: {issue.userEmail || "Anonymous"}
                                     </span>
-                                    <span className={textSubtle}>Date: {issue.date}</span>
                                   </div>
                                 </div>
                               </div>
 
                               {/* STEP 1 SECTION */}
-                              <div className={`mt-4 ${bgSurface2} rounded-xl p-4 border ${borderTheme} space-y-3`}>
+                              <div className={`rounded-xl p-4 border space-y-3 ${isDark ? "bg-[#070E1A]/60 border-cyan-500/20" : "bg-blue-50/50 border-blue-200"}`}>
                                 <div>
-                                  <h3 className={`${textTheme} font-semibold text-sm`}>
+                                  <h3 className={`${textTheme} font-black text-xs uppercase tracking-widest`}>
                                     Step 1: Upload Work Started Photo
                                   </h3>
-                                  <p className={`${textMuted} text-xs mt-1`}>
-                                    Upload a photo showing work has begun at the location
+                                  <p className={`${textMuted} text-xs font-semibold mt-1`}>
+                                    Upload a photo showing crew or work has officially commenced at the location
                                   </p>
                                 </div>
 
@@ -1173,103 +1549,104 @@ export default function OfficerDashboard() {
                                       .getElementById(`file-upload-started-${issue.docId}`)
                                       .click()
                                   }
-                                  className={`border-dashed border border-[#374151] hover:border-blue-500/50 rounded-xl p-4 text-center bg-[#1F2937]/30 transition duration-200 ${
+                                  className={`border-dashed border rounded-xl p-6 text-center transition duration-200 ${
+                                    isDark ? "border-slate-700 bg-slate-800/40 hover:border-blue-500/50 hover:bg-slate-800/80" : "border-slate-200 bg-white hover:border-blue-500 hover:bg-slate-50"
+                                  } ${
                                     submitLoading[issue.docId]
                                       ? "cursor-not-allowed opacity-50"
                                       : "cursor-pointer"
                                   }`}
                                 >
-                                  <span className={`${textMuted} text-xs`}>
+                                  <span className={`${textMuted} text-xs font-bold`}>
                                     {submitLoading[issue.docId]
-                                      ? "Uploading..."
-                                      : "Click to upload progress photo"}
+                                      ? "Uploading to Gemini for verification..."
+                                      : "📷 Click to upload and verify progress photo"}
                                   </span>
                                 </div>
 
                                 {/* Gemini Loading Spinner */}
                                 {submitLoading[issue.docId] && (
-                                  <div className="flex items-center justify-center gap-2 text-blue-400 text-xs font-semibold animate-pulse py-2">
-                                    <div className="animate-spin border-2 border-blue-400 border-t-transparent rounded-full w-4 h-4"></div>
-                                    <span>Gemini is analyzing...</span>
+                                  <div className="flex items-center justify-center gap-2 text-blue-400 text-xs font-black animate-pulse py-2">
+                                    <div className="animate-spin border-2 border-blue-400 border-t-transparent rounded-full w-4 h-4" />
+                                    <span>Gemini AI is analyzing road context and validating proof...</span>
                                   </div>
                                 )}
 
                                 {/* Error & Success States */}
                                 {submitError[issue.docId] && (
                                   <div className="bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl p-3 text-xs font-semibold text-center mt-2">
-                                    Gemini could not verify. Please upload clearer work photo.
+                                    ❌ Verification failed: {submitError[issue.docId]}
                                   </div>
                                 )}
                                 {submitSuccess[issue.docId] && (
                                   <div className="bg-green-500/10 border border-green-500/20 text-green-400 rounded-xl p-3 text-xs font-semibold text-center mt-2">
-                                    Gemini Verified! Issue moved to In Progress
+                                    ✅ {submitSuccess[issue.docId]}
                                   </div>
                                 )}
                               </div>
-                            </div>
+                            </PremiumGlowCard>
                           ))
                       )}
                     </div>
                   )}
 
                   {subTab === "In Progress" && (
-                    <div className="space-y-4">
+                    <div className="space-y-4 text-left">
                       {assignedIssues.filter((i) => i.status === "In Progress").length === 0 ? (
-                        <div className={`${bgSurface} border ${borderTheme} rounded-2xl p-16 text-center ${textMuted}`}>
-                          No in-progress issues.
+                        <div className={`border rounded-2xl p-16 text-center ${isDark ? "bg-[#111827]/80 border-white/5" : "bg-white/95 border-slate-200"} ${textMuted}`}>
+                          No active in-progress issues.
                         </div>
                       ) : (
                         assignedIssues
                           .filter((i) => i.status === "In Progress")
                           .map((issue) => (
-                            <div
+                            <PremiumGlowCard
                               key={issue.docId || issue.id}
-                              className={`${bgSurface} rounded-2xl border ${borderTheme} p-5 mb-4 max-w-4xl mx-auto`}
+                              className="p-5 flex flex-col gap-4"
                             >
                               {/* TOP details */}
-                              <div className="flex gap-4">
+                              <div className="flex gap-4 items-start">
                                 <img
                                   src={issue.imagePreview}
                                   alt=""
-                                  className={`w-28 h-28 object-cover rounded-xl shrink-0 border ${borderTheme} bg-gray-900`}
+                                  className={`w-28 h-28 object-cover rounded-xl shrink-0 border ${borderTheme} bg-gray-900 shadow-sm`}
                                 />
                                 <div className="flex-1 min-w-0 space-y-2">
                                   <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="bg-blue-500/10 text-blue-400 text-[10px] px-2 py-0.5 rounded-md border border-blue-500/20 font-bold uppercase tracking-wider">
+                                    <span className="bg-blue-500/10 text-blue-400 text-[10px] px-2 py-0.5 rounded-md border border-blue-500/20 font-black uppercase tracking-wider">
                                       {issue.category}
                                     </span>
                                     <span className={getSeverityBadgeClass(issue.severity)}>
                                       {issue.severity}
                                     </span>
                                   </div>
-                                  <p className={`${textTheme} text-sm font-medium leading-relaxed`}>
+                                  <p className={`${textTheme} text-sm font-semibold leading-relaxed`}>
                                     {issue.description}
                                   </p>
-                                  <div className="flex items-center gap-3 text-xs flex-wrap">
-                                    <span className={textMuted}>Location: {issue.location}</span>
+                                  <div className="flex items-center gap-3 text-[11px] flex-wrap font-medium">
+                                    <span className={textMuted}>📍 {issue.location}</span>
                                     <span className={textSubtle}>
                                       Reporter: {issue.userEmail || "Anonymous"}
                                     </span>
-                                    <span className={textSubtle}>Date: {issue.date}</span>
                                   </div>
                                 </div>
                               </div>
 
                               {/* Show Step 1 completed */}
-                              <div className="mt-4 bg-green-500/10 rounded-xl p-3 border border-green-500/20 flex gap-4 items-start">
+                              <div className="bg-green-500/10 rounded-xl p-3 border border-green-500/20 flex gap-4 items-start">
                                 {issue.workPhotos?.[0] && (
                                   <img
                                     src={issue.workPhotos[0]}
                                     alt="Work Started"
-                                    className="w-16 h-16 object-cover rounded-lg border border-green-500/20 shrink-0 bg-gray-900"
+                                    className="w-16 h-16 object-cover rounded-lg border border-green-500/20 shrink-0 bg-gray-900 shadow-sm"
                                   />
                                 )}
-                                <div className="flex-1">
-                                  <div className={`font-semibold text-xs ${textTheme}`}>
+                                <div className="flex-1 min-w-0">
+                                  <div className={`font-black text-xs ${textTheme}`}>
                                     Step 1 Complete - Work Started Photo Verified by Gemini
                                   </div>
                                   {issue.workStartedNote && (
-                                    <div className="text-green-400 text-xs mt-1 leading-relaxed">
+                                    <div className="text-green-400 text-xs mt-1 font-semibold leading-relaxed italic">
                                       "{issue.workStartedNote}"
                                     </div>
                                   )}
@@ -1277,14 +1654,13 @@ export default function OfficerDashboard() {
                               </div>
 
                               {/* STEP 2 SECTION */}
-                              <div className={`mt-4 ${bgSurface2} rounded-xl p-4 border ${borderTheme} space-y-3`}>
+                              <div className={`rounded-xl p-4 border space-y-3 ${isDark ? "bg-[#070E1A]/60 border-cyan-500/20" : "bg-cyan-50/50 border-cyan-200"}`}>
                                 <div>
-                                  <h3 className={`${textTheme} font-semibold text-sm`}>
+                                  <h3 className={`${textTheme} font-black text-xs uppercase tracking-widest`}>
                                     Step 2: Upload Completion Photo
                                   </h3>
-                                  <p className={`${textMuted} text-xs mt-1`}>
-                                    Upload photo of the SAME location showing issue is fully
-                                    resolved
+                                  <p className={`${textMuted} text-xs font-semibold mt-1`}>
+                                    Upload photo of the SAME location showing issue is fully resolved
                                   </p>
                                 </div>
 
@@ -1305,98 +1681,98 @@ export default function OfficerDashboard() {
                                       .getElementById(`file-upload-completed-${issue.docId}`)
                                       .click()
                                   }
-                                  className={`border-dashed border border-[#374151] hover:border-blue-500/50 rounded-xl p-4 text-center bg-[#1F2937]/30 transition duration-200 ${
+                                  className={`border-dashed border rounded-xl p-6 text-center transition duration-200 ${
+                                    isDark ? "border-slate-700 bg-slate-800/40 hover:border-blue-500/50 hover:bg-slate-800/80" : "border-slate-200 bg-white hover:border-blue-500 hover:bg-slate-50"
+                                  } ${
                                     submitLoading[issue.docId]
                                       ? "cursor-not-allowed opacity-50"
                                       : "cursor-pointer"
                                   }`}
                                 >
-                                  <span className={`${textMuted} text-xs`}>
+                                  <span className={`${textMuted} text-xs font-bold`}>
                                     {submitLoading[issue.docId]
-                                      ? "Uploading..."
-                                      : "Click to upload completion photo"}
+                                      ? "Uploading to Gemini for verification..."
+                                      : "📷 Click to upload completion photo"}
                                   </span>
                                 </div>
 
                                 {/* Gemini Loading Spinner */}
                                 {submitLoading[issue.docId] && (
-                                  <div className="flex items-center justify-center gap-2 text-blue-400 text-xs font-semibold animate-pulse py-2">
-                                    <div className="animate-spin border-2 border-blue-400 border-t-transparent rounded-full w-4 h-4"></div>
-                                    <span>Gemini is verifying completion...</span>
+                                  <div className="flex items-center justify-center gap-2 text-blue-400 text-xs font-black animate-pulse py-2">
+                                    <div className="animate-spin border-2 border-blue-400 border-t-transparent rounded-full w-4 h-4" />
+                                    <span>Gemini is verifying resolution context and building final report...</span>
                                   </div>
                                 )}
 
                                 {/* Error & Success States */}
                                 {submitError[issue.docId] && (
                                   <div className="bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl p-3 text-xs font-semibold text-center mt-2">
-                                    Gemini could not verify completion. Please upload photo
-                                    showing the fixed location.
+                                    ❌ Verification failed: {submitError[issue.docId]}
                                   </div>
                                 )}
                                 {submitSuccess[issue.docId] && (
                                   <div className="bg-green-500/10 border border-green-500/20 text-green-400 rounded-xl p-3 text-xs font-semibold text-center mt-2">
-                                    Gemini Verified Completion! Issue marked as Resolved
+                                    ✅ {submitSuccess[issue.docId]}
                                   </div>
                                 )}
                               </div>
-                            </div>
+                            </PremiumGlowCard>
                           ))
                       )}
                     </div>
                   )}
 
                   {subTab === "Resolved" && (
-                    <div className="space-y-4">
+                    <div className="space-y-4 text-left">
                       {assignedIssues.filter((i) => i.status === "Resolved").length === 0 ? (
-                        <div className={`${bgSurface} border ${borderTheme} rounded-2xl p-16 text-center ${textMuted}`}>
+                        <div className={`border rounded-2xl p-16 text-center ${isDark ? "bg-[#111827]/80 border-white/5" : "bg-white/95 border-slate-200"} ${textMuted}`}>
                           No resolved issues yet.
                         </div>
                       ) : (
                         assignedIssues
                           .filter((i) => i.status === "Resolved")
                           .map((issue) => (
-                            <div
+                            <PremiumGlowCard
                               key={issue.docId || issue.id}
-                              className="bg-green-500/5 border border-green-500/20 rounded-2xl p-5 mb-4 max-w-4xl mx-auto flex flex-col gap-4"
+                              className="p-5 flex flex-col gap-4"
                             >
                               {/* TOP details */}
-                              <div className="flex gap-4">
+                              <div className="flex gap-4 items-start">
                                 <img
                                   src={issue.imagePreview}
                                   alt=""
-                                  className={`w-28 h-28 object-cover rounded-xl shrink-0 border ${borderTheme} bg-gray-900`}
+                                  className={`w-28 h-28 object-cover rounded-xl shrink-0 border ${borderTheme} bg-gray-900 shadow-sm`}
                                 />
                                 <div className="flex-1 min-w-0 space-y-2">
                                   <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="bg-blue-500/10 text-blue-400 text-[10px] px-2 py-0.5 rounded-md border border-blue-500/20 font-bold uppercase tracking-wider">
+                                    <span className="bg-blue-500/10 text-blue-400 text-[10px] px-2 py-0.5 rounded-md border border-blue-500/20 font-black uppercase tracking-wider">
                                       {issue.category}
                                     </span>
                                     <span className={getSeverityBadgeClass(issue.severity)}>
                                       {issue.severity}
                                     </span>
                                   </div>
-                                  <p className={`${textTheme} text-sm font-medium leading-relaxed`}>
+                                  <p className={`${textTheme} text-sm font-semibold leading-relaxed`}>
                                     {issue.description}
                                   </p>
-                                  <div className="flex items-center gap-3 text-xs flex-wrap">
-                                    <span className={textMuted}>Location: {issue.location}</span>
+                                  <div className="flex items-center gap-3 text-[11px] flex-wrap font-medium">
+                                    <span className={textMuted}>📍 {issue.location}</span>
                                     <span className={textSubtle}>
                                       Reporter: {issue.userEmail || "Anonymous"}
                                     </span>
-                                    <span className={textSubtle}>Date: {issue.date}</span>
                                   </div>
                                 </div>
                               </div>
 
                               {/* Before & After section */}
-                              <div className="mt-4">
-                                <div className="text-xs font-bold uppercase tracking-wider text-[#9CA3AF] mb-2">Before &amp; After</div>
+                              <div className="mt-2">
+                                <div className={`text-[10px] font-black uppercase tracking-widest ${textMuted} mb-3`}>Before &amp; After Comparison</div>
                                 <div className="grid grid-cols-2 gap-4">
                                   {/* Left: Before (Work Started) */}
-                                  <div className={`rounded-xl p-3 border-2 border-yellow-500/30 flex flex-col gap-2 ${isDark ? 'bg-[#0A0F1E]/30' : 'bg-[#F8FAFC]'}`}>
+                                  <div className={`rounded-xl p-3 border flex flex-col gap-2 ${isDark ? 'bg-slate-800/40 border-slate-700/60' : 'bg-slate-50 border-slate-200'}`}>
                                     <div className="flex items-center gap-1.5">
-                                      <span className="w-2 h-2 bg-yellow-400 rounded-full"></span>
-                                      <span className="text-xs font-bold text-yellow-400">Before</span>
+                                      <span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />
+                                      <span className="text-xs font-black text-yellow-500 uppercase tracking-wider">Before</span>
                                     </div>
                                     {issue.workPhotos?.[0] ? (
                                       <img
@@ -1405,22 +1781,22 @@ export default function OfficerDashboard() {
                                         className={`w-full h-36 object-cover rounded-xl border ${borderTheme} bg-gray-900`}
                                       />
                                     ) : (
-                                      <div className="w-full h-36 bg-gray-900 rounded-xl border border-[#374151]/30 flex items-center justify-center text-xs text-gray-500">
-                                        No Image
+                                      <div className="w-full h-36 bg-gray-900 rounded-xl border border-slate-800 flex items-center justify-center text-xs text-gray-500 font-bold">
+                                        No Image Available
                                       </div>
                                     )}
                                     {issue.workStartedNote && (
-                                      <div className={`text-xs ${textMuted} leading-relaxed italic`}>
+                                      <div className={`text-xs ${textMuted} font-semibold leading-relaxed italic mt-1`}>
                                         "{issue.workStartedNote}"
                                       </div>
                                     )}
                                   </div>
 
                                   {/* Right: After (Completed) */}
-                                  <div className={`rounded-xl p-3 border-2 border-green-500/30 flex flex-col gap-2 ${isDark ? 'bg-[#0A0F1E]/30' : 'bg-[#F8FAFC]'}`}>
+                                  <div className={`rounded-xl p-3 border flex flex-col gap-2 ${isDark ? 'bg-slate-800/40 border-slate-700/60' : 'bg-slate-50 border-slate-200'}`}>
                                     <div className="flex items-center gap-1.5">
-                                      <span className="w-2 h-2 bg-green-400 rounded-full"></span>
-                                      <span className="text-xs font-bold text-green-400">After</span>
+                                      <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                                      <span className="text-xs font-black text-green-500 uppercase tracking-wider">After</span>
                                     </div>
                                     {issue.workPhotos?.[1] ? (
                                       <img
@@ -1429,12 +1805,12 @@ export default function OfficerDashboard() {
                                         className={`w-full h-36 object-cover rounded-xl border ${borderTheme} bg-gray-900`}
                                       />
                                     ) : (
-                                      <div className="w-full h-36 bg-gray-900 rounded-xl border border-[#374151]/30 flex items-center justify-center text-xs text-gray-500">
-                                        No Image
+                                      <div className="w-full h-36 bg-gray-900 rounded-xl border border-slate-800 flex items-center justify-center text-xs text-gray-500 font-bold">
+                                        No Image Available
                                       </div>
                                     )}
                                     {issue.completionNote && (
-                                      <div className={`text-xs ${textMuted} leading-relaxed italic`}>
+                                      <div className={`text-xs ${textMuted} font-semibold leading-relaxed italic mt-1`}>
                                         "{issue.completionNote}"
                                       </div>
                                     )}
@@ -1444,16 +1820,11 @@ export default function OfficerDashboard() {
 
                               {/* Resolved on Date */}
                               {issue.resolvedDate && (
-                                <div className="text-green-400 text-sm mt-3 font-semibold">
-                                  Resolved on {issue.resolvedDate}
+                                <div className="text-green-400 text-xs font-black mt-2 uppercase tracking-wider">
+                                  ✓ Fully Resolved on {issue.resolvedDate}
                                 </div>
                               )}
-
-                              {/* Issue Successfully Resolved banner */}
-                              <div className="bg-green-500/10 text-green-400 rounded-lg p-2 text-center text-xs font-bold border border-green-500/20">
-                                Issue Successfully Resolved
-                              </div>
-                            </div>
+                            </PremiumGlowCard>
                           ))
                       )}
                     </div>
@@ -1654,6 +2025,6 @@ export default function OfficerDashboard() {
           </>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
