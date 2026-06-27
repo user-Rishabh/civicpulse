@@ -1097,6 +1097,13 @@ export default function Home() {
 
               {/* Photo Area */}
               <div className={`h-44 w-full rounded-xl flex flex-col items-center justify-center relative overflow-hidden mb-3.5 border ${isDark ? "bg-gradient-to-br from-slate-900 to-[#0F172A] border-white/5" : "bg-gradient-to-br from-slate-100 to-slate-200 border-slate-300/30"}`}>
+                {/* Real Mumbai Pothole Image */}
+                <img
+                  src="/img_pothole_mumbai.png"
+                  alt="Mumbai Pothole"
+                  className="absolute inset-0 w-full h-full object-cover z-0"
+                />
+
                 <div className="absolute top-2 left-2 bg-black/75 backdrop-blur-md text-white text-[9px] font-extrabold px-2.5 py-1 rounded-md border border-white/5 z-10">
                   📍 19.0760° N, 72.8777° E
                 </div>
@@ -1117,10 +1124,15 @@ export default function Home() {
                   )}
                 </AnimatePresence>
 
-                <svg className="w-12 h-12 text-slate-400 dark:text-slate-700 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                <span className="text-slate-500 text-[10px] font-bold tracking-wider">img_pothole_mumbai.jpg</span>
+                {/* Pre-scan Overlay */}
+                {storyStep < 3 && (
+                  <div className="absolute inset-0 bg-black/45 backdrop-blur-[1px] z-10 flex flex-col items-center justify-center">
+                    <svg className="w-10 h-10 text-white/90 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <span className="text-white/95 text-[10px] font-black tracking-wider uppercase">Loading img_pothole_mumbai.jpg</span>
+                  </div>
+                )}
               </div>
 
               {/* Metrics parameters */}
