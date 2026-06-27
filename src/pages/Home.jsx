@@ -421,15 +421,6 @@ function TimelineStep({ item, idx, isLast, progressY }) {
   );
 }
 
-// Mock issues for Leaflet Map Preview
-const MOCK_ISSUES = [
-  { id: "mock-1", category: "Pothole", severity: "Critical", status: "In Progress", description: "Deep crater causing traffic gridlock on Linking Road.", location: "Linking Road, Bandra West", coordinates: [19.0596, 72.8295] },
-  { id: "mock-2", category: "Streetlight", severity: "Medium", status: "Resolved", description: "Streetlight flickering at night near the beach.", location: "Juhu Tara Road, Juhu", coordinates: [19.1136, 72.8697] },
-  { id: "mock-3", category: "Garbage", severity: "High", status: "Under Investigation", description: "Pile of plastic wastes clogging the drainage.", location: "Dadar West Market", coordinates: [19.0178, 72.8478] },
-  { id: "mock-4", category: "Water Leakage", severity: "High", status: "In Progress", description: "Water pipeline burst causing waste of drinking water.", location: "Colaba Causeway", coordinates: [19.0330, 72.8397] },
-  { id: "mock-5", category: "Manhole", severity: "Critical", status: "In Progress", description: "Open sewer manhole near the station exit.", location: "Andheri East Station", coordinates: [19.0760, 72.8777] }
-];
-
 // Rating test star trigger
 const StarTwinkle = ({ idx }) => {
   const randomDelayClass = idx % 3 === 0 
@@ -439,6 +430,149 @@ const StarTwinkle = ({ idx }) => {
     : "animate-twinkle-3";
   return <StarIcon className={randomDelayClass} />;
 };
+
+// SVG City Skyline with Blinking Windows
+function Skyline() {
+  return (
+    <svg className="absolute bottom-0 left-0 w-full h-[280px] opacity-[0.06] pointer-events-none z-0 overflow-visible" viewBox="0 0 1000 300" preserveAspectRatio="none">
+      <rect x="30" y="100" width="70" height="200" fill="#1e293b" />
+      <rect x="50" y="120" width="8" height="12" fill="#fef08a" className="animate-blink-1" />
+      <rect x="75" y="120" width="8" height="12" fill="#fef08a" className="animate-blink-2" />
+      <rect x="50" y="150" width="8" height="12" fill="#fef08a" className="animate-blink-2" />
+
+      <rect x="140" y="60" width="90" height="240" fill="#0f172a" />
+      <rect x="160" y="80" width="10" height="16" fill="#67e8f9" className="animate-blink-2" />
+      <rect x="190" y="80" width="10" height="16" fill="#67e8f9" className="animate-blink-1" />
+      <rect x="160" y="120" width="10" height="16" fill="#67e8f9" className="animate-blink-1" />
+
+      <rect x="290" y="140" width="80" height="160" fill="#1e293b" />
+      <rect x="310" y="160" width="8" height="12" fill="#fef08a" className="animate-blink-2" />
+      <rect x="340" y="160" width="8" height="12" fill="#fef08a" className="animate-blink-1" />
+
+      <rect x="420" y="90" width="100" height="210" fill="#0f172a" />
+      <rect x="445" y="110" width="12" height="12" fill="#67e8f9" className="animate-blink-1" />
+      <rect x="475" y="110" width="12" height="12" fill="#67e8f9" className="animate-blink-2" />
+
+      <rect x="580" y="120" width="60" height="180" fill="#1e293b" />
+      <rect x="690" y="80" width="110" height="220" fill="#0f172a" />
+      <rect x="715" y="100" width="8" height="16" fill="#fef08a" className="animate-blink-1" />
+      <rect x="755" y="100" width="8" height="16" fill="#fef08a" className="animate-blink-2" />
+    </svg>
+  );
+}
+
+// AI Node Network Layer
+function AINetwork() {
+  return (
+    <svg className="absolute inset-0 w-full h-full opacity-[0.05] pointer-events-none z-0" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="120" cy="220" r="4.5" fill="#3b82f6" />
+      <circle cx="320" cy="170" r="5" fill="#06b6d4" className="animate-ping" />
+      <circle cx="520" cy="320" r="4.5" fill="#10b981" />
+      <circle cx="720" cy="200" r="5" fill="#3b82f6" />
+      <circle cx="920" cy="370" r="4.5" fill="#06b6d4" />
+      
+      <line x1="120" y1="220" x2="320" y2="170" stroke="#64748b" strokeWidth="1" />
+      <line x1="320" y1="170" x2="520" y2="320" stroke="#64748b" strokeWidth="1" />
+      <line x1="520" y1="320" x2="720" y2="200" stroke="#64748b" strokeWidth="1" />
+      <line x1="720" y1="200" x2="920" y2="370" stroke="#64748b" strokeWidth="1" />
+
+      {/* Travelling pulse line */}
+      <motion.circle
+        cx="120"
+        cy="220"
+        r="3"
+        fill="#67e8f9"
+        animate={{
+          cx: [120, 320, 520, 720, 920],
+          cy: [220, 170, 320, 200, 370]
+        }}
+        transition={{ duration: 16, repeat: Infinity, ease: "linear" }}
+      />
+    </svg>
+  );
+}
+
+// Curved data flow path guides
+function DataFlowParticles() {
+  return (
+    <svg className="absolute top-[25%] left-0 w-full h-[50%] opacity-[0.035] pointer-events-none z-0" viewBox="0 0 1000 400">
+      <path id="curve-path-1" d="M -50,200 C 250,50 450,350 1050,200" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
+      
+      <motion.circle r="3.5" fill="#3b82f6" style={{ offsetPath: "path('M -50,200 C 250,50 450,350 1050,200')" }}>
+        <animateMotion dur="11s" repeatCount="indefinite" rotate="auto" />
+      </motion.circle>
+      
+      <motion.circle r="3" fill="#10b981" style={{ offsetPath: "path('M -50,200 C 250,50 450,350 1050,200')" }}>
+        <animateMotion dur="15s" repeatCount="indefinite" begin="4s" rotate="auto" />
+      </motion.circle>
+    </svg>
+  );
+}
+
+// Neon wave dividers
+function WaveDivider() {
+  return (
+    <div className="relative w-full h-10 pointer-events-none overflow-hidden z-10">
+      <svg className="absolute inset-0 w-full h-full" viewBox="0 0 1440 40" preserveAspectRatio="none">
+        <path d="M 0,20 Q 360,38 720,20 T 1440,20 L 1440,40 L 0,40 Z" fill="rgba(3, 7, 18, 0.4)" />
+        <path d="M 0,20 Q 360,38 720,20 T 1440,20" fill="none" stroke="rgba(37,99,235,0.15)" strokeWidth="2.5" />
+      </svg>
+    </div>
+  );
+}
+
+// Floating Event Ticker Sidebar Panel
+function LiveSmartCityFeed() {
+  const events = [
+    "📍 New pothole reported near Bandra West",
+    "🚧 Water leakage detected at Dadar Market",
+    "⚡ Streetlight repaired near Juhu Beach",
+    "🚮 Garbage pile resolved in Ward 3",
+    "🤖 AI assigned issue to BMC Roads Div",
+    "✓ AI verified manhole cover resolution"
+  ];
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setIndex(prev => (prev + 1) % events.length);
+    }, 7000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="fixed bottom-6 left-6 z-[900] hidden sm:block">
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={index}
+          initial={{ opacity: 0, x: -30, scale: 0.9 }}
+          animate={{ opacity: 1, x: 0, scale: 1 }}
+          exit={{ opacity: 0, x: -30, scale: 0.9 }}
+          transition={{ duration: 0.5, type: "spring", stiffness: 120 }}
+          className="premium-glow-card backdrop-blur-xl bg-[#111827]/60 border border-cyan-500/20 px-4 py-3 shadow-[0_0_20px_rgba(6,182,212,0.15)] rounded-2xl flex items-center gap-2.5 max-w-[280px] text-left"
+        >
+          <span className="flex h-2.5 w-2.5 relative">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500"></span>
+          </span>
+          <div>
+            <span className="text-[10px] font-black text-cyan-400 uppercase tracking-widest block">City Live Telemetry</span>
+            <p className="text-xs text-white font-extrabold mt-1 leading-tight">{events[index]}</p>
+          </div>
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// Mock issues for Leaflet Map Preview
+const MOCK_ISSUES = [
+  { id: "mock-1", category: "Pothole", severity: "Critical", status: "In Progress", description: "Deep crater causing traffic gridlock on Linking Road.", location: "Linking Road, Bandra West", coordinates: [19.0596, 72.8295] },
+  { id: "mock-2", category: "Streetlight", severity: "Medium", status: "Resolved", description: "Streetlight flickering at night near the beach.", location: "Juhu Tara Road, Juhu", coordinates: [19.1136, 72.8697] },
+  { id: "mock-3", category: "Garbage", severity: "High", status: "Under Investigation", description: "Pile of plastic wastes clogging the drainage.", location: "Dadar West Market", coordinates: [19.0178, 72.8478] },
+  { id: "mock-4", category: "Water Leakage", severity: "High", status: "In Progress", description: "Water pipeline burst causing waste of drinking water.", location: "Colaba Causeway", coordinates: [19.0330, 72.8397] },
+  { id: "mock-5", category: "Manhole", severity: "Critical", status: "In Progress", description: "Open sewer manhole near the station exit.", location: "Andheri East Station", coordinates: [19.0760, 72.8777] }
+];
 
 export default function Home() {
   const { user } = useAuth();
@@ -563,8 +697,23 @@ export default function Home() {
       {/* Subtle Noise Filter Backdrop Overlay */}
       <div className="noise-overlay" />
 
+      {/* Grid Drift Blueprint Overlay */}
+      <div className="absolute inset-0 opacity-[0.06] pointer-events-none z-0 animate-grid-drift"
+        style={{
+          backgroundImage: "linear-gradient(rgba(59,130,246,0.15) 1.5px, transparent 1.5px), linear-gradient(90deg, rgba(59,130,246,0.15) 1.5px, transparent 1.5px)",
+          backgroundSize: "50px 50px",
+        }}
+      />
+
+      {/* AI Node Network Layer & Data Flow Lines */}
+      <AINetwork />
+      <DataFlowParticles />
+
       {/* Global Mouse Pointer Glowing dot and ring trailing wrapper */}
       <CustomCursor />
+
+      {/* Floating Smart City Live Activity Telemetry Ticker */}
+      <LiveSmartCityFeed />
 
       {/* HERO SECTION */}
       <section 
@@ -573,8 +722,11 @@ export default function Home() {
         onMouseLeave={handleMouseLeave}
         className="relative z-10 max-w-7xl mx-auto w-full px-6 md:px-8 pt-12 md:pt-24 pb-20 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center"
       >
+        {/* Vector city skyline rendering behind hero content */}
+        <Skyline />
+
         {/* Left Side: Copywriting & CTA */}
-        <div className="lg:col-span-6 flex flex-col text-left">
+        <div className="lg:col-span-6 flex flex-col text-left relative z-10">
           
           {/* Tag (Hover blinks robot eye) */}
           <motion.div
@@ -931,6 +1083,9 @@ export default function Home() {
         )}
       </AnimatePresence>
 
+      {/* Wave Section Separator */}
+      <WaveDivider />
+
       {/* TRUST SECTION (Slide Left scroll animation) */}
       <motion.section 
         initial={{ opacity: 0, x: -100 }}
@@ -962,6 +1117,9 @@ export default function Home() {
           </div>
         </div>
       </motion.section>
+
+      {/* Wave Section Separator */}
+      <WaveDivider />
 
       {/* FEATURES SECTION (Stagger Zoom reveal) */}
       <section className="relative z-10 py-24 px-6 md:px-8 max-w-7xl mx-auto w-full text-center">
@@ -1033,6 +1191,9 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Wave Section Separator */}
+      <WaveDivider />
+
       {/* HOW IT WORKS SECTION (TIMELINE FILL ON SCROLL) */}
       <section className="relative z-10 py-24 border-y border-white/5 bg-slate-950/20">
         <div className="max-w-7xl mx-auto px-6 md:px-8">
@@ -1086,6 +1247,9 @@ export default function Home() {
 
         </div>
       </section>
+
+      {/* Wave Section Separator */}
+      <WaveDivider />
 
       {/* STATISTICS SECTION (confetti burst + self drawing SVG chart) */}
       <section className="relative z-10 py-24 px-6 md:px-8 max-w-7xl mx-auto w-full">
@@ -1190,6 +1354,9 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Wave Section Separator */}
+      <WaveDivider />
+
       {/* INTERACTIVE MAP PREVIEW */}
       <section className="relative z-10 py-24 border-t border-white/5 bg-slate-950/20">
         <div className="max-w-7xl mx-auto px-6 md:px-8 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
@@ -1236,6 +1403,9 @@ export default function Home() {
 
         </div>
       </section>
+
+      {/* Wave Section Separator */}
+      <WaveDivider />
 
       {/* TESTIMONIALS SECTION (INFINITE MARQUEE CAROUSEL) */}
       <section className="relative z-10 py-24 overflow-hidden text-center">
@@ -1342,6 +1512,9 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Wave Section Separator */}
+      <WaveDivider />
+
       {/* FAQ SECTION */}
       <section className="relative z-10 py-24 border-t border-white/5 bg-slate-950/20">
         <div className="max-w-4xl mx-auto px-6 md:px-8">
@@ -1387,6 +1560,9 @@ export default function Home() {
 
         </div>
       </section>
+
+      {/* Wave Section Separator */}
+      <WaveDivider />
 
       {/* FINAL CTA SECTION */}
       <section className="relative z-10 py-28 px-6 text-center overflow-hidden bg-gradient-to-b from-blue-950 to-[#030712] text-white border-t border-white/5">
