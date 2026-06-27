@@ -1,45 +1,397 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence, useInView, useScroll, useSpring, useTransform, useMotionValue } from "framer-motion";
 import { useTheme } from "../context/ThemeContext";
 import CityHealthScore from "../components/CityHealthScore";
+import IssueMap from "../components/IssueMap";
 
-const phrases = [
-  "Upload a photo — AI categorizes it instantly.",
-  "Gemini assigns severity & department automatically.",
-  "Track resolution till your city is fixed."
+// Reusable custom icons
+const ShieldCheckIcon = () => (
+  <svg className="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+  </svg>
+);
+
+const ActivityIcon = () => (
+  <svg className="w-6 h-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+  </svg>
+);
+
+const MapPinIcon = () => (
+  <svg className="w-6 h-6 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+  </svg>
+);
+
+const TrendingUpIcon = () => (
+  <svg className="w-6 h-6 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+  </svg>
+);
+
+const UsersIcon = () => (
+  <svg className="w-6 h-6 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+  </svg>
+);
+
+const CpuIcon = () => (
+  <svg className="w-6 h-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+  </svg>
+);
+
+const BuildingIcon = () => (
+  <svg className="w-6 h-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+  </svg>
+);
+
+const CameraIcon = () => (
+  <svg className="w-6 h-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+  </svg>
+);
+
+const BrainIcon = () => (
+  <svg className="w-6 h-6 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+  </svg>
+);
+
+const SendIcon = () => (
+  <svg className="w-6 h-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+  </svg>
+);
+
+const ClockIcon = () => (
+  <svg className="w-6 h-6 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+);
+
+const CheckCircleIcon = () => (
+  <svg className="w-6 h-6 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+);
+
+const StarIcon = ({ className = "" }) => (
+  <svg className={`w-4 h-4 text-amber-400 fill-current ${className}`} viewBox="0 0 20 20">
+    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+  </svg>
+);
+
+const ArrowRightIcon = ({ className = "w-5 h-5" }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+  </svg>
+);
+
+const GithubIcon = () => (
+  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+    <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482C19.138 20.193 22 16.44 22 12.017 22 6.484 17.522 2 12 2z" />
+  </svg>
+);
+
+// CountUp component using requestAnimationFrame
+function CountUp({ to, duration = 1.5, decimals = 0, suffix = "" }) {
+  const [count, setCount] = useState(0);
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-50px" });
+
+  useEffect(() => {
+    if (!isInView) return;
+
+    let start = 0;
+    const end = parseFloat(to);
+    if (isNaN(end)) return;
+
+    const totalMs = duration * 1000;
+    const startTime = performance.now();
+
+    const updateCount = (currentTime) => {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / totalMs, 1);
+      const easeProgress = progress * (2 - progress); // Ease out quad
+      const currentVal = start + easeProgress * (end - start);
+      setCount(currentVal);
+
+      if (progress < 1) {
+        requestAnimationFrame(updateCount);
+      } else {
+        setCount(end);
+      }
+    };
+
+    requestAnimationFrame(updateCount);
+  }, [isInView, to, duration]);
+
+  return (
+    <span ref={ref}>
+      {count.toFixed(decimals).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+      {suffix}
+    </span>
+  );
+}
+
+// Particle system for CTA background
+function Particles() {
+  const [items, setItems] = useState([]);
+  useEffect(() => {
+    setItems(
+      Array.from({ length: 18 }).map((_, i) => ({
+        id: i,
+        left: `${Math.random() * 100}%`,
+        top: `${Math.random() * 100}%`,
+        size: Math.random() * 4 + 2,
+        duration: Math.random() * 6 + 5,
+        delay: Math.random() * 2
+      }))
+    );
+  }, []);
+
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden">
+      {items.map((p) => (
+        <motion.div
+          key={p.id}
+          animate={{
+            y: [0, -90, 0],
+            x: [0, Math.random() * 30 - 15, 0],
+            opacity: [0, 0.6, 0]
+          }}
+          transition={{
+            duration: p.duration,
+            repeat: Infinity,
+            delay: p.delay,
+            ease: "easeInOut"
+          }}
+          style={{
+            position: "absolute",
+            left: p.left,
+            top: p.top,
+            width: `${p.size}px`,
+            height: `${p.size}px`,
+            borderRadius: "50%",
+            background: "rgba(6, 182, 212, 0.4)",
+            boxShadow: "0 0 10px rgba(6, 182, 212, 0.8)"
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// Interactive Premium Glow Card supporting cursor-relative radial glow
+function PremiumGlowCard({ children, className = "", hoverTilt = true }) {
+  const [coords, setCoords] = useState({ x: 0, y: 0 });
+  const [hovered, setHovered] = useState(false);
+
+  const handleMouseMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setCoords({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    });
+  };
+
+  return (
+    <motion.div
+      onMouseMove={handleMouseMove}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      whileHover={hoverTilt ? { y: -10, rotate: 1, scale: 1.01 } : { y: -5 }}
+      transition={{ type: "spring", stiffness: 350, damping: 22 }}
+      className={`premium-glow-card group relative overflow-hidden p-8 flex flex-col items-start border border-white/5 bg-[#111827]/40 shadow-[0_4px_30px_rgba(0,0,0,0.4)] ${className}`}
+    >
+      {/* Radial glow layer centered on cursor coordinate */}
+      <div 
+        className="pointer-events-none absolute -inset-px opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10"
+        style={{
+          background: `radial-gradient(150px circle at ${coords.x}px ${coords.y}px, rgba(37, 99, 235, 0.15), transparent 80%)`
+        }}
+      />
+
+      {/* Top border glow sweep line */}
+      <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-blue-500 via-cyan-400 to-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10" />
+
+      {children}
+    </motion.div>
+  );
+}
+
+// FAQ Accordion Item component
+function FAQItem({ question, answer }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <PremiumGlowCard 
+      hoverTilt={false}
+      className={`transition-all duration-300 border p-5 ${
+        isOpen ? "border-blue-500/25 bg-slate-950/60 shadow-[0_0_20px_rgba(37,99,235,0.06)]" : "border-white/5"
+      }`}
+    >
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex justify-between items-center text-left font-bold text-base md:text-lg hover:text-blue-400 transition-colors focus:outline-none cursor-pointer group"
+      >
+        <motion.span 
+          className="text-white relative z-10 inline-block"
+          whileHover={{ x: 6 }}
+          transition={{ type: "spring", stiffness: 400, damping: 10 }}
+        >
+          {question}
+        </motion.span>
+        <motion.span
+          animate={{ rotate: isOpen ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+          className="text-blue-400 font-bold"
+        >
+          ▼
+        </motion.span>
+      </button>
+      <motion.div
+        initial={false}
+        animate={{ height: isOpen ? "auto" : 0, opacity: isOpen ? 1 : 0 }}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
+        className="overflow-hidden"
+      >
+        <p className="mt-3 text-sm leading-relaxed text-slate-400 font-medium pb-1">
+          {answer}
+        </p>
+      </motion.div>
+    </PremiumGlowCard>
+  );
+}
+
+// Timeline Step item
+function TimelineStep({ item, idx, isLast, progressY }) {
+  const stepRef = useRef(null);
+  const isInView = useInView(stepRef, { once: true, margin: "-100px" });
+
+  // Dynamically calculate opacity fade based on scroll progress
+  const opacity = isInView ? 1 : 0.4;
+  const isPulsing = isInView;
+
+  return (
+    <motion.div
+      ref={stepRef}
+      initial={{ opacity: 0, y: 30 }}
+      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
+      transition={{ duration: 0.6, delay: 0.1 }}
+      className="flex gap-6 md:gap-10 items-start text-left relative z-10"
+      style={{ opacity }}
+    >
+      {/* Icon node */}
+      <div className="relative shrink-0">
+        <motion.div
+          animate={isPulsing ? { scale: [1, 1.08, 1], boxShadow: ["0 0 0px rgba(59,130,246,0)", "0 0 15px rgba(59,130,246,0.3)", "0 0 0px rgba(59,130,246,0)"] } : {}}
+          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+          className={`w-12 h-12 md:w-16 md:h-16 rounded-full bg-[#07111F] border flex items-center justify-center shadow-lg transition-colors duration-300 ${
+            isInView ? "border-blue-500 text-blue-400" : "border-white/10 text-slate-500"
+          }`}
+        >
+          {item.icon}
+        </motion.div>
+        <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-blue-600 text-white text-[9px] font-black flex items-center justify-center border border-[#030712]">
+          {item.step}
+        </span>
+      </div>
+
+      {/* Details Card */}
+      <PremiumGlowCard className="flex-1 hover:border-blue-500/25 transition-all duration-300">
+        <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Step {item.step}</span>
+        <h3 className="text-lg md:text-xl font-bold text-white mt-1">{item.title}</h3>
+        <p className="text-slate-400 text-sm mt-2 leading-relaxed font-medium">
+          {item.desc}
+        </p>
+      </PremiumGlowCard>
+    </motion.div>
+  );
+}
+
+// Mock issues for Leaflet Map Preview
+const MOCK_ISSUES = [
+  { id: "mock-1", category: "Pothole", severity: "Critical", status: "In Progress", description: "Deep crater causing traffic gridlock on Linking Road.", location: "Linking Road, Bandra West" },
+  { id: "mock-2", category: "Streetlight", severity: "Medium", status: "Resolved", description: "Streetlight flickering at night near the beach.", location: "Juhu Tara Road, Juhu" },
+  { id: "mock-3", category: "Garbage", severity: "High", status: "Under Investigation", description: "Pile of plastic wastes clogging the drainage.", location: "Dadar West Market" },
+  { id: "mock-4", category: "Water Leakage", severity: "High", status: "In Progress", description: "Water pipeline burst causing waste of drinking water.", location: "Colaba Causeway" },
+  { id: "mock-5", category: "Manhole", severity: "Critical", status: "In Progress", description: "Open sewer manhole near the station exit.", location: "Andheri East Station" }
 ];
 
 export default function Home() {
   const { user } = useAuth();
-  const { isDark } = useTheme();
-  const [particles, setParticles] = useState([]);
+  const [stats, setStats] = useState({ total: 428, resolved: 312 });
+  const [liveIssues, setLiveIssues] = useState(MOCK_ISSUES);
 
-  const t = {
-    bg: isDark ? 'bg-[#0A0F1E]' : 'bg-[#EEF2FF]',
-    surface: isDark ? 'bg-[#111827]' : 'bg-[#E8EFFE]',
-    surface2: isDark ? 'bg-[#1F2937]' : 'bg-[#DDE6FD]',
-    border: isDark ? 'border-[#374151]' : 'border-[#C7D7F9]',
-    text: isDark ? 'text-white' : 'text-[#1E293B]',
-    muted: isDark ? 'text-[#9CA3AF]' : 'text-[#475569]',
-    sidebar: isDark ? 'bg-[#0D1117]' : 'bg-[#E2EAFC]',
-    card: isDark ? 'bg-[#111827] border-[#374151]' : 'bg-[#EEF2FF] border-[#C7D7F9]',
+  // Looping popup notification
+  const [showNotification, setShowNotification] = useState(true);
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setShowNotification(prev => !prev);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Parallax mouse movements
+  const heroRef = useRef(null);
+  const parallaxX = useMotionValue(0);
+  const parallaxY = useMotionValue(0);
+  const floatX1 = useMotionValue(0);
+  const floatY1 = useMotionValue(0);
+  const floatX2 = useMotionValue(0);
+  const floatY2 = useMotionValue(0);
+
+  const handleMouseMove = (e) => {
+    if (!heroRef.current) return;
+    const rect = heroRef.current.getBoundingClientRect();
+    const width = rect.width;
+    const height = rect.height;
+    const mouseX = e.clientX - rect.left - width / 2;
+    const mouseY = e.clientY - rect.top - height / 2;
+
+    parallaxX.set(mouseX / 25);
+    parallaxY.set(mouseY / 25);
+    floatX1.set(mouseX / 15);
+    floatY1.set(mouseY / 15);
+    floatX2.set(mouseX / 35);
+    floatY2.set(mouseY / 35);
   };
-  const [currentPhraseIdx, setCurrentPhraseIdx] = useState(0);
-  const [displayedText, setDisplayedText] = useState("");
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [stats, setStats] = useState({ total: 10, resolved: 3 });
+
+  const handleMouseLeave = () => {
+    parallaxX.set(0);
+    parallaxY.set(0);
+    floatX1.set(0);
+    floatY1.set(0);
+    floatX2.set(0);
+    floatY2.set(0);
+  };
+
+  // Scroll connecting line ref for Timeline
+  const timelineContainerRef = useRef(null);
+  const { scrollYProgress } = useScroll({
+    target: timelineContainerRef,
+    offset: ["start center", "end center"]
+  });
+  const lineScaleY = useSpring(scrollYProgress, { stiffness: 100, damping: 30 });
+  const lineTipTop = useTransform(lineScaleY, [0, 1], ["0%", "100%"]);
 
   useEffect(() => {
     try {
       const stored = localStorage.getItem('civicpulse_issues');
       if (stored) {
         const issues = JSON.parse(stored);
-        if (Array.isArray(issues)) {
-          const total = Math.max(10, issues.length);
-          const resolved = Math.max(3, issues.filter(i => i.status === 'Resolved').length);
-          setStats({ total, resolved });
+        if (Array.isArray(issues) && issues.length > 0) {
+          const totalVal = Math.max(428, 428 + issues.length);
+          const resolvedVal = Math.max(312, 312 + issues.filter(i => i.status === 'Resolved').length);
+          setStats({ total: totalVal, resolved: resolvedVal });
+          setLiveIssues([...issues, ...MOCK_ISSUES].slice(0, 10));
         }
       }
     } catch (e) {
@@ -47,512 +399,846 @@ export default function Home() {
     }
   }, []);
 
-  useEffect(() => {
-    // Generate particles on the client side to avoid hydration mismatch
-    const items = Array.from({ length: 20 }).map((_, i) => ({
-      id: i,
-      left: `${Math.random() * 100}%`,
-      width: `${2 + Math.random() * 4}px`,
-      height: `${2 + Math.random() * 4}px`,
-      background: i % 3 === 0 ? "#3B82F6" : i % 3 === 1 ? "#06B6D4" : "#8B5CF6",
-      duration: `${8 + Math.random() * 12}s`,
-      delay: `${Math.random() * 8}s`,
-    }));
-    setParticles(items);
-  }, []);
-
-  useEffect(() => {
-    let timer;
-    const fullText = phrases[currentPhraseIdx];
-    const speed = isDeleting ? 25 : 50;
-
-    if (!isDeleting && displayedText === fullText) {
-      timer = setTimeout(() => {
-        setIsDeleting(true);
-      }, 2500);
-    } else if (isDeleting && displayedText === "") {
-      setIsDeleting(false);
-      setCurrentPhraseIdx((prev) => (prev + 1) % phrases.length);
-    } else {
-      timer = setTimeout(() => {
-        setDisplayedText(prev => 
-          isDeleting 
-            ? fullText.substring(0, prev.length - 1) 
-            : fullText.substring(0, prev.length + 1)
-        );
-      }, speed);
-    }
-
-    return () => clearTimeout(timer);
-  }, [displayedText, isDeleting, currentPhraseIdx]);
-
-  const colorMap = {
-    blue: "bg-blue-500/10 text-blue-400 border border-blue-500/20",
-    yellow: "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20",
-    green: "bg-green-500/10 text-green-400 border border-green-500/20",
-    purple: "bg-purple-500/10 text-purple-400 border border-purple-500/20",
-    red: "bg-red-500/10 text-red-400 border border-red-500/20",
-    cyan: "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20",
-  };
-
-  const borderTopMap = {
-    blue: "border-t-2 border-t-blue-500",
-    yellow: "border-t-2 border-t-yellow-500",
-    green: "border-t-2 border-t-green-500",
-    purple: "border-t-2 border-t-purple-500",
-    red: "border-t-2 border-t-red-500",
-    cyan: "border-t-2 border-t-cyan-500",
-  };
+  // Title reveal words
+  const words = "Report Civic Issues. Create Real Change.".split(" ");
 
   return (
-    <div className={`${t.bg} min-h-screen ${t.text} relative overflow-hidden flex flex-col`}>
-      {/* PARTICLE SYSTEM */}
-      <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
-        {particles.map((p) => (
-          <div
-            key={p.id}
-            style={{
-              position: "absolute",
-              left: p.left,
-              width: p.width,
-              height: p.height,
-              background: p.background,
-              borderRadius: "50%",
-              animation: `particle-float ${p.duration} linear infinite`,
-              animationDelay: p.delay,
-              opacity: 0.6,
-            }}
-          />
-        ))}
-      </div>
-
+    <div className="bg-[#030712] min-h-screen text-[#F8FAFC] relative overflow-hidden flex flex-col pt-16">
+      
       {/* GRID BACKGROUND */}
       <div
-        className="absolute inset-0 opacity-10 pointer-events-none z-0"
+        className="absolute inset-0 opacity-[0.08] pointer-events-none z-0"
         style={{
-          backgroundImage:
-            "linear-gradient(rgba(59,130,246,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(59,130,246,0.3) 1px, transparent 1px)",
+          backgroundImage: "linear-gradient(rgba(59,130,246,0.15) 1.5px, transparent 1.5px), linear-gradient(90deg, rgba(59,130,246,0.15) 1.5px, transparent 1.5px)",
           backgroundSize: "50px 50px",
         }}
       />
 
-      {/* GRADIENT ORBS */}
+      {/* GRADIENT BLOBS WITH FLOATING ANIMATION */}
       <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
-        <div className="absolute top-[-200px] left-[-200px] w-[600px] h-[600px] bg-blue-600/20 rounded-full animate-pulse blur-3xl" />
-        <div
-          className="absolute bottom-[-200px] right-[-200px] w-[500px] h-[500px] bg-cyan-600/15 rounded-full animate-pulse blur-3xl"
-          style={{ animationDelay: "1s" }}
-        />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-purple-600/5 rounded-full blur-3xl" />
+        <div className="absolute top-[5%] left-[5%] w-[45vw] h-[45vw] bg-blue-600/10 rounded-full blur-[130px] animate-orb-float-1" />
+        <div className="absolute bottom-[25%] right-[5%] w-[40vw] h-[40vw] bg-emerald-600/5 rounded-full blur-[130px] animate-orb-float-2" />
+        <div className="absolute top-[45%] left-[45%] w-[35vw] h-[35vw] bg-cyan-600/5 rounded-full blur-[120px] animate-orb-float-3" />
       </div>
 
       {/* HERO SECTION */}
       <section 
-        onMouseMove={(e) => {
-          const rect = e.currentTarget.getBoundingClientRect();
-          const x = e.clientX - rect.left;
-          const y = e.clientY - rect.top;
-          e.currentTarget.style.setProperty('--mouse-x', `${x}px`);
-          e.currentTarget.style.setProperty('--mouse-y', `${y}px`);
-        }}
-        style={{ background: 'radial-gradient(600px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(59,130,246,0.06), transparent 40%)' }}
-        className="relative z-10 flex flex-col items-center justify-center min-h-screen px-8 text-center max-w-6xl mx-auto w-full pt-20"
+        ref={heroRef}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        className="relative z-10 max-w-7xl mx-auto w-full px-6 md:px-8 pt-12 md:pt-24 pb-20 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center"
       >
-
-        {/* MAIN HEADING */}
-        <motion.h1
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
-          className="text-8xl font-black leading-none tracking-tight flex flex-col items-center"
-        >
-          <span className={t.text}>Report.</span>
-          <span className={t.text}>Track.</span>
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">
-            Resolve.
-          </span>
-        </motion.h1>
-
-        {/* SUBTITLE */}
-        <motion.p
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.4 }}
-          className={`${t.muted} text-xl max-w-2xl mt-8 leading-relaxed min-h-[3rem] flex items-center justify-center font-medium`}
-        >
-          <span className="after:content-['|'] after:text-blue-500 after:animate-pulse after:ml-0.5">
-            {displayedText}
-          </span>
-        </motion.p>
-
-        {/* CTA BUTTONS */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.6 }}
-          className="flex flex-col sm:flex-row gap-4 mt-10 w-full sm:w-auto justify-center items-center"
-        >
-          {/* Button 1 */}
+        {/* Left Side: Copywriting & CTA */}
+        <div className="lg:col-span-6 flex flex-col text-left">
+          
+          {/* Tag */}
           <motion.div
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="w-full sm:w-auto"
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 text-blue-400 px-3.5 py-1.5 rounded-full text-xs font-semibold tracking-wide w-fit mb-6"
           >
-            <Link
-              to={user ? "/report" : "/login"}
-              className="relative overflow-hidden group flex items-center justify-center gap-2 w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white font-bold px-10 py-4 rounded-2xl text-lg animate-glow transition duration-200"
-            >
-              {/* Shimmer sweep effect */}
-              <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_ease-out]" />
-              <span>Report an Issue &rarr;</span>
-            </Link>
+            <span className="flex h-2 w-2 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+            </span>
+            Hyperlocal Issue Classification Engine
           </motion.div>
 
-          {/* Button 2 */}
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="w-full sm:w-auto"
-          >
-            <Link
-              to={user ? "/feed" : "/login"}
-              className={`flex items-center justify-center w-full sm:w-auto border-2 ${t.border} hover:border-blue-500 ${t.text} px-10 py-4 rounded-2xl text-lg transition duration-200 font-semibold`}
+          {/* Word by word Headline */}
+          <div className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight leading-[1.08] text-white">
+            <motion.div
+              initial="hidden"
+              animate="visible"
+              variants={{
+                hidden: { opacity: 0 },
+                visible: {
+                  opacity: 1,
+                  transition: { staggerChildren: 0.1, delayChildren: 0.1 }
+                }
+              }}
             >
-              <span className="bg-white/10 rounded-full w-8 h-8 inline-flex items-center justify-center mr-2 text-xs">
-                ▶
-              </span>
-              Watch How It Works
-            </Link>
-          </motion.div>
-        </motion.div>
-
-        {/* TRUST BADGES */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.8, delay: 0.8 }}
-          className="flex flex-wrap gap-6 mt-12 items-center justify-center"
-        >
-          {["Free to use", "AI Powered", "Real-time updates", "Secure"].map((text) => (
-            <div key={text} className={`${t.muted} text-sm flex items-center gap-1.5 font-medium`}>
-              <span className="text-green-400 font-bold">✓</span>
-              <span>{text}</span>
-            </div>
-          ))}
-        </motion.div>
-
-        {/* FLOATING MOCKUP */}
-        <motion.div
-          initial={{ opacity: 0, y: 50 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1, delay: 1.0 }}
-          className="mt-20 relative w-full max-w-xl mx-auto"
-        >
-          {/* Main card */}
-          <div className="bg-[#111827] rounded-2xl border border-[#374151] p-5 max-w-md mx-auto shadow-2xl animate-float">
-            {/* Top bar */}
-            <div className="flex items-center gap-2 mb-4">
-              <div className="flex gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-red-500"></span>
-                <span className="w-3 h-3 rounded-full bg-yellow-500"></span>
-                <span className="w-3 h-3 rounded-full bg-green-500"></span>
-              </div>
-              <span className="text-[#6B7280] text-xs mx-auto">civicpulse.app</span>
-            </div>
-
-            {/* Image area */}
-            <div className="bg-[#1F2937] rounded-xl h-36 w-full flex items-center justify-center overflow-hidden relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-900/50 to-[#1F2937]"></div>
-              <span className="text-[#9CA3AF] text-sm relative z-10 flex items-center gap-2 font-medium">
-                📸 Photo uploaded
-              </span>
-            </div>
-
-            {/* AI Analysis row */}
-            <div className="mt-3 bg-[#0A0F1E] rounded-xl p-3 text-left">
-              <div className="text-blue-400 text-xs font-semibold mb-2 flex items-center gap-1">
-                <span>🤖</span> Gemini Analysis
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {/* Category */}
-                <div className="bg-[#1F2937] rounded-lg p-2">
-                  <div className="text-[#6B7280] text-[10px] font-bold uppercase">CATEGORY</div>
-                  <div className="text-white text-sm font-medium">Pothole</div>
-                </div>
-                {/* Severity */}
-                <div className="bg-[#1F2937] rounded-lg p-2">
-                  <div className="text-[#6B7280] text-[10px] font-bold uppercase">SEVERITY</div>
-                  <div className="text-red-400 text-sm font-medium">Critical</div>
-                </div>
-                {/* Department */}
-                <div className="bg-[#1F2937] rounded-lg p-2">
-                  <div className="text-[#6B7280] text-[10px] font-bold uppercase">DEPARTMENT</div>
-                  <div className="text-green-400 text-sm font-medium">BMC</div>
-                </div>
-                {/* Est. Days */}
-                <div className="bg-[#1F2937] rounded-lg p-2">
-                  <div className="text-[#6B7280] text-[10px] font-bold uppercase">EST. DAYS</div>
-                  <div className="text-amber-400 text-sm font-medium">7 Days</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Progress bar */}
-            <div className="mt-3 text-left">
-              <div className="flex justify-between text-xs text-[#9CA3AF] mb-1">
-                <span className="font-semibold">Submitting report...</span>
-                <span className="font-bold">98%</span>
-              </div>
-              <div className="bg-[#1F2937] rounded-full h-1.5 w-full">
-                <div className="w-[98%] bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full h-1.5"></div>
-              </div>
-            </div>
+              {words.map((word, index) => {
+                const isHighlight = index >= 3;
+                return (
+                  <motion.span
+                    key={index}
+                    variants={{
+                      hidden: { opacity: 0, y: 20 },
+                      visible: { opacity: 1, y: 0, transition: { type: "spring", damping: 12, stiffness: 100 } }
+                    }}
+                    className={`inline-block mr-3 select-none ${
+                      isHighlight 
+                        ? "text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-emerald-400 animate-gradient-shift-text animate-shimmer-text font-black" 
+                        : "text-slate-100 font-black"
+                    }`}
+                  >
+                    {word}
+                  </motion.span>
+                );
+              })}
+            </motion.div>
           </div>
+
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.6 }}
+            className="text-slate-400 text-lg md:text-xl mt-6 leading-relaxed max-w-xl font-medium"
+          >
+            CivicPulse empowers citizens to report local issues using AI-powered classification, real-time tracking, and transparent community updates.
+          </motion.p>
+
+          {/* CTA Buttons */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.8 }}
+            className="flex flex-col sm:flex-row gap-4 mt-8"
+          >
+            <motion.div 
+              whileHover="hover" 
+              whileTap={{ scale: 0.97 }} 
+              className="w-full sm:w-auto"
+            >
+              <Link
+                to={user ? "/report" : "/login"}
+                className="relative overflow-hidden group flex items-center justify-center gap-2.5 w-full sm:w-auto bg-[#2563EB] hover:bg-blue-600 text-white font-extrabold px-8 py-4 rounded-2xl text-base shadow-[0_0_15px_rgba(37,99,235,0.3)] hover:shadow-[0_0_30px_rgba(37,99,235,0.6)] border border-blue-400/25 transition-all duration-300"
+              >
+                <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_ease-out]" />
+                <span>Report Issue</span>
+                <motion.span
+                  variants={{ hover: { x: 5 } }}
+                  transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                  className="inline-block"
+                >
+                  <ArrowRightIcon className="w-4.5 h-4.5" />
+                </motion.span>
+              </Link>
+            </motion.div>
+
+            <motion.div 
+              whileHover="hover" 
+              whileTap={{ scale: 0.97 }} 
+              className="w-full sm:w-auto"
+            >
+              <Link
+                to={user ? "/dashboard" : "/login"}
+                className="flex items-center justify-center gap-2.5 w-full sm:w-auto border border-white/10 hover:border-blue-500 bg-white/5 hover:bg-white/10 text-white font-extrabold px-8 py-4 rounded-2xl text-base transition duration-300"
+              >
+                Explore Dashboard
+              </Link>
+            </motion.div>
+          </motion.div>
+
+          {/* Animated Trust Badges */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.8, delay: 1 }}
+            className="flex flex-wrap gap-x-6 gap-y-3 mt-12 items-center text-left"
+          >
+            {[
+              { label: "AI Powered" },
+              { label: "Geo-tagged" },
+              { label: "Real-time Tracking" },
+              { label: "Government Ready" }
+            ].map((badge, idx) => (
+              <div key={idx} className="flex items-center gap-2 text-xs font-bold text-slate-400">
+                <span className="flex h-1.5 w-1.5 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-500"></span>
+                </span>
+                <span>{badge.label}</span>
+              </div>
+            ))}
+          </motion.div>
+
+        </div>
+
+        {/* Right Side: Floating Dashboard Mockup with Mouse Parallax */}
+        <div className="lg:col-span-6 relative w-full flex items-center justify-center mt-8 lg:mt-0">
+          <motion.div
+            style={{ x: parallaxX, y: parallaxY }}
+            className="w-full max-w-lg premium-glow-card rounded-[22px] p-6 shadow-2xl relative border border-white/8 bg-[#111827]/40 backdrop-blur-xl z-10 overflow-hidden"
+          >
+            {/* Horizontal AI Scan Line */}
+            <div className="absolute left-0 right-0 h-[2.5px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent z-20 animate-scan pointer-events-none" />
+
+            {/* Top window UI Controls */}
+            <div className="flex items-center gap-2 mb-5">
+              <div className="flex gap-1.5">
+                <span className="w-3 h-3 rounded-full bg-red-500/70"></span>
+                <span className="w-3 h-3 rounded-full bg-yellow-500/70"></span>
+                <span className="w-3 h-3 rounded-full bg-green-500/70"></span>
+              </div>
+              <span className="text-[#64748B] text-xs font-bold mx-auto select-none">system_vision_panel.sh</span>
+            </div>
+
+            {/* Vision AI Panel Mockup */}
+            <div className="bg-[#07111F] rounded-2xl p-4.5 text-left border border-white/5 relative">
+              <div className="flex items-center justify-between mb-3.5">
+                <div className="text-cyan-400 text-xs font-black tracking-wider flex items-center gap-1.5 uppercase">
+                  <span className="inline-block w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse" />
+                  Gemini-1.5-Flash-Vision
+                </div>
+                
+                {/* Soft severity pulse */}
+                <motion.span 
+                  animate={{ opacity: [1, 0.5, 1], scale: [1, 1.02, 1] }}
+                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                  className="bg-red-500/10 text-red-400 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md border border-red-500/20"
+                >
+                  Critical
+                </motion.span>
+              </div>
+
+              {/* Photo Area */}
+              <div className="h-44 w-full rounded-xl bg-gradient-to-br from-slate-900 to-[#0F172A] flex flex-col items-center justify-center relative overflow-hidden mb-3.5 border border-white/5">
+                <div className="absolute top-2 left-2 bg-black/75 backdrop-blur-md text-white text-[9px] font-extrabold px-2.5 py-1 rounded-md border border-white/5 z-10">
+                  📍 19.0760° N, 72.8777° E
+                </div>
+                <svg className="w-12 h-12 text-slate-700 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span className="text-slate-500 text-[10px] font-bold tracking-wider">img_pothole_mumbai.jpg</span>
+              </div>
+
+              {/* Metrics parameters */}
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="bg-[#030712] rounded-xl p-3 border border-white/5">
+                  <span className="text-[#64748B] font-extrabold uppercase text-[9px] tracking-wider">Detected Type</span>
+                  <div className="text-white font-bold mt-0.5">Road Infrastructure</div>
+                </div>
+                <div className="bg-[#030712] rounded-xl p-3 border border-white/5">
+                  <span className="text-[#64748B] font-extrabold uppercase text-[9px] tracking-wider">Verification Score</span>
+                  <div className="text-emerald-400 font-bold mt-0.5">
+                    <CountUp to={98.7} decimals={1} suffix="%" />
+                  </div>
+                </div>
+                <div className="bg-[#030712] rounded-xl p-3 border border-white/5">
+                  <span className="text-[#64748B] font-extrabold uppercase text-[9px] tracking-wider">Assigned Ward</span>
+                  <div className="text-white font-bold mt-0.5">BMC H-West (Bandra)</div>
+                </div>
+                <div className="bg-[#030712] rounded-xl p-3 border border-white/5">
+                  <span className="text-[#64748B] font-extrabold uppercase text-[9px] tracking-wider">Est. Resolution</span>
+                  <div className="text-amber-400 font-bold mt-0.5">2 Days Plan</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Simulated Live Resolution Timeline */}
+            <div className="mt-4 text-left bg-slate-950/40 rounded-xl p-3.5 border border-white/5">
+              <div className="flex justify-between text-xs text-[#94A3B8] mb-1.5 font-bold">
+                <span>Verification & Dispatch Pipeline</span>
+                <span className="text-cyan-400">In Progress</span>
+              </div>
+              <div className="bg-slate-900 rounded-full h-1.5 w-full overflow-hidden relative">
+                {/* Continuous moving bar */}
+                <motion.div
+                  animate={{ x: ["-100%", "100%"] }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                  className="absolute left-0 top-0 h-full w-1/3 bg-gradient-to-r from-transparent via-cyan-400 to-transparent"
+                />
+                <motion.div
+                  initial={{ width: "0%" }}
+                  animate={{ width: "75%" }}
+                  transition={{ duration: 2, ease: "easeInOut" }}
+                  className="bg-gradient-to-r from-blue-500 via-cyan-400 to-emerald-500 rounded-full h-1.5"
+                />
+              </div>
+              <div className="flex justify-between items-center text-[10px] text-slate-500 font-extrabold uppercase mt-2">
+                <span>Upload</span>
+                <span>AI verified</span>
+                <span className="text-cyan-400">BMC Dispatched</span>
+                <span>Fixed</span>
+              </div>
+            </div>
+          </motion.div>
 
           {/* Floating cards */}
-          <div className="absolute -top-6 -right-6 bg-green-500 text-white rounded-2xl px-4 py-2 text-xs font-bold shadow-xl animate-bounce">
-            ✅ Issue Reported!
+          {/* Card A: Detected Category */}
+          <motion.div
+            style={{ x: floatX1, y: floatY1 }}
+            animate={{ y: [0, -10, 0] }}
+            transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute -top-6 -right-2 bg-slate-900/90 border border-white/10 rounded-2xl p-4.5 shadow-2xl z-20 flex items-center gap-3.5 text-left backdrop-blur-md"
+          >
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+              <CpuIcon />
+            </div>
+            <div>
+              <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Vision AI Tag</div>
+              <div className="text-xs font-black text-white mt-0.5">AI Detected: Pothole</div>
+            </div>
+          </motion.div>
+
+          {/* Card B: Looping notification popups */}
+          <div className="absolute -bottom-8 -left-6 z-20">
+            <AnimatePresence mode="wait">
+              {showNotification ? (
+                <motion.div
+                  key="verified"
+                  initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                  transition={{ duration: 0.3 }}
+                  className="bg-slate-900/90 border border-white/10 rounded-2xl p-4 shadow-2xl flex items-center gap-3 text-left backdrop-blur-md"
+                >
+                  <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 relative flex items-center justify-center">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </div>
+                  <div>
+                    <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Notification</div>
+                    <div className="text-xs font-black text-white mt-0.5">Issue Verified &bull; BMC</div>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="dispatched"
+                  initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                  transition={{ duration: 0.3 }}
+                  className="bg-slate-900/90 border border-white/10 rounded-2xl p-4 shadow-2xl flex items-center gap-3 text-left backdrop-blur-md"
+                >
+                  <div className="w-3.5 h-3.5 rounded-full bg-blue-500 relative flex items-center justify-center">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                  </div>
+                  <div>
+                    <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Notification</div>
+                    <div className="text-xs font-black text-white mt-0.5">Crew Dispatched &bull; Ward 4</div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
-          <div className="absolute -bottom-6 -left-6 bg-[#111827] border border-blue-500/30 rounded-2xl px-4 py-3 shadow-xl text-left">
-            <div className="text-blue-400 text-xs font-bold">
-              ⚡ 0.8s Analysis
+          {/* Card C: Floating Verification Score */}
+          <motion.div
+            style={{ x: floatX2, y: floatY2 }}
+            animate={{ scale: [1, 1.04, 1] }}
+            transition={{ duration: 6.5, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute bottom-16 -right-8 hidden sm:flex bg-slate-950 text-white rounded-xl px-4 py-3 shadow-2xl z-20 border border-white/10 text-left items-center gap-2 backdrop-blur-md"
+          >
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-xs font-black text-emerald-400">
+              ✓
             </div>
-            <div className="text-[#9CA3AF] text-xs mt-0.5">
-              Gemini verified
+            <div>
+              <div className="text-[8px] font-black text-slate-500 uppercase tracking-wider">AI Confidence Score</div>
+              <div className="text-xs font-black text-emerald-400">99.8% Verified</div>
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
+        </div>
       </section>
 
-      {/* STATS SECTION */}
-      <section className="relative z-10 py-16 px-8 max-w-5xl mx-auto w-full">
-        <CityHealthScore />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className={`${t.surface} rounded-2xl p-8 border ${t.border} border-t-2 border-t-blue-500 text-center shadow-xl relative overflow-hidden`}>
-            <div className="text-6xl font-black text-blue-500 drop-shadow-[0_0_15px_rgba(59,130,246,0.4)]">{stats.total}</div>
-            <div className={`${t.text} font-bold text-base mt-3`}>Total Issues Reported</div>
-            <div className={`${t.muted} text-xs mt-1 font-medium`}>AI auto-categorized citizen reports</div>
-          </div>
-          <div className={`${t.surface} rounded-2xl p-8 border ${t.border} border-t-2 border-t-green-500 text-center shadow-xl relative overflow-hidden`}>
-            <div className="text-6xl font-black text-green-500 drop-shadow-[0_0_15px_rgba(16,185,129,0.4)]">{stats.resolved}</div>
-            <div className={`${t.text} font-bold text-base mt-3`}>Issues Resolved</div>
-            <div className={`${t.muted} text-xs mt-1 font-medium`}>Verified and closed by city officials</div>
-          </div>
-          <div className={`${t.surface} rounded-2xl p-8 border ${t.border} border-t-2 border-t-amber-500 text-center shadow-xl relative overflow-hidden`}>
-            <div className="text-6xl font-black text-amber-500 drop-shadow-[0_0_15px_rgba(245,158,11,0.4)]">5</div>
-            <div className={`${t.text} font-bold text-base mt-3`}>Active Departments</div>
-            <div className={`${t.muted} text-xs mt-1 font-medium`}>BMC, PWD, MSEDCL, & more</div>
+      {/* TRUST SECTION */}
+      <section className="relative z-10 border-y border-white/5 bg-slate-950/20 py-10">
+        <div className="max-w-7xl mx-auto px-6 md:px-8">
+          <p className="text-center text-xs uppercase font-extrabold tracking-widest text-slate-500 mb-6">
+            Engineered for Modern Governance & Citizen Co-operation
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 items-center justify-items-center">
+            {[
+              { icon: <ShieldCheckIcon />, title: "AI-Powered Verification" },
+              { icon: <ActivityIcon />, title: "Real-Time Tracking" },
+              { icon: <MapPinIcon />, title: "Geo-tagged Reports" },
+              { icon: <UsersIcon />, title: "Government Ready" }
+            ].map((badge, idx) => (
+              <div key={idx} className="flex items-center gap-2.5 text-left group">
+                <div className="transition-transform duration-300 group-hover:scale-110">
+                  {badge.icon}
+                </div>
+                <span className="font-extrabold text-sm text-slate-400 group-hover:text-blue-400 transition-colors duration-300">
+                  {badge.title}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* HOW IT WORKS SECTION */}
-      <section className="py-32 px-8 relative overflow-hidden z-10">
-        <div className="absolute right-0 top-0 w-1/2 h-full bg-blue-600/3 blur-3xl pointer-events-none" />
+      {/* FEATURES SECTION (Stagger Reveal) */}
+      <section className="relative z-10 py-24 px-6 md:px-8 max-w-7xl mx-auto w-full text-center">
         
-        <h2 className={`text-5xl font-black text-center ${t.text} tracking-tight`}>
-          How It Works
-        </h2>
-        <div className="mx-auto mt-3 w-24 h-1 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full" />
-
-        <div className="relative grid grid-cols-1 md:grid-cols-8 gap-4 mt-20 max-w-5xl mx-auto w-full items-center">
-          {/* Card 1 */}
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.6 }}
-            whileHover={{ y: -8, borderColor: "rgba(59,130,246,0.5)" }}
-            className={`${t.surface} rounded-3xl p-8 border ${t.border} relative overflow-hidden transition-colors duration-300 md:col-span-2`}
-          >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-bl-full pointer-events-none" />
-            <div className="text-8xl font-black text-blue-500/10 absolute top-4 right-4 leading-none pointer-events-none select-none">
-              1
-            </div>
-            <div className="w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center text-3xl">
-              📸
-            </div>
-            <h3 className={`${t.text} font-bold text-2xl mt-6`}>Snap & Upload</h3>
-            <p className={`${t.muted} mt-3 leading-relaxed text-sm font-medium`}>
-              Take a photo of any civic issue — pothole, leak, broken light — and upload instantly.
-            </p>
-          </motion.div>
-
-          {/* Arrow 1 */}
-          <div className="hidden md:flex items-center justify-center text-blue-500/30 text-5xl font-black md:col-span-1 select-none pointer-events-none">
-            →
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+        >
+          <div className="inline-flex items-center gap-2 bg-[#2563EB]/10 border border-blue-500/20 text-blue-400 px-3.5 py-1.5 rounded-full text-xs font-semibold tracking-wide w-fit mb-5">
+            Features & Mechanics
           </div>
+          <h2 className="text-3xl md:text-5xl font-black tracking-tight text-white leading-tight">
+            Designed for Community Resolution
+          </h2>
+          <p className="text-slate-400 text-lg md:text-xl mt-4 max-w-2xl mx-auto font-medium">
+            AI-powered issue validation and decentralized citizen collaboration.
+          </p>
+        </motion.div>
 
-          {/* Card 2 */}
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.6, delay: 0.15 }}
-            whileHover={{ y: -8, borderColor: "rgba(59,130,246,0.5)" }}
-            className={`${t.surface} rounded-3xl p-8 border ${t.border} relative overflow-hidden transition-colors duration-300 md:col-span-2`}
-          >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-bl-full pointer-events-none" />
-            <div className="text-8xl font-black text-blue-500/10 absolute top-4 right-4 leading-none pointer-events-none select-none">
-              2
-            </div>
-            <div className="w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center text-3xl">
-              🤖
-            </div>
-            <h3 className={`${t.text} font-bold text-2xl mt-6`}>AI Analyzes</h3>
-            <p className={`${t.muted} mt-3 leading-relaxed text-sm font-medium`}>
-              Gemini Vision identifies type, severity, and which municipal department handles it.
-            </p>
-          </motion.div>
-
-          {/* Arrow 2 */}
-          <div className="hidden md:flex items-center justify-center text-blue-500/30 text-5xl font-black md:col-span-1 select-none pointer-events-none">
-            →
-          </div>
-
-          {/* Card 3 */}
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            whileHover={{ y: -8, borderColor: "rgba(59,130,246,0.5)" }}
-            className={`${t.surface} rounded-3xl p-8 border ${t.border} relative overflow-hidden transition-colors duration-300 md:col-span-2`}
-          >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-bl-full pointer-events-none" />
-            <div className="text-8xl font-black text-blue-500/10 absolute top-4 right-4 leading-none pointer-events-none select-none">
-              3
-            </div>
-            <div className="w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center text-3xl">
-              ✅
-            </div>
-            <h3 className={`${t.text} font-bold text-2xl mt-6`}>Track & Resolve</h3>
-            <p className={`${t.muted} mt-3 leading-relaxed text-sm font-medium`}>
-              Community upvotes prioritize issues. Track status until your city is fixed.
-            </p>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* FEATURES GRID */}
-      <section className={`py-32 px-8 ${t.surface}/30 relative z-10`}>
-        <h2 className={`text-5xl font-black text-center ${t.text} tracking-tight`}>
-          Everything You Need
-        </h2>
-        <p className={`${t.muted} text-center mt-3 text-lg font-medium`}>
-          Built for citizens who care about their community
-        </p>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16 max-w-5xl mx-auto w-full">
+        {/* Feature Cards Grid (Staggered Reveal with Radial glow hover) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-16 text-left">
           {[
             {
-              icon: "🎯",
-              color: "blue",
-              title: "AI-Powered Analysis",
-              desc: "Gemini Vision auto-categorizes every civic issue instantly",
+              icon: <CpuIcon />,
+              title: "AI Issue Detection",
+              desc: "Gemini Vision automatically classifies issues, estimates response time, and assigns the correct government department.",
             },
             {
-              icon: "⚡",
-              color: "yellow",
-              title: "Real-time Updates",
-              desc: "Live status changes reflected instantly across all dashboards",
+              icon: <MapPinIcon />,
+              title: "Interactive Map",
+              desc: "Explore reported issues nearby in real-time. View precise coordinates and severity metrics visualised instantly.",
             },
             {
-              icon: "👥",
-              color: "green",
-              title: "Community Driven",
-              desc: "Upvote issues to push critical problems up the priority queue",
+              icon: <ActivityIcon />,
+              title: "Live Status Tracking",
+              desc: "Get updates via notifications. Follow your ticket directly through stages: Pending, In Progress, and Resolved.",
             },
             {
-              icon: "🛡️",
-              color: "purple",
-              title: "Officer Verified",
-              desc: "Photo proof required before any status update goes live",
+              icon: <UsersIcon />,
+              title: "Community Voting",
+              desc: "Citizens vote on neighboring issues. High upvote counts boost priority in the municipal officer dashboard.",
             },
             {
-              icon: "🔔",
-              color: "red",
-              title: "Smart Notifications",
-              desc: "Email + in-app alerts every time your issue status changes",
+              icon: <TrendingUpIcon />,
+              title: "Analytics Dashboard",
+              desc: "Track department resolution times, health scores, and open ticket frequencies across ward jurisdictions.",
             },
             {
-              icon: "🏛️",
-              color: "cyan",
-              title: "Dual Dashboard",
-              desc: "Separate powerful dashboards for citizens and municipal officers",
-            },
-          ].map((feat) => (
-            <motion.div
-              key={feat.title}
-              whileHover={{ scale: 1.02, borderColor: "rgba(59,130,246,0.4)" }}
-              className={`${t.surface} rounded-3xl p-6 border ${t.border} ${borderTopMap[feat.color]} transition-all duration-300 text-left`}
+              icon: <BuildingIcon />,
+              title: "Department Management",
+              desc: "Tailored portal for officers allowing photo-proof verification, direct citizen chat, and action plans.",
+            }
+          ].map((feat, idx) => (
+            <PremiumGlowCard
+              key={idx}
+              className="animate-border-rotate"
             >
-              <div
-                className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl mb-4 ${
-                  colorMap[feat.color]
-                }`}
-              >
+              <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-6 transition-all duration-300 group-hover:bg-blue-500/10 group-hover:scale-110 group-hover:rotate-6 text-blue-400 z-10">
                 {feat.icon}
               </div>
-              <h3 className={`${t.text} font-semibold text-lg md:text-xl`}>{feat.title}</h3>
-              <p className={`${t.muted} text-sm mt-2 font-medium leading-relaxed`}>
+              <h3 className="text-xl font-bold text-white transition-colors duration-300 group-hover:text-blue-400 z-10">{feat.title}</h3>
+              <p className="text-slate-400 mt-3 text-sm font-medium leading-relaxed z-10">
                 {feat.desc}
               </p>
-            </motion.div>
+            </PremiumGlowCard>
           ))}
         </div>
       </section>
 
-      {/* FINAL CTA */}
-      <section className="py-32 px-8 text-center relative overflow-hidden z-10 bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.15)_0%,transparent_70%)]">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(59,130,246,0.15),transparent_70%)] pointer-events-none z-0" />
-        <div className="max-w-4xl mx-auto relative z-10">
-          <h2 className={`text-6xl font-black ${t.text} tracking-tight`}>
-            Ready to Fix Your City?
+      {/* HOW IT WORKS SECTION (TIMELINE FILL ON SCROLL) */}
+      <section className="relative z-10 py-24 border-y border-white/5 bg-slate-950/20">
+        <div className="max-w-7xl mx-auto px-6 md:px-8">
+          
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 bg-[#2563EB]/10 border border-blue-500/20 text-blue-400 px-3.5 py-1.5 rounded-full text-xs font-semibold tracking-wide w-fit mb-5">
+              Platform Workflow
+            </div>
+            <h2 className="text-3xl md:text-5xl font-black tracking-tight text-white leading-tight">
+              Reclaiming Civic Accountability
+            </h2>
+            <p className="text-slate-400 text-lg md:text-xl mt-4 max-w-2xl mx-auto font-medium">
+              Simple 5-step process bridging citizens and municipal officers.
+            </p>
+          </div>
+
+          {/* Timeline Wrapper (Vertical fill on scroll with trailing tip dot) */}
+          <div ref={timelineContainerRef} className="relative max-w-3xl mx-auto pl-6 md:pl-16 space-y-12">
+            
+            {/* Background track line */}
+            <div className="absolute left-[30px] md:left-[46px] top-4 bottom-4 w-[2px] bg-slate-900 z-0" />
+            
+            {/* Scroll-Filling Line */}
+            <motion.div
+              style={{ scaleY: lineScaleY, transformOrigin: "top" }}
+              className="absolute left-[30px] md:left-[46px] top-4 bottom-4 w-[2px] bg-gradient-to-b from-blue-500 via-cyan-400 to-emerald-400 z-0"
+            />
+
+            {/* Glowing trailing tip dot */}
+            <motion.div
+              style={{ top: lineTipTop, y: "-50%" }}
+              className="absolute left-[30px] md:left-[46px] w-3 h-3 rounded-full bg-cyan-400 shadow-[0_0_12px_rgba(6,182,212,1)] z-10"
+            />
+
+            {[
+              { step: "01", title: "Capture & Upload", desc: "Snap a photo of the pothole, trash, or leak in your ward and submit.", icon: <CameraIcon /> },
+              { step: "02", title: "AI Analysis", desc: "Gemini AI scans, assigns category, severity, and proper department.", icon: <BrainIcon /> },
+              { step: "03", title: "Official Intake", desc: "Municipal officers verify the ticket and assign a priority action plan.", icon: <SendIcon /> },
+              { step: "04", title: "Track Progress", desc: "View the status bar go from Pending to In Progress. Upvote for urgency.", icon: <ClockIcon /> },
+              { step: "05", title: "Issue Resolved", desc: "Officers upload completion photos, validated by AI, closing the loop.", icon: <CheckCircleIcon /> }
+            ].map((item, idx) => (
+              <TimelineStep 
+                key={idx} 
+                item={item} 
+                idx={idx} 
+                isLast={idx === 4}
+                progressY={scrollYProgress}
+              />
+            ))}
+          </div>
+
+        </div>
+      </section>
+
+      {/* STATISTICS SECTION */}
+      <section className="relative z-10 py-24 px-6 md:px-8 max-w-7xl mx-auto w-full">
+        {/* City Health Score Widget */}
+        <div className="mb-16">
+          <CityHealthScore />
+        </div>
+
+        {/* Counter cards (with self-drawing sparklines on view) */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 text-center">
+          {[
+            { value: stats.total, label: "Reports Submitted", suffix: "+", desc: "Verifiable reports filed", icon: <CameraIcon />, chartD: "M0,15 C20,10 40,25 60,8 C80,10 90,5 100,12" },
+            { value: stats.resolved, label: "Issues Resolved", suffix: "", desc: "AI-verified resolutions", icon: <CheckCircleIcon />, chartD: "M0,18 C15,10 30,5 50,15 C70,12 85,2 100,5" },
+            { value: 1250, label: "Active Citizens", suffix: "+", desc: "Contributing to ward improvements", icon: <UsersIcon />, chartD: "M0,15 Q25,8 50,12 T100,2" },
+            { value: 1.8, label: "Resolution Time", suffix: " Days", decimals: 1, desc: "Average close-out delay", icon: <ClockIcon />, chartD: "M0,5 C30,15 70,5 100,18" }
+          ].map((stat, idx) => (
+            <PremiumGlowCard
+              key={idx}
+              className="bg-slate-900/30 flex flex-col items-center"
+            >
+              <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center mb-4 text-blue-400 z-10 group-hover:rotate-12 transition-transform duration-300">
+                {stat.icon}
+              </div>
+              <div className="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400 tracking-tight z-10 group-hover:scale-105 transition-transform duration-300">
+                <CountUp to={stat.value} decimals={stat.decimals || 0} suffix={stat.suffix} />
+              </div>
+              <div className="font-extrabold text-sm md:text-base text-white mt-3 z-10">
+                {stat.label}
+              </div>
+              <div className="text-xs text-slate-500 font-bold mt-1 uppercase tracking-wider z-10">
+                {stat.desc}
+              </div>
+              
+              {/* Self-drawing SVG sparkline */}
+              <div className="w-full mt-5 relative z-10 opacity-70 group-hover:opacity-100 transition-opacity duration-300">
+                <svg className="w-full h-8 overflow-visible" viewBox="0 0 100 20">
+                  <motion.path
+                    initial={{ pathLength: 0 }}
+                    whileInView={{ pathLength: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 1.8, ease: "easeInOut", delay: idx * 0.15 }}
+                    d={stat.chartD}
+                    fill="none"
+                    stroke="url(#sparkline-grad)"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                  />
+                  <defs>
+                    <linearGradient id="sparkline-grad" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor="#2563EB" />
+                      <stop offset="50%" stopColor="#06B6D4" />
+                      <stop offset="100%" stopColor="#10B981" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+              </div>
+            </PremiumGlowCard>
+          ))}
+        </div>
+      </section>
+
+      {/* INTERACTIVE MAP PREVIEW */}
+      <section className="relative z-10 py-24 border-t border-white/5 bg-slate-950/20">
+        <div className="max-w-7xl mx-auto px-6 md:px-8 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+          
+          {/* Map Info Block */}
+          <div className="lg:col-span-4 text-left">
+            <div className="inline-flex items-center gap-2 bg-[#2563EB]/10 border border-blue-500/20 text-blue-400 px-3.5 py-1.5 rounded-full text-xs font-semibold tracking-wide w-fit mb-5">
+              Ward GIS Interface
+            </div>
+            <h2 className="text-3xl md:text-4xl font-black tracking-tight text-white leading-tight">
+              Visualise Issues Across Wards
+            </h2>
+            <p className="text-slate-400 text-sm md:text-base mt-4 leading-relaxed font-semibold">
+              Track live pothole reports, broken streetlights, water leaks, and municipal activities mapped down to exact coordinates. Click on marker popups to inspect severity.
+            </p>
+            <div className="mt-8">
+              <Link
+                to={user ? "/feed" : "/login"}
+                className="inline-flex items-center justify-center gap-2 bg-[#2563EB] hover:bg-blue-600 text-white font-extrabold px-6 py-3.5 rounded-xl text-sm transition duration-300 shadow-md shadow-blue-500/20"
+              >
+                <span>Explore Live Issues</span>
+                <ArrowRightIcon className="w-4 h-4" />
+              </Link>
+            </div>
+          </div>
+
+          {/* Map Container */}
+          <div className="lg:col-span-8 relative">
+            <div className="p-2 bg-slate-900 border border-white/10 rounded-3xl shadow-2xl overflow-hidden relative">
+              <IssueMap issues={liveIssues} height="430px" />
+            </div>
+            {/* Floating marker overlay label */}
+            <div className="absolute -bottom-4 -right-4 bg-emerald-500 text-[#030712] text-[10px] font-black uppercase px-3.5 py-2 rounded-full shadow-xl z-20 border border-emerald-400 animate-pulse">
+              ● GIS Synchronization Active
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      {/* TESTIMONIALS SECTION (INFINITE MARQUEE CAROUSEL) */}
+      <section className="relative z-10 py-24 overflow-hidden text-center">
+        <div className="max-w-7xl mx-auto px-6 md:px-8 mb-14">
+          <div className="inline-flex items-center gap-2 bg-[#2563EB]/10 border border-blue-500/20 text-blue-400 px-3.5 py-1.5 rounded-full text-xs font-semibold tracking-wide w-fit mb-5">
+            Testimonials
+          </div>
+          <h2 className="text-3xl md:text-5xl font-black tracking-tight text-white leading-tight">
+            Voices of Our Wards
           </h2>
-          <p className={`${t.muted} text-xl mt-4 max-w-2xl mx-auto font-medium leading-relaxed`}>
-            Join citizens making Maharashtra better, one report at a time
+          <p className="text-slate-400 text-lg md:text-xl mt-4 max-w-2xl mx-auto font-medium">
+            Hear how CivicPulse is helping communities and municipal bodies restore accountability.
+          </p>
+        </div>
+
+        {/* Infinite Marquee row */}
+        <div className="w-full relative overflow-hidden py-4 select-none">
+          {/* Gradient Masks to fade edges */}
+          <div className="absolute left-0 top-0 bottom-0 w-24 bg-gradient-to-r from-[#030712] to-transparent z-20 pointer-events-none" />
+          <div className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-[#030712] to-transparent z-20 pointer-events-none" />
+
+          <div className="flex gap-8 animate-marquee-scroll whitespace-nowrap">
+            {[
+              {
+                role: "Citizen",
+                name: "Rohan Deshmukh",
+                location: "Andheri West, Mumbai",
+                quote: "The speed is unbelievable. I snapped a photo of an open manhole near my local gym, Gemini identified the ward, and in 3 days it was covered. I've never seen such responsiveness.",
+                rating: 5,
+                avatarBg: "from-blue-500 to-indigo-600",
+                initials: "RD"
+              },
+              {
+                role: "Municipal Officer",
+                name: "Officer A. K. Patil",
+                location: "BMC Road Dept",
+                quote: "CivicPulse saves us hours of categorization. We get precise geo-tagged logs and severity ratings. Gemini photo-proof verification guarantees my ground team only submits verified fixes.",
+                rating: 5,
+                avatarBg: "from-emerald-500 to-teal-600",
+                initials: "AP"
+              },
+              {
+                role: "NGO Rep",
+                name: "Meera Sen",
+                location: "CleanCity Foundation",
+                quote: "We use the public feed analytics to audit city sanitation scores. The transparency of upvotes ensures that the local government addresses high-density community concerns first.",
+                rating: 5,
+                avatarBg: "from-amber-500 to-orange-600",
+                initials: "MS"
+              },
+              {
+                role: "Citizen",
+                name: "Priya Nair",
+                location: "Kothrud, Pune",
+                quote: "Being able to track issues in real-time means we don't need to chase ward officials. The in-app chat provides direct connection. My reported pipeline leakage got resolved within 36 hours.",
+                rating: 5,
+                avatarBg: "from-purple-500 to-pink-600",
+                initials: "PN"
+              },
+              {
+                role: "Officer",
+                name: "Engineer S. K. Shinde",
+                location: "PMC Water Works",
+                quote: "Duplicate detection works perfectly. In the past, we had ten crews showing up to evaluate the same leak. CivicPulse groups matching reports instantly. A true game-changer.",
+                rating: 5,
+                avatarBg: "from-cyan-500 to-blue-600",
+                initials: "SS"
+              }
+            ].map((item, idx) => (
+              <div
+                key={idx}
+                className="inline-block w-[350px] shrink-0 premium-glow-card p-6 text-left relative overflow-hidden transition-all duration-300 transform hover:scale-[1.02] border border-white/5 bg-slate-900/40 whitespace-normal group"
+                style={{
+                  transform: `rotate(${idx % 2 === 0 ? "0.6" : "-0.6"}deg)`
+                }}
+              >
+                {/* Rating stars with Twinkle animations */}
+                <div className="flex gap-1 mb-4 z-10 relative">
+                  <StarIcon className="animate-twinkle-1" />
+                  <StarIcon className="animate-twinkle-2" />
+                  <StarIcon className="animate-twinkle-3" />
+                  <StarIcon className="animate-twinkle-1" />
+                  <StarIcon className="animate-twinkle-2" />
+                </div>
+                
+                {/* Quote */}
+                <p className="text-slate-300 text-sm leading-relaxed font-semibold italic z-10 relative">
+                  "{item.quote}"
+                </p>
+
+                {/* Author Info */}
+                <div className="flex items-center gap-3.5 mt-6 border-t border-white/5 pt-4 z-10 relative">
+                  {/* Rotating avatar on card hover */}
+                  <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${item.avatarBg} flex items-center justify-center text-white text-xs font-black border border-white/10 transition-transform duration-300 group-hover:rotate-12`}>
+                    {item.initials}
+                  </div>
+                  <div>
+                    <h4 className="font-extrabold text-xs text-white leading-tight">{item.name}</h4>
+                    <p className="text-[9px] text-[#94A3B8] font-bold uppercase tracking-wider mt-0.5">{item.role} &bull; {item.location}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ SECTION */}
+      <section className="relative z-10 py-24 border-t border-white/5 bg-slate-950/20">
+        <div className="max-w-4xl mx-auto px-6 md:px-8">
+          
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 bg-[#2563EB]/10 border border-blue-500/20 text-blue-400 px-3.5 py-1.5 rounded-full text-xs font-semibold tracking-wide w-fit mb-5">
+              Information Directory
+            </div>
+            <h2 className="text-3xl md:text-5xl font-black tracking-tight text-white leading-tight">
+              Frequently Asked Questions
+            </h2>
+            <p className="text-slate-400 text-lg md:text-xl mt-4 font-medium">
+              Clear answers to common questions about reporting, data privacy, and municipal operations.
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            {[
+              {
+                q: "What types of civic issues can I report?",
+                a: "You can report any local public infrastructure issues including potholes, broken streetlights, water pipeline leakages, open sewage drains, garbage piles, traffic signal failures, and broken public amenities."
+              },
+              {
+                q: "How does the AI auto-categorization work?",
+                a: "When you upload a photo, our backend routes it to Google Gemini 1.5 Flash. The model analyzes the image to identify the issue, determines its priority severity level, auto-detects your location details, and assigns it directly to the responsible municipal department (e.g. BMC Roads Div)."
+              },
+              {
+                q: "How can I be sure the municipal officers are actually working on it?",
+                a: "Our dual dashboard requires the officer to upload verification photos of the fix. The system uses Gemini Vision AI to verify that the repair matches the original complaint before status is marked as 'Resolved'."
+              },
+              {
+                q: "Can I upvote complaints from my neighbors?",
+                a: "Yes! The live community feed displays issues reported nearby. You can upvote issues to increase their visibility. Complaints with more upvotes rise to the top of the priority list on the officer panel."
+              },
+              {
+                q: "Is my personal information secure?",
+                a: "Absolutely. CivicPulse uses secure Firebase Authentication. Municipal officers only see the issue description, photos, and approximate geo-location. Your personal login details and email address are never exposed publicly."
+              }
+            ].map((faq, idx) => (
+              <FAQItem key={idx} question={faq.q} answer={faq.a} />
+            ))}
+          </div>
+
+        </div>
+      </section>
+
+      {/* FINAL CTA SECTION */}
+      <section className="relative z-10 py-28 px-6 text-center overflow-hidden bg-gradient-to-b from-blue-950 to-[#030712] text-white border-t border-white/5">
+        <Particles />
+        <div className="max-w-4xl mx-auto relative z-10 flex flex-col items-center">
+          
+          <h2 className="text-4xl md:text-6xl font-black tracking-tight leading-tight">
+            Together We Build Better Cities
+          </h2>
+          <p className="text-blue-200/80 text-lg md:text-xl mt-6 max-w-2xl leading-relaxed font-semibold">
+            Join thousands of active citizens reporting issues and monitoring progress in Mumbai and Pune. Change starts in your street.
           </p>
 
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="inline-block mt-10"
-          >
-            <Link
-              to={user ? "/report" : "/login"}
-              className="animate-glow bg-blue-600 hover:bg-blue-500 text-white font-bold px-12 py-5 rounded-2xl text-xl transition duration-200 block text-center"
-            >
-              Start Reporting Free &rarr;
-            </Link>
-          </motion.div>
+          <div className="flex flex-col sm:flex-row gap-4 mt-10 w-full sm:w-auto justify-center">
+            <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }} className="w-full sm:w-auto">
+              <Link
+                to={user ? "/report" : "/login"}
+                className="bg-white hover:bg-slate-100 text-[#030712] font-black px-10 py-4.5 rounded-2xl text-base shadow-2xl flex items-center justify-center gap-2 w-full sm:w-auto transition duration-300"
+              >
+                Start Reporting
+              </Link>
+            </motion.div>
 
-          <p className="text-[#6B7280] text-sm mt-4 font-semibold uppercase tracking-wider">
-            No credit card required &bull; Free forever
+            <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }} className="w-full sm:w-auto">
+              <Link
+                to="/feed"
+                className="bg-blue-800/30 hover:bg-blue-800/50 text-white border border-white/10 font-black px-10 py-4.5 rounded-2xl text-base flex items-center justify-center gap-2 w-full sm:w-auto transition duration-300"
+              >
+                Learn More
+              </Link>
+            </motion.div>
+          </div>
+
+          <p className="text-blue-400/60 text-xs font-black uppercase tracking-widest mt-6">
+            Free forever for citizens &bull; AI Verified &bull; Real-time GIS
           </p>
         </div>
       </section>
 
       {/* FOOTER */}
-      <footer className={`${t.bg} border-t ${t.border} py-12 px-8 relative z-10 w-full`}>
-        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 items-center gap-6 text-center md:text-left text-[#6B7280] text-xs">
-          {/* Left: Logo + tagline */}
-          <div className="flex flex-col items-center md:items-start">
-            <div className={`${t.text} font-bold text-lg flex items-center gap-1.5`}>
-              <span>⚡</span> CivicPulse
-            </div>
-            <p className="text-[#6B7280] text-xs mt-1">
-              Making cities better, one report at a time.
+      <footer className="relative z-10 border-t border-white/5 bg-[#030712] py-16 px-6 md:px-8 text-slate-500">
+        <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-5 gap-10">
+          
+          {/* Brand Info */}
+          <div className="col-span-2 flex flex-col text-left">
+            <Link to="/" className="flex items-center gap-2 group mb-4">
+              <div className="bg-blue-600 rounded-lg w-8 h-8 flex items-center justify-center text-sm text-white font-bold">
+                ⚡
+              </div>
+              <div className="flex">
+                <span className="font-black text-xl text-white">Civic</span>
+                <span className="text-blue-500 font-black text-xl">Pulse</span>
+              </div>
+            </Link>
+            <p className="text-xs font-medium leading-relaxed max-w-sm mb-6 text-slate-400">
+              AI-powered hyperlocal civic issue reporting platform bridging citizens and ward officials. Reclaiming accountability, one report at a time.
             </p>
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">
+              © 2026 CivicPulse &bull; Vibe2Ship Hackathon
+            </span>
           </div>
 
-          {/* Center: Copyright */}
-          <div className="text-[#6B7280] text-xs md:text-center font-medium">
-            © 2026 CivicPulse • Vibe2Ship Hackathon
+          {/* Column 2: Product */}
+          <div className="text-left flex flex-col">
+            <h5 className="font-extrabold text-xs text-white uppercase tracking-wider mb-4">Product</h5>
+            <ul className="space-y-2.5 text-xs font-semibold">
+              <li><Link to="/report" className="hover:text-blue-500 text-slate-400">File a Report</Link></li>
+              <li><Link to="/feed" className="hover:text-blue-500 text-slate-400">Live Feed</Link></li>
+              <li><Link to="/dashboard" className="hover:text-blue-500 text-slate-400">Citizen Panel</Link></li>
+              <li><a href="#how-it-works" className="hover:text-blue-500 text-slate-400">How It Works</a></li>
+            </ul>
           </div>
 
+          {/* Column 3: Resources */}
+          <div className="text-left flex flex-col">
+            <h5 className="font-extrabold text-xs text-white uppercase tracking-wider mb-4">Resources</h5>
+            <ul className="space-y-2.5 text-xs font-semibold">
+              <li><a href="#faq" className="hover:text-blue-500 text-slate-400">FAQ Directory</a></li>
+              <li><a href="#features" className="hover:text-blue-500 text-slate-400">AI Capabilities</a></li>
+              <li><a href="#" className="hover:text-blue-500 text-slate-400">API Documentation</a></li>
+              <li><a href="#" className="hover:text-blue-500 text-slate-400">System Status</a></li>
+            </ul>
+          </div>
 
+          {/* Column 4: About / Legal */}
+          <div className="text-left flex flex-col">
+            <h5 className="font-extrabold text-xs text-white uppercase tracking-wider mb-4">About</h5>
+            <ul className="space-y-2.5 text-xs font-semibold">
+              <li><a href="#" className="hover:text-blue-500 text-slate-400">Our Mission</a></li>
+              <li>
+                <a 
+                  href="https://github.com/user-Rishabh/civicpulse" 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="hover:text-blue-500 text-slate-400 inline-flex items-center gap-1"
+                >
+                  <span>GitHub</span>
+                  <GithubIcon />
+                </a>
+              </li>
+              <li><a href="#" className="hover:text-blue-500 text-slate-400">Privacy Policy</a></li>
+              <li><a href="#" className="hover:text-blue-500 text-slate-400">Terms of Use</a></li>
+            </ul>
+          </div>
         </div>
       </footer>
     </div>

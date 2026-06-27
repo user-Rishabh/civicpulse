@@ -23,8 +23,14 @@ function getSeverityColor(severity) {
 
 function createIcon(severity) {
   const color = getSeverityColor(severity);
+  const isPulsing = severity === 'Critical' || severity === 'High';
+  const rippleHtml = isPulsing 
+    ? `<div style="position:absolute;top:-5px;left:-5px;width:30px;height:30px;background:${color};border-radius:50%;opacity:0.6;z-index:-1;" class="animate-ripple"></div>`
+    : '';
   return L.divIcon({
-    html: `<div style="width:20px;height:20px;background:${color};border:3px solid white;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 2px 8px rgba(0,0,0,0.5)"></div>`,
+    html: `<div style="position:relative;width:20px;height:20px;background:${color};border:3px solid white;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 2px 8px rgba(0,0,0,0.5)">
+      ${rippleHtml}
+    </div>`,
     iconSize: [20, 20],
     iconAnchor: [10, 20],
     className: ''
