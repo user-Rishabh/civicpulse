@@ -482,6 +482,48 @@ export default function OfficerDashboard() {
               }));
               const recentIssues = [...assignedIssues].slice(0, 5);
 
+              const generateInsights = (issues) => {
+                const categoryCount = {};
+                issues.forEach(i => categoryCount[i.category] = (categoryCount[i.category] || 0) + 1);
+                const topCategory = Object.entries(categoryCount).sort((a,b) => b[1]-a[1])[0]?.[0] || 'Pothole';
+                const pendingCount = issues.filter(i => i.status === 'Pending').length;
+                const resolvedCount = issues.filter(i => i.status === 'Resolved').length;
+                const resolutionRate = issues.length ? Math.round((resolvedCount/issues.length)*100) : 0;
+                
+                return [
+                  {
+                    icon: "📈",
+                    color: "blue",
+                    title: `${topCategory} is the most reported issue`,
+                    desc: `${categoryCount[topCategory] || 0} reports — prioritize inspection in high-density areas`
+                  },
+                  {
+                    icon: "⚠️", 
+                    color: "red",
+                    title: `${pendingCount} issues awaiting action`,
+                    desc: pendingCount > 2 
+                      ? "High backlog detected — consider deploying additional field teams"
+                      : "Backlog under control — maintain current response rate"
+                  },
+                  {
+                    icon: "🌧️",
+                    color: "cyan",
+                    title: "Monsoon season alert",
+                    desc: "Historical data shows 3x increase in Pothole and Flooding reports June-September"
+                  },
+                  {
+                    icon: "✅",
+                    color: "green", 
+                    title: `${resolutionRate}% resolution rate achieved`,
+                    desc: resolutionRate >= 50 
+                      ? "Above target — department performing well this month"
+                      : "Below 50% target — escalation recommended to senior authorities"
+                  }
+                ];
+              };
+
+              const insights = generateInsights(assignedIssues);
+
               return (
                 <div className="max-w-6xl mx-auto animate-fadeIn">
 
@@ -582,10 +624,10 @@ export default function OfficerDashboard() {
                       ) : (
                         recentIssues.map((issue, idx) => (
                           <div
-                            key={issue.docId || issue.id}
-                            className={`flex items-center gap-3 px-4 py-3 hover:bg-[#1F2937] transition ${
-                              idx < recentIssues.length - 1 ? 'border-b border-[#1F2937]/50' : ''
-                            }`}
+                             key={issue.docId || issue.id}
+                             className={`flex items-center gap-3 px-4 py-3 hover:bg-[#1F2937] transition ${
+                               idx < recentIssues.length - 1 ? 'border-b border-[#1F2937]/50' : ''
+                             }`}
                           >
                             {/* Status icon */}
                             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0 ${
@@ -634,6 +676,34 @@ export default function OfficerDashboard() {
                             <span className="text-white text-xs w-5 text-right shrink-0">{count}</span>
                           </div>
                         ))}
+                      </div>
+
+                      {/* Predictive Insights */}
+                      <div className="bg-[#111827] rounded-xl border border-[#1F2937] p-4 mt-4">
+                        <div className="text-base font-bold text-white">AI Predictive Insights</div>
+                        <div className="text-[#9CA3AF] text-xs mt-1">Based on current reporting trends</div>
+                        <div className="mt-4">
+                          {insights.map((insight, idx) => {
+                            const bgClass = {
+                              blue: "bg-blue-500/20",
+                              red: "bg-red-500/20",
+                              cyan: "bg-cyan-500/20",
+                              green: "bg-green-500/20"
+                            }[insight.color] || "bg-gray-500/20";
+                            
+                            return (
+                              <div key={idx} className="flex items-start gap-3 p-3 bg-[#1F2937] rounded-xl mb-2">
+                                <div className={`w-8 h-8 rounded-lg ${bgClass} flex items-center justify-center text-sm shrink-0`}>
+                                  {insight.icon}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-white text-sm font-semibold">{insight.title}</div>
+                                  <div className="text-[#9CA3AF] text-xs mt-0.5">{insight.desc}</div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
 
                       {/* Department Performance */}

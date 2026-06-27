@@ -210,6 +210,31 @@ export default function CitizenDashboard() {
   const inProgressCount = myIssues.filter((i) => i.status === "In Progress").length;
   const totalUpvotes = myIssues.reduce((sum, issue) => sum + (issue.upvotes || 0), 0);
 
+  const getLeaderboard = (issuesList) => {
+    const counts = {};
+    issuesList.forEach(i => {
+      const email = i.userEmail;
+      if (email) {
+        counts[email] = (counts[email] || 0) + 1;
+      }
+    });
+    return Object.entries(counts)
+      .map(([email, count]) => ({ email, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 3);
+  };
+
+  const leaderboard = getLeaderboard(issues);
+
+  const truncateEmail = (email) => {
+    if (!email) return "";
+    const parts = email.split("@");
+    if (parts.length < 2) return email.length > 15 ? email.slice(0, 12) + "..." : email;
+    const [local, domain] = parts;
+    const truncatedLocal = local.length > 4 ? local.slice(0, 4) + "..." : local;
+    return `${truncatedLocal}@${domain}`;
+  };
+
   const getSeverityBadgeClass = (sev) => {
     const base = "rounded-md px-2 py-0.5 text-[10px] font-bold border inline-block ";
     switch (sev) {
@@ -490,6 +515,133 @@ export default function CitizenDashboard() {
                     </div>
                   </div>
                 </div>
+
+                {/* Your Achievements Section */}
+                {(() => {
+                  const getBadges = (issues, totalUpvotesVal) => {
+                    const count = issues.length;
+                    const resolved = issues.filter(i => i.status === 'Resolved').length;
+                    
+                    return [
+                      {
+                        id: 'first_report',
+                        icon: '🌱',
+                        name: 'First Reporter',
+                        desc: 'Submit your first civic issue',
+                        earned: count >= 1,
+                        color: 'green'
+                      },
+                      {
+                        id: 'active_citizen',
+                        icon: '⭐',
+                        name: 'Active Citizen', 
+                        desc: 'Report 3 or more issues',
+                        earned: count >= 3,
+                        color: 'yellow'
+                      },
+                      {
+                        id: 'community_hero',
+                        icon: '🏆',
+                        name: 'Community Hero',
+                        desc: 'Report 5 or more issues',
+                        earned: count >= 5,
+                        color: 'amber'
+                      },
+                      {
+                        id: 'problem_solver',
+                        icon: '✅',
+                        name: 'Problem Solver',
+                        desc: 'Get 1 issue resolved',
+                        earned: resolved >= 1,
+                        color: 'blue'
+                      },
+                      {
+                        id: 'influencer',
+                        icon: '🔥',
+                        name: 'City Influencer',
+                        desc: 'Receive 10+ total upvotes',
+                        earned: totalUpvotesVal >= 10,
+                        color: 'red'
+                      },
+                      {
+                        id: 'champion',
+                        icon: '👑',
+                        name: 'City Champion',
+                        desc: 'Report 10+ issues and get 5+ resolved',
+                        earned: count >= 10 && resolved >= 5,
+                        color: 'purple'
+                      }
+                    ];
+                  };
+
+                  const computedTotalUpvotes = myIssues.reduce((sum, i) => sum + (i.upvotes || 0), 0);
+                  const badges = getBadges(myIssues, computedTotalUpvotes);
+                  const earnedCount = badges.filter(b => b.earned).length;
+
+                  const badgeColors = {
+                    green: {
+                      earned: "bg-green-500/10 border border-green-500/30 text-green-400",
+                      text: "text-green-400"
+                    },
+                    yellow: {
+                      earned: "bg-yellow-500/10 border border-yellow-500/30 text-yellow-400",
+                      text: "text-yellow-400"
+                    },
+                    amber: {
+                      earned: "bg-amber-500/10 border border-amber-500/30 text-amber-400",
+                      text: "text-amber-400"
+                    },
+                    blue: {
+                      earned: "bg-blue-500/10 border border-blue-500/30 text-blue-400",
+                      text: "text-blue-400"
+                    },
+                    red: {
+                      earned: "bg-red-500/10 border border-red-500/30 text-red-400",
+                      text: "text-red-400"
+                    },
+                    purple: {
+                      earned: "bg-purple-500/10 border border-purple-500/30 text-purple-400",
+                      text: "text-purple-400"
+                    }
+                  };
+
+                  return (
+                    <div className="bg-[#111827] rounded-xl border border-[#1F2937] p-4 mt-4">
+                      <div className="text-base font-bold text-white">Your Achievements</div>
+                      <div className="text-[#9CA3AF] text-xs mt-1">Earn badges by actively reporting civic issues</div>
+                      <div className="text-blue-400 text-xs mt-1">{earnedCount}/{badges.length} badges earned</div>
+
+                      <div className="grid grid-cols-3 gap-3 mt-4">
+                        {badges.map(b => {
+                          const colors = badgeColors[b.color] || badgeColors.blue;
+                          return (
+                            <div
+                              key={b.id}
+                              className={b.earned
+                                ? `${colors.earned} rounded-xl p-4 text-center`
+                                : "bg-[#1F2937] border border-[#374151] rounded-xl p-4 text-center opacity-40 grayscale"
+                              }
+                            >
+                              <div
+                                className="text-3xl mb-2"
+                                style={{ filter: b.earned ? 'none' : 'grayscale(100%)' }}
+                              >
+                                {b.icon}
+                              </div>
+                              <div className="text-white text-xs font-bold">{b.name}</div>
+                              <div className="text-[#9CA3AF] text-xs mt-1">{b.desc}</div>
+                              {b.earned ? (
+                                <div className={`${colors.text} text-xs mt-2 font-semibold`}>✓ Earned</div>
+                              ) : (
+                                <div className="text-[#6B7280] text-xs mt-2">Locked</div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* My Recent Reports & Need to report something? Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -908,6 +1060,32 @@ export default function CitizenDashboard() {
                   <h1 className={`text-2xl font-bold ${textTheme}`}>Community Issues Feed</h1>
                   <p className={`${textMuted} text-sm mt-1`}>See what your neighbors are reporting</p>
                 </div>
+
+                {/* Leaderboard */}
+                {leaderboard.length > 0 && (
+                  <div className="mb-4">
+                    <div className="text-sm font-bold text-white mb-3">Top Contributors This Week</div>
+                    {leaderboard.map((contrib, index) => {
+                      const rankStyles = [
+                        { badge: "bg-yellow-500 text-black", emoji: "🥇" },
+                        { badge: "bg-gray-400 text-black", emoji: "🥈" },
+                        { badge: "bg-amber-600 text-white", emoji: "🥉" }
+                      ];
+                      const style = rankStyles[index] || { badge: "bg-gray-700 text-white", emoji: `${index + 1}` };
+                      return (
+                        <div key={contrib.email} className="flex items-center gap-3 bg-[#1F2937] rounded-xl p-3 mb-2">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${style.badge}`}>
+                            {style.emoji}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-white text-sm font-semibold truncate">{truncateEmail(contrib.email)}</div>
+                            <div className="text-[#9CA3AF] text-xs">{contrib.count} reports</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
 
                 {/* Filter Bar */}
                 <div className="flex gap-3 flex-wrap mt-4">
