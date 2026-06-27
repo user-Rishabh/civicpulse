@@ -143,6 +143,8 @@ function CountUp({ to, duration = 1.5, decimals = 0, suffix = "" }) {
 // Particle system for background (Layer 7 & Layer 9 react)
 function Particles() {
   const [items, setItems] = useState([]);
+  const { isDark } = useTheme();
+
   useEffect(() => {
     setItems(
       Array.from({ length: 18 }).map((_, i) => ({
@@ -179,8 +181,8 @@ function Particles() {
             width: `${p.size}px`,
             height: `${p.size}px`,
             borderRadius: "50%",
-            background: "rgba(6, 182, 212, 0.35)",
-            boxShadow: "0 0 8px rgba(6, 182, 212, 0.6)"
+            background: isDark ? "rgba(6, 182, 212, 0.35)" : "rgba(37, 99, 235, 0.25)",
+            boxShadow: isDark ? "0 0 8px rgba(6, 182, 212, 0.6)" : "0 0 8px rgba(37, 99, 235, 0.3)"
           }}
         />
       ))}
@@ -192,6 +194,7 @@ function Particles() {
 function CustomCursor() {
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [cursorType, setCursorType] = useState("default"); // default, card, button, hero
+  const { isDark } = useTheme();
 
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -246,7 +249,7 @@ function CustomCursor() {
           height: cursorType === "button" ? 40 : cursorType === "hero" ? 75 : 40,
           border: cursorType === "button" ? "2px solid #2563EB" : "none",
           background: cursorType === "card" 
-            ? "radial-gradient(circle, rgba(6, 182, 212, 0.25) 0%, transparent 70%)" 
+            ? (isDark ? "radial-gradient(circle, rgba(6, 182, 212, 0.25) 0%, transparent 70%)" : "radial-gradient(circle, rgba(37, 99, 235, 0.15) 0%, transparent 70%)")
             : cursorType === "hero" 
             ? "radial-gradient(circle, rgba(37, 99, 235, 0.2) 0%, transparent 70%)" 
             : cursorType === "button"
@@ -260,13 +263,14 @@ function CustomCursor() {
   );
 }
 
-// 3D Card Hover Tilt Wrapper
+// 3D Card Hover Tilt Wrapper with Sunrise Transitions
 function PremiumGlowCard({ children, className = "", hoverTilt = true }) {
   const cardRef = useRef(null);
   const [rotateX, setRotateX] = useState(0);
   const [rotateY, setRotateY] = useState(0);
   const [coords, setCoords] = useState({ x: 0, y: 0 });
   const [isHovered, setIsHovered] = useState(false);
+  const { isDark } = useTheme();
 
   const handleMouseMove = (e) => {
     if (!cardRef.current) return;
@@ -302,17 +306,30 @@ function PremiumGlowCard({ children, className = "", hoverTilt = true }) {
       animate={{
         rotateX: rotateX,
         rotateY: rotateY,
-        y: isHovered ? -10 : 0
+        y: isHovered ? -10 : 0,
+        backgroundColor: isDark ? "rgba(17, 24, 39, 0.4)" : "rgba(255, 255, 255, 0.8)",
+        borderColor: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(226, 232, 240, 0.8)",
+        boxShadow: isDark 
+          ? (isHovered ? "0 10px 40px rgba(59, 130, 246, 0.12), 0 0 20px rgba(59, 130, 246, 0.04)" : "0 4px 30px rgba(0, 0, 0, 0.4)") 
+          : (isHovered ? "0 15px 35px rgba(37, 99, 235, 0.08), 0 5px 15px rgba(0, 0, 0, 0.02)" : "0 8px 30px rgba(0, 0, 0, 0.03)")
       }}
-      transition={{ type: "spring", stiffness: 350, damping: 22 }}
+      transition={{ 
+        rotateX: { type: "spring", stiffness: 350, damping: 22 },
+        rotateY: { type: "spring", stiffness: 350, damping: 22 },
+        backgroundColor: { duration: 0.9, ease: "easeInOut" },
+        borderColor: { duration: 0.9, ease: "easeInOut" },
+        boxShadow: { duration: 0.9, ease: "easeInOut" }
+      }}
       style={{ transformStyle: "preserve-3d" }}
-      className={`premium-glow-card group relative p-8 flex flex-col items-start border border-white/5 bg-[#111827]/40 shadow-[0_4px_30px_rgba(0,0,0,0.4)] ${className}`}
+      className={`premium-glow-card group relative p-8 flex flex-col items-start border backdrop-blur-md rounded-2xl ${className}`}
     >
       {/* Radial glow layer centered on cursor coordinate */}
       <div 
         className="pointer-events-none absolute -inset-px opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10"
         style={{
-          background: `radial-gradient(160px circle at ${coords.x}px ${coords.y}px, rgba(37, 99, 235, 0.2), transparent 80%)`
+          background: isDark 
+            ? `radial-gradient(160px circle at ${coords.x}px ${coords.y}px, rgba(37, 99, 235, 0.2), transparent 80%)`
+            : `radial-gradient(160px circle at ${coords.x}px ${coords.y}px, rgba(37, 99, 235, 0.08), transparent 80%)`
         }}
       />
 
@@ -330,12 +347,15 @@ function PremiumGlowCard({ children, className = "", hoverTilt = true }) {
 // FAQ Accordion Item component
 function FAQItem({ question, answer }) {
   const [isOpen, setIsOpen] = useState(false);
+  const { isDark } = useTheme();
 
   return (
     <PremiumGlowCard 
       hoverTilt={false}
       className={`transition-all duration-300 border p-5 ${
-        isOpen ? "border-blue-500/25 bg-slate-950/60 shadow-[0_0_20px_rgba(37,99,235,0.06)]" : "border-white/5"
+        isOpen 
+          ? (isDark ? "border-blue-500/25 bg-slate-950/60 shadow-[0_0_20px_rgba(37,99,235,0.06)]" : "border-blue-500/20 bg-blue-50/20 shadow-[0_0_20px_rgba(37,99,235,0.04)]")
+          : (isDark ? "border-white/5" : "border-slate-200/80")
       }`}
     >
       <button
@@ -343,7 +363,7 @@ function FAQItem({ question, answer }) {
         className="w-full flex justify-between items-center text-left font-bold text-base md:text-lg hover:text-blue-400 transition-colors focus:outline-none cursor-pointer group"
       >
         <motion.span 
-          className="text-white relative z-10 inline-block"
+          className={`relative z-10 inline-block font-bold ${isDark ? "text-white" : "text-[#0F172A]"}`}
           whileHover={{ x: 6 }}
           transition={{ type: "spring", stiffness: 400, damping: 10 }}
         >
@@ -363,7 +383,7 @@ function FAQItem({ question, answer }) {
         transition={{ duration: 0.3, ease: "easeInOut" }}
         className="overflow-hidden"
       >
-        <p className="mt-3 text-sm leading-relaxed text-slate-400 font-medium pb-1">
+        <p className={`mt-3 text-sm leading-relaxed font-medium pb-1 ${isDark ? "text-slate-400" : "text-[#475569]"}`}>
           {answer}
         </p>
       </motion.div>
@@ -375,6 +395,7 @@ function FAQItem({ question, answer }) {
 function TimelineStep({ item, idx, isLast, progressY }) {
   const stepRef = useRef(null);
   const isInView = useInView(stepRef, { once: true, margin: "-100px" });
+  const { isDark } = useTheme();
 
   const opacity = isInView ? 1 : 0.4;
   const isPulsing = isInView;
@@ -393,7 +414,9 @@ function TimelineStep({ item, idx, isLast, progressY }) {
         <motion.div
           animate={isPulsing ? { scale: [1, 1.08, 1], boxShadow: ["0 0 0px rgba(59,130,246,0)", "0 0 15px rgba(59,130,246,0.3)", "0 0 0px rgba(59,130,246,0)"] } : {}}
           transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-          className={`w-12 h-12 md:w-16 md:h-16 rounded-full bg-[#07111F] border flex items-center justify-center shadow-lg transition-colors duration-300 ${
+          className={`w-12 h-12 md:w-16 md:h-16 rounded-full border flex items-center justify-center shadow-lg transition-colors duration-300 ${
+            isDark ? "bg-[#07111F]" : "bg-white"
+          } ${
             isInView ? "border-blue-500 text-blue-400" : "border-white/10 text-slate-500"
           }`}
         >
@@ -412,8 +435,8 @@ function TimelineStep({ item, idx, isLast, progressY }) {
       {/* Details Card */}
       <PremiumGlowCard className="flex-1 hover:border-blue-500/25 transition-all duration-300">
         <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Step {item.step}</span>
-        <h3 className="text-lg md:text-xl font-bold text-white mt-1">{item.title}</h3>
-        <p className="text-slate-400 text-sm mt-2 leading-relaxed font-medium">
+        <h3 className={`text-lg md:text-xl font-bold mt-1 ${isDark ? "text-white" : "text-[#0F172A]"}`}>{item.title}</h3>
+        <p className={`text-sm mt-2 leading-relaxed font-medium ${isDark ? "text-slate-400" : "text-[#475569]"}`}>
           {item.desc}
         </p>
       </PremiumGlowCard>
@@ -463,6 +486,8 @@ function Skyline() {
 
 // AI Node Network Layer (Layer 3)
 function AINetwork() {
+  const { isDark } = useTheme();
+
   return (
     <svg className="absolute inset-0 w-full h-full opacity-[0.05] pointer-events-none z-0" xmlns="http://www.w3.org/2000/svg">
       <circle cx="120" cy="220" r="4.5" fill="#3b82f6" />
@@ -471,17 +496,17 @@ function AINetwork() {
       <circle cx="720" cy="200" r="5" fill="#3b82f6" />
       <circle cx="920" cy="370" r="4.5" fill="#06b6d4" />
       
-      <line x1="120" y1="220" x2="320" y2="170" stroke="#64748b" strokeWidth="1" />
-      <line x1="320" y1="170" x2="520" y2="320" stroke="#64748b" strokeWidth="1" />
-      <line x1="520" y1="320" x2="720" y2="200" stroke="#64748b" strokeWidth="1" />
-      <line x1="720" y1="200" x2="920" y2="370" stroke="#64748b" strokeWidth="1" />
+      <line x1="120" y1="220" x2="320" y2="170" stroke={isDark ? "#64748b" : "#cbd5e1"} strokeWidth="1" />
+      <line x1="320" y1="170" x2="520" y2="320" stroke={isDark ? "#64748b" : "#cbd5e1"} strokeWidth="1" />
+      <line x1="520" y1="320" x2="720" y2="200" stroke={isDark ? "#64748b" : "#cbd5e1"} strokeWidth="1" />
+      <line x1="720" y1="200" x2="920" y2="370" stroke={isDark ? "#64748b" : "#cbd5e1"} strokeWidth="1" />
 
       {/* Travelling pulse line */}
       <motion.circle
         cx="120"
         cy="220"
         r="3"
-        fill="#67e8f9"
+        fill={isDark ? "#67e8f9" : "#2563eb"}
         animate={{
           cx: [120, 320, 520, 720, 920],
           cy: [220, 170, 320, 200, 370]
@@ -494,15 +519,17 @@ function AINetwork() {
 
 // Curved data flow path guides (Layer 6)
 function DataFlowParticles() {
+  const { isDark } = useTheme();
+
   return (
     <svg className="absolute top-[25%] left-0 w-full h-[50%] opacity-[0.035] pointer-events-none z-0" viewBox="0 0 1000 400">
       <path id="curve-path-1" d="M -50,200 C 250,50 450,350 1050,200" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
       
-      <motion.circle r="3.5" fill="#3b82f6" style={{ offsetPath: "path('M -50,200 C 250,50 450,350 1050,200')" }}>
+      <motion.circle r="3.5" fill={isDark ? "#3b82f6" : "#2563eb"} style={{ offsetPath: "path('M -50,200 C 250,50 450,350 1050,200')" }}>
         <animateMotion dur="11s" repeatCount="indefinite" rotate="auto" />
       </motion.circle>
       
-      <motion.circle r="3" fill="#10b981" style={{ offsetPath: "path('M -50,200 C 250,50 450,350 1050,200')" }}>
+      <motion.circle r="3" fill={isDark ? "#10b981" : "#14B8A6"} style={{ offsetPath: "path('M -50,200 C 250,50 450,350 1050,200')" }}>
         <animateMotion dur="15s" repeatCount="indefinite" begin="4s" rotate="auto" />
       </motion.circle>
     </svg>
@@ -532,6 +559,7 @@ function LiveSmartCityFeed() {
     "✓ AI verified manhole cover resolution"
   ];
   const [index, setIndex] = useState(0);
+  const { isDark } = useTheme();
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -546,10 +574,17 @@ function LiveSmartCityFeed() {
         <motion.div
           key={index}
           initial={{ opacity: 0, x: -30, scale: 0.9 }}
-          animate={{ opacity: 1, x: 0, scale: 1 }}
+          animate={{ 
+            opacity: 1, 
+            x: 0, 
+            scale: 1,
+            backgroundColor: isDark ? "rgba(17, 24, 39, 0.6)" : "rgba(255, 255, 255, 0.8)",
+            borderColor: isDark ? "rgba(6, 182, 212, 0.2)" : "rgba(37, 99, 235, 0.2)",
+            boxShadow: isDark ? "0 0 20px rgba(6, 182, 212, 0.15)" : "0 0 20px rgba(37, 99, 235, 0.05)"
+          }}
           exit={{ opacity: 0, x: -30, scale: 0.9 }}
           transition={{ duration: 0.5, type: "spring", stiffness: 120 }}
-          className="premium-glow-card backdrop-blur-xl bg-[#111827]/60 border border-cyan-500/20 px-4 py-3 shadow-[0_0_20px_rgba(6,182,212,0.15)] rounded-2xl flex items-center gap-2.5 max-w-[280px] text-left"
+          className="premium-glow-card backdrop-blur-xl border px-4 py-3 rounded-2xl flex items-center gap-2.5 max-w-[280px] text-left"
         >
           <span className="flex h-2.5 w-2.5 relative">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
@@ -557,7 +592,7 @@ function LiveSmartCityFeed() {
           </span>
           <div>
             <span className="text-[10px] font-black text-cyan-400 uppercase tracking-widest block">City Live Telemetry</span>
-            <p className="text-xs text-white font-extrabold mt-1 leading-tight">{events[index]}</p>
+            <p className={`text-xs font-extrabold mt-1 leading-tight ${isDark ? "text-white" : "text-[#0f172a]"}`}>{events[index]}</p>
           </div>
         </motion.div>
       </AnimatePresence>
@@ -565,10 +600,11 @@ function LiveSmartCityFeed() {
   );
 }
 
-// Dedicated 10-Layer AI Smart City Background Component
+// Dedicated 10-Layer AI Smart City Background Component supporting Sunrise Transitions
 function LivingCityBackground() {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [isMobile, setIsMobile] = useState(false);
+  const { isDark } = useTheme();
 
   useEffect(() => {
     const checkMobile = () => {
@@ -587,19 +623,37 @@ function LivingCityBackground() {
     };
   }, []);
 
+  const transitionConfig = { duration: 0.9, ease: "easeInOut" };
+
   return (
-    <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0">
+    <motion.div 
+      animate={{
+        backgroundColor: isDark ? "#030712" : "#FFFFFF"
+      }}
+      transition={transitionConfig}
+      className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0"
+    >
       {/* LAYER 1: Aurora morphing gradient blobs */}
       {!isMobile && (
-        <div className="absolute inset-0 filter blur-[90px] opacity-[0.15] z-0">
+        <motion.div 
+          animate={{ opacity: isDark ? 0.15 : 0.08 }}
+          transition={transitionConfig}
+          className="absolute inset-0 filter blur-[90px] z-0"
+        >
           <div className="absolute top-[10%] left-[20%] w-[40vw] h-[40vw] rounded-full bg-blue-600/35 animate-blob-1" />
           <div className="absolute bottom-[20%] right-[15%] w-[45vw] h-[45vw] rounded-full bg-purple-600/25 animate-blob-2" />
           <div className="absolute top-[45%] left-[45%] w-[35vw] h-[35vw] rounded-full bg-cyan-600/30 animate-blob-1" />
-        </div>
+        </motion.div>
       )}
 
-      {/* LAYER 2: Hexagonal smart grid repeat backdrop */}
-      <div className="absolute inset-0 hex-grid-bg opacity-[0.06] z-0" />
+      {/* LAYER 2: Hexagonal smart grid repeat backdrop (Drifts slowly) */}
+      <motion.div 
+        animate={{
+          opacity: isDark ? 0.06 : 0.045
+        }}
+        transition={transitionConfig}
+        className={`absolute inset-0 z-0 ${isDark ? "hex-grid-bg" : "light-hex-grid"}`} 
+      />
       
       {/* LAYER 2 EXTRA: Random illuminating hexagons */}
       <div className="absolute inset-0 opacity-[0.07] z-0">
@@ -640,20 +694,26 @@ function LivingCityBackground() {
       <Particles />
 
       {/* LAYER 8: Faint diagonal drifting light rays */}
-      <div className="absolute inset-0 overflow-hidden opacity-[0.06] z-0">
+      <motion.div 
+        animate={{ opacity: isDark ? 0.06 : 0.09 }}
+        transition={transitionConfig}
+        className="absolute inset-0 overflow-hidden z-0"
+      >
         <div className="absolute -top-[50%] -left-[20%] w-[150%] h-[200%] bg-gradient-to-tr from-transparent via-cyan-500/30 to-transparent pointer-events-none animate-ray transform -rotate-12" />
-      </div>
+      </motion.div>
 
       {/* LAYER 9: Mouse cursor reactive spotlight overlay */}
       {!isMobile && (
         <div 
           className="absolute inset-0 z-[1] transition-opacity duration-300 opacity-100"
           style={{
-            background: `radial-gradient(450px circle at ${mousePos.x}px ${mousePos.y}px, transparent 40%, rgba(3, 7, 18, 0.45) 85%)`
+            background: isDark
+              ? `radial-gradient(450px circle at ${mousePos.x}px ${mousePos.y}px, transparent 40%, rgba(3, 7, 18, 0.45) 85%)`
+              : `radial-gradient(450px circle at ${mousePos.x}px ${mousePos.y}px, rgba(37, 99, 235, 0.03) 0%, transparent 60%)`
           }}
         />
       )}
-    </div>
+    </motion.div>
   );
 }
 
@@ -668,9 +728,20 @@ const MOCK_ISSUES = [
 
 export default function Home() {
   const { user } = useAuth();
+  const { isDark } = useTheme();
   const [stats, setStats] = useState({ total: 428, resolved: 312 });
   const [liveIssues, setLiveIssues] = useState(MOCK_ISSUES);
   
+  // Sunrise city awakening sunlight sweep Easter Egg trigger
+  const [triggerAwaken, setTriggerAwaken] = useState(false);
+  useEffect(() => {
+    if (!isDark) {
+      setTriggerAwaken(true);
+      const timer = setTimeout(() => setTriggerAwaken(false), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [isDark]);
+
   // Real-time simulated reports popped on the Leaflet preview
   useEffect(() => {
     const reportInterval = setInterval(() => {
@@ -783,8 +854,19 @@ export default function Home() {
 
   const words = "Report Civic Issues. Create Real Change.".split(" ");
 
+  // Color transition config over 900ms
+  const textTheme = isDark ? "text-slate-100" : "text-[#0F172A]";
+  const mutedTheme = isDark ? "text-slate-400" : "text-[#475569]";
+  const dividerTheme = isDark ? "border-white/5" : "border-slate-200/80";
+
   return (
-    <div className="bg-[#030712] min-h-screen text-[#F8FAFC] relative overflow-hidden flex flex-col pt-16">
+    <motion.div 
+      animate={{
+        color: isDark ? "#F8FAFC" : "#0F172A"
+      }}
+      transition={{ duration: 0.9, ease: "easeInOut" }}
+      className="min-h-screen relative overflow-hidden flex flex-col pt-16"
+    >
       
       {/* Subtle Noise Filter Backdrop Overlay */}
       <div className="noise-overlay" />
@@ -807,6 +889,19 @@ export default function Home() {
       >
         {/* Vector city skyline rendering behind hero content */}
         <Skyline />
+
+        {/* City awakening sunlight sweep beam Easter Egg overlay */}
+        <AnimatePresence>
+          {triggerAwaken && (
+            <motion.div
+              initial={{ x: "-100%", opacity: 0 }}
+              animate={{ x: "120%", opacity: [0, 0.4, 0] }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 1.3, ease: "easeInOut" }}
+              className="absolute inset-y-0 left-0 w-[450px] bg-gradient-to-r from-transparent via-amber-400/25 to-transparent pointer-events-none z-30 transform -skew-x-12"
+            />
+          )}
+        </AnimatePresence>
 
         {/* Left Side: Copywriting & CTA */}
         <div className="lg:col-span-6 flex flex-col text-left relative z-10">
@@ -839,7 +934,7 @@ export default function Home() {
           </motion.div>
 
           {/* Word by word Headline with slow gradient shifts */}
-          <div className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight leading-[1.08] text-white">
+          <div className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight leading-[1.08]">
             <motion.div
               initial="hidden"
               animate="visible"
@@ -862,8 +957,8 @@ export default function Home() {
                     }}
                     className={`inline-block mr-3 select-none ${
                       isHighlight 
-                        ? "text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-400 to-emerald-400 animate-gradient-shift-text animate-shimmer-text font-black" 
-                        : "text-slate-100 font-black"
+                        ? "text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-cyan-500 to-emerald-500 animate-gradient-shift-text animate-shimmer-text font-black" 
+                        : (isDark ? "text-slate-100 font-black" : "text-[#0F172A] font-black")
                     }`}
                   >
                     {word}
@@ -877,7 +972,7 @@ export default function Home() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.6 }}
-            className="text-slate-400 text-lg md:text-xl mt-6 leading-relaxed max-w-xl font-medium"
+            className={`text-lg md:text-xl mt-6 leading-relaxed max-w-xl font-medium ${mutedTheme}`}
           >
             CivicPulse empowers citizens to report local issues using AI-powered classification, real-time tracking, and transparent community updates.
           </motion.p>
@@ -917,7 +1012,7 @@ export default function Home() {
             >
               <RouterLink
                 to={user ? "/dashboard" : "/login"}
-                className="flex items-center justify-center gap-2.5 w-full sm:w-auto border border-white/10 hover:border-blue-500 bg-white/5 hover:bg-white/10 text-white font-extrabold px-8 py-4 rounded-2xl text-base transition duration-300"
+                className={`flex items-center justify-center gap-2.5 w-full sm:w-auto border hover:border-blue-500 bg-white/5 hover:bg-white/10 font-extrabold px-8 py-4 rounded-2xl text-base transition duration-300 ${isDark ? "border-white/10 text-white" : "border-slate-200 text-[#0F172A]"}`}
               >
                 Explore Dashboard
               </RouterLink>
@@ -937,7 +1032,7 @@ export default function Home() {
               { label: "Real-time Tracking" },
               { label: "Government Ready" }
             ].map((badge, idx) => (
-              <div key={idx} className="flex items-center gap-2 text-xs font-bold text-slate-400">
+              <div key={idx} className={`flex items-center gap-2 text-xs font-bold ${mutedTheme}`}>
                 <span className="flex h-1.5 w-1.5 relative">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-500"></span>
@@ -953,7 +1048,13 @@ export default function Home() {
         <div className="lg:col-span-6 relative w-full flex items-center justify-center mt-8 lg:mt-0 hero-illustration">
           <motion.div
             style={{ x: parallaxX, y: parallaxY }}
-            className="w-full max-w-lg premium-glow-card rounded-[22px] p-6 shadow-2xl relative border border-white/8 bg-[#111827]/40 backdrop-blur-xl z-10 overflow-hidden"
+            animate={{
+              backgroundColor: isDark ? "rgba(17, 24, 39, 0.4)" : "rgba(255, 255, 255, 0.8)",
+              borderColor: isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(226, 232, 240, 0.9)",
+              boxShadow: isDark ? "0 10px 40px rgba(0,0,0,0.5)" : "0 15px 35px rgba(37,99,235,0.04)"
+            }}
+            transition={{ duration: 0.9, ease: "easeInOut" }}
+            className="w-full max-w-lg premium-glow-card rounded-[22px] p-6 shadow-2xl relative border backdrop-blur-xl z-10 overflow-hidden"
           >
             {/* Horizontal AI Scan Line (Active when storyStep is scanning >= 3) */}
             <AnimatePresence>
@@ -979,10 +1080,10 @@ export default function Home() {
             </div>
 
             {/* Vision AI Panel Mockup */}
-            <div className="bg-[#07111F] rounded-2xl p-4.5 text-left border border-white/5 relative">
+            <div className={`rounded-2xl p-4.5 text-left border relative ${isDark ? "bg-[#07111F] border-white/5" : "bg-[#F8FAFC] border-slate-200"}`}>
               <div className="flex items-center justify-between mb-3.5">
-                <div className="text-cyan-400 text-xs font-black tracking-wider flex items-center gap-1.5 uppercase">
-                  <span className="inline-block w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse" />
+                <div className="text-cyan-600 dark:text-cyan-400 text-xs font-black tracking-wider flex items-center gap-1.5 uppercase">
+                  <span className="inline-block w-2.5 h-2.5 rounded-full bg-cyan-500 animate-pulse" />
                   Gemini-1.5-Flash-Vision
                 </div>
                 
@@ -990,14 +1091,14 @@ export default function Home() {
                 <motion.span 
                   animate={{ opacity: [1, 0.5, 1], scale: [1, 1.02, 1] }}
                   transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-                  className="bg-red-500/10 text-red-400 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md border border-red-500/20"
+                  className="bg-red-500/10 text-red-500 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md border border-red-500/20"
                 >
                   Critical
                 </motion.span>
               </div>
 
               {/* Photo Area */}
-              <div className="h-44 w-full rounded-xl bg-gradient-to-br from-slate-900 to-[#0F172A] flex flex-col items-center justify-center relative overflow-hidden mb-3.5 border border-white/5">
+              <div className={`h-44 w-full rounded-xl flex flex-col items-center justify-center relative overflow-hidden mb-3.5 border ${isDark ? "bg-gradient-to-br from-slate-900 to-[#0F172A] border-white/5" : "bg-gradient-to-br from-slate-100 to-slate-200 border-slate-300/30"}`}>
                 <div className="absolute top-2 left-2 bg-black/75 backdrop-blur-md text-white text-[9px] font-extrabold px-2.5 py-1 rounded-md border border-white/5 z-10">
                   📍 19.0760° N, 72.8777° E
                 </div>
@@ -1018,7 +1119,7 @@ export default function Home() {
                   )}
                 </AnimatePresence>
 
-                <svg className="w-12 h-12 text-slate-700 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.2}>
+                <svg className="w-12 h-12 text-slate-400 dark:text-slate-700 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
                 <span className="text-slate-500 text-[10px] font-bold tracking-wider">img_pothole_mumbai.jpg</span>
@@ -1026,38 +1127,38 @@ export default function Home() {
 
               {/* Metrics parameters */}
               <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="bg-[#030712] rounded-xl p-3 border border-white/5">
+                <div className={`rounded-xl p-3 border ${isDark ? "bg-[#030712] border-white/5" : "bg-white border-slate-200"}`}>
                   <span className="text-[#64748B] font-extrabold uppercase text-[9px] tracking-wider">Detected Type</span>
-                  <div className="text-white font-bold mt-0.5">Road Infrastructure</div>
+                  <div className={`font-bold mt-0.5 ${isDark ? "text-white" : "text-[#0F172A]"}`}>Road Infrastructure</div>
                 </div>
-                <div className="bg-[#030712] rounded-xl p-3 border border-white/5">
+                <div className={`rounded-xl p-3 border ${isDark ? "bg-[#030712] border-white/5" : "bg-white border-slate-200"}`}>
                   <span className="text-[#64748B] font-extrabold uppercase text-[9px] tracking-wider">Verification Score</span>
-                  <div className="text-emerald-400 font-bold mt-0.5">
+                  <div className="text-emerald-500 font-bold mt-0.5">
                     {storyStep >= 4 ? <CountUp to={98.7} decimals={1} suffix="%" /> : "0.0%"}
                   </div>
                 </div>
-                <div className="bg-[#030712] rounded-xl p-3 border border-white/5">
+                <div className={`rounded-xl p-3 border ${isDark ? "bg-[#030712] border-white/5" : "bg-white border-slate-200"}`}>
                   <span className="text-[#64748B] font-extrabold uppercase text-[9px] tracking-wider">Assigned Ward</span>
-                  <div className="text-white font-bold mt-0.5">
+                  <div className={`font-bold mt-0.5 ${isDark ? "text-white" : "text-[#0F172A]"}`}>
                     {storyStep >= 6 ? "BMC H-West (Bandra)" : "Calculating..."}
                   </div>
                 </div>
-                <div className="bg-[#030712] rounded-xl p-3 border border-white/5">
+                <div className={`rounded-xl p-3 border ${isDark ? "bg-[#030712] border-white/5" : "bg-white border-slate-200"}`}>
                   <span className="text-[#64748B] font-extrabold uppercase text-[9px] tracking-wider">Est. Resolution</span>
-                  <div className="text-amber-400 font-bold mt-0.5">2 Days Plan</div>
+                  <div className="text-amber-500 font-bold mt-0.5">2 Days Plan</div>
                 </div>
               </div>
             </div>
 
             {/* Simulated Live Resolution Timeline */}
-            <div className="mt-4 text-left bg-slate-950/40 rounded-xl p-3.5 border border-white/5">
+            <div className={`mt-4 text-left rounded-xl p-3.5 border ${isDark ? "bg-slate-950/40 border-white/5" : "bg-slate-50 border-slate-200"}`}>
               <div className="flex justify-between text-xs text-[#94A3B8] mb-1.5 font-bold">
                 <span>Verification & Dispatch Pipeline</span>
-                <span className="text-cyan-400 uppercase tracking-widest text-[9px] font-black">
+                <span className="text-cyan-500 uppercase tracking-widest text-[9px] font-black">
                   {storyStep === 7 ? "Resolved" : "Active"}
                 </span>
               </div>
-              <div className="bg-slate-900 rounded-full h-1.5 w-full overflow-hidden relative">
+              <div className="bg-slate-200 dark:bg-slate-900 rounded-full h-1.5 w-full overflow-hidden relative">
                 {/* Continuous progress filling */}
                 <motion.div
                   initial={{ width: "0%" }}
@@ -1076,10 +1177,10 @@ export default function Home() {
                 />
               </div>
               <div className="flex justify-between items-center text-[10px] text-slate-500 font-extrabold uppercase mt-2">
-                <span className={storyStep >= 1 ? "text-cyan-400" : ""}>Upload</span>
-                <span className={storyStep >= 4 ? "text-cyan-400" : ""}>AI verified</span>
-                <span className={storyStep >= 6 ? "text-cyan-400" : ""}>BMC Dispatched</span>
-                <span className={storyStep >= 7 ? "text-emerald-400" : ""}>Resolved</span>
+                <span className={storyStep >= 1 ? "text-cyan-500 font-bold" : ""}>Upload</span>
+                <span className={storyStep >= 4 ? "text-cyan-500 font-bold" : ""}>AI verified</span>
+                <span className={storyStep >= 6 ? "text-cyan-500 font-bold" : ""}>BMC Dispatched</span>
+                <span className={storyStep >= 7 ? "text-emerald-500 font-bold" : ""}>Resolved</span>
               </div>
             </div>
           </motion.div>
@@ -1090,17 +1191,22 @@ export default function Home() {
             style={{ x: floatX1, y: floatY1 }}
             animate={{ 
               y: [0, -14, 0],
-              rotate: [0, 2, 0]
+              rotate: [0, 2, 0],
+              backgroundColor: isDark ? "rgba(7, 17, 31, 0.9)" : "rgba(255, 255, 255, 0.9)"
             }}
-            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute -top-6 -right-2 bg-[#07111F]/90 border border-white/10 rounded-2xl p-4.5 shadow-2xl z-20 flex items-center gap-3.5 text-left backdrop-blur-md"
+            transition={{ 
+              y: { duration: 5, repeat: Infinity, ease: "easeInOut" },
+              rotate: { duration: 5, repeat: Infinity, ease: "easeInOut" },
+              backgroundColor: { duration: 0.9 }
+            }}
+            className={`absolute -top-6 -right-2 border border-white/10 rounded-2xl p-4.5 shadow-2xl z-20 flex items-center gap-3.5 text-left backdrop-blur-md`}
           >
             <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
               <CpuIcon />
             </div>
             <div>
               <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Vision AI Tag</div>
-              <div className="text-xs font-black text-white mt-0.5">AI Detected: Pothole</div>
+              <div className={`text-xs font-black mt-0.5 ${isDark ? "text-white" : "text-[#0F172A]"}`}>AI Detected: Pothole</div>
             </div>
           </motion.div>
 
@@ -1110,10 +1216,15 @@ export default function Home() {
               {storyStep >= 5 && (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95, y: 15 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  animate={{ 
+                    opacity: 1, 
+                    scale: 1, 
+                    y: 0,
+                    backgroundColor: isDark ? "rgba(15, 23, 42, 0.9)" : "rgba(255, 255, 255, 0.95)"
+                  }}
                   exit={{ opacity: 0, scale: 0.95, y: 15 }}
                   transition={{ duration: 0.4 }}
-                  className="bg-slate-900/90 border border-white/10 rounded-2xl p-4 shadow-2xl flex items-center gap-3 text-left backdrop-blur-md"
+                  className="border border-white/10 rounded-2xl p-4 shadow-2xl flex items-center gap-3 text-left backdrop-blur-md"
                 >
                   <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 relative flex items-center justify-center">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -1121,7 +1232,7 @@ export default function Home() {
                   </div>
                   <div>
                     <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Pipeline Notification</div>
-                    <div className="text-xs font-black text-white mt-0.5">
+                    <div className={`text-xs font-black mt-0.5 ${isDark ? "text-white" : "text-[#0F172A]"}`}>
                       {storyStep === 5 ? "Gemini detected Road Damage" : storyStep === 6 ? "Routed to BMC Roads Division" : "Issue Closed: Verified Fixed ✅"}
                     </div>
                   </div>
@@ -1135,17 +1246,18 @@ export default function Home() {
             style={{ x: floatX2, y: floatY2 }}
             animate={{ 
               scale: [1, 1.05, 1],
-              y: [0, 8, 0]
+              y: [0, 8, 0],
+              backgroundColor: isDark ? "rgba(3, 7, 18, 0.95)" : "rgba(255, 255, 255, 0.95)"
             }}
             transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute bottom-16 -right-8 hidden sm:flex bg-slate-950 text-white rounded-xl px-4 py-3 shadow-2xl z-20 border border-white/10 text-left items-center gap-2 backdrop-blur-md"
+            className="absolute bottom-16 -right-8 hidden sm:flex text-white rounded-xl px-4 py-3 shadow-2xl z-20 border border-white/10 text-left items-center gap-2 backdrop-blur-md"
           >
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-xs font-black text-emerald-400">
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-xs font-black text-emerald-500">
               ✓
             </div>
             <div>
               <div className="text-[8px] font-black text-slate-500 uppercase tracking-wider">AI Confidence Score</div>
-              <div className="text-xs font-black text-emerald-400">99.8% Verified</div>
+              <div className={`text-xs font-black ${isDark ? "text-emerald-400" : "text-emerald-600"}`}>99.8% Verified</div>
             </div>
           </motion.div>
         </div>
@@ -1192,7 +1304,7 @@ export default function Home() {
                 <div className="transition-transform duration-300 group-hover:scale-110">
                   {badge.icon}
                 </div>
-                <span className="font-extrabold text-sm text-slate-400 group-hover:text-blue-400 transition-colors duration-300">
+                <span className="font-extrabold text-sm text-slate-400 group-hover:text-blue-500 transition-colors duration-300">
                   {badge.title}
                 </span>
               </div>
@@ -1216,10 +1328,10 @@ export default function Home() {
           <div className="inline-flex items-center gap-2 bg-[#2563EB]/10 border border-blue-500/20 text-blue-400 px-3.5 py-1.5 rounded-full text-xs font-semibold tracking-wide w-fit mb-5">
             Features & Mechanics
           </div>
-          <h2 className="text-3xl md:text-5xl font-black tracking-tight text-white leading-tight">
+          <h2 className="text-3xl md:text-5xl font-black tracking-tight leading-tight">
             Designed for Community Resolution
           </h2>
-          <p className="text-slate-400 text-lg md:text-xl mt-4 max-w-2xl mx-auto font-medium">
+          <p className={`text-lg md:text-xl mt-4 max-w-2xl mx-auto font-medium ${mutedTheme}`}>
             AI-powered issue validation and decentralized citizen collaboration.
           </p>
         </motion.div>
@@ -1265,8 +1377,8 @@ export default function Home() {
               <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-6 transition-all duration-300 group-hover:bg-blue-500/10 group-hover:scale-110 group-hover:rotate-[360deg] text-blue-400 z-10">
                 {feat.icon}
               </div>
-              <h3 className="text-xl font-bold text-white transition-colors duration-300 group-hover:text-blue-400 z-10">{feat.title}</h3>
-              <p className="text-slate-400 mt-3 text-sm font-medium leading-relaxed z-10">
+              <h3 className={`text-xl font-bold transition-colors duration-300 group-hover:text-blue-500 z-10 ${isDark ? "text-white" : "text-[#0F172A]"}`}>{feat.title}</h3>
+              <p className={`mt-3 text-sm font-medium leading-relaxed z-10 ${mutedTheme}`}>
                 {feat.desc}
               </p>
             </PremiumGlowCard>
@@ -1285,10 +1397,10 @@ export default function Home() {
             <div className="inline-flex items-center gap-2 bg-[#2563EB]/10 border border-blue-500/20 text-blue-400 px-3.5 py-1.5 rounded-full text-xs font-semibold tracking-wide w-fit mb-5">
               Platform Workflow
             </div>
-            <h2 className="text-3xl md:text-5xl font-black tracking-tight text-white leading-tight">
+            <h2 className="text-3xl md:text-5xl font-black tracking-tight leading-tight">
               Reclaiming Civic Accountability
             </h2>
-            <p className="text-slate-400 text-lg md:text-xl mt-4 max-w-2xl mx-auto font-medium">
+            <p className={`text-lg md:text-xl mt-4 max-w-2xl mx-auto font-medium ${mutedTheme}`}>
               Simple 5-step process bridging citizens and municipal officers.
             </p>
           </div>
@@ -1297,7 +1409,7 @@ export default function Home() {
           <div ref={timelineContainerRef} className="relative max-w-3xl mx-auto pl-6 md:pl-16 space-y-12">
             
             {/* Background track line */}
-            <div className="absolute left-[30px] md:left-[46px] top-4 bottom-4 w-[2px] bg-slate-900 z-0" />
+            <div className="absolute left-[30px] md:left-[46px] top-4 bottom-4 w-[2px] bg-slate-300 dark:bg-slate-900 z-0" />
             
             {/* Scroll-Filling Line */}
             <motion.div
@@ -1369,7 +1481,7 @@ export default function Home() {
               >
                 <div 
                   onMouseEnter={triggerConfetti}
-                  className="w-full flex flex-col items-center relative"
+                  className="w-full flex flex-col items-center relative animate-fade-in"
                 >
                   {/* Confetti particles */}
                   {bursts.map((b) => (
@@ -1394,12 +1506,12 @@ export default function Home() {
                   
                   <motion.div 
                     whileHover={{ scale: 1.05 }}
-                    className="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400 tracking-tight z-10"
+                    className="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-cyan-500 tracking-tight z-10"
                   >
                     <CountUp to={stat.value} decimals={stat.decimals || 0} suffix={stat.suffix} />
                   </motion.div>
                   
-                  <div className="font-extrabold text-sm md:text-base text-white mt-3 z-10">
+                  <div className={`font-extrabold text-sm md:text-base mt-3 z-10 ${isDark ? "text-white" : "text-[#0F172A]"}`}>
                     {stat.label}
                   </div>
                   
@@ -1449,10 +1561,10 @@ export default function Home() {
             <div className="inline-flex items-center gap-2 bg-[#2563EB]/10 border border-blue-500/20 text-blue-400 px-3.5 py-1.5 rounded-full text-xs font-semibold tracking-wide w-fit mb-5">
               Ward GIS Interface
             </div>
-            <h2 className="text-3xl md:text-4xl font-black tracking-tight text-white leading-tight">
+            <h2 className="text-3xl md:text-4xl font-black tracking-tight leading-tight">
               Visualise Issues Across Wards
             </h2>
-            <p className="text-slate-400 text-sm md:text-base mt-4 leading-relaxed font-semibold">
+            <p className={`text-sm md:text-base mt-4 leading-relaxed font-semibold ${mutedTheme}`}>
               Track live pothole reports, broken streetlights, water leaks, and municipal activities mapped down to exact coordinates. Click on marker popups to inspect severity.
             </p>
             <div className="mt-8">
@@ -1475,7 +1587,7 @@ export default function Home() {
 
           {/* Map Container */}
           <div className="lg:col-span-8 relative">
-            <div className="p-2 bg-slate-900 border border-white/10 rounded-3xl shadow-2xl overflow-hidden relative">
+            <div className={`p-2 border rounded-3xl shadow-2xl overflow-hidden relative ${isDark ? "bg-slate-900 border-white/10" : "bg-white border-slate-200"}`}>
               <IssueMap issues={liveIssues} height="430px" />
             </div>
             {/* Floating marker overlay label */}
@@ -1496,18 +1608,18 @@ export default function Home() {
           <div className="inline-flex items-center gap-2 bg-[#2563EB]/10 border border-blue-500/20 text-blue-400 px-3.5 py-1.5 rounded-full text-xs font-semibold tracking-wide w-fit mb-5">
             Testimonials
           </div>
-          <h2 className="text-3xl md:text-5xl font-black tracking-tight text-white leading-tight">
+          <h2 className="text-3xl md:text-5xl font-black tracking-tight leading-tight">
             Voices of Our Wards
           </h2>
-          <p className="text-slate-400 text-lg md:text-xl mt-4 max-w-2xl mx-auto font-medium">
+          <p className={`text-lg md:text-xl mt-4 max-w-2xl mx-auto font-medium ${mutedTheme}`}>
             Hear how CivicPulse is helping communities and municipal bodies restore accountability.
           </p>
         </div>
 
         {/* Infinite Marquee row */}
         <div className="w-full relative overflow-hidden py-4 select-none">
-          <div className="absolute left-0 top-0 bottom-0 w-24 bg-gradient-to-r from-[#030712] to-transparent z-20 pointer-events-none" />
-          <div className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-[#030712] to-transparent z-20 pointer-events-none" />
+          <div className="absolute left-0 top-0 bottom-0 w-24 bg-gradient-to-r from-transparent to-transparent z-20 pointer-events-none" />
+          <div className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-transparent to-transparent z-20 pointer-events-none" />
 
           <div className="flex gap-8 animate-marquee-scroll whitespace-nowrap">
             {[
@@ -1557,9 +1669,13 @@ export default function Home() {
                 initials: "SS"
               }
             ].map((item, idx) => (
-              <div
+              <motion.div
                 key={idx}
-                className="inline-block w-[350px] shrink-0 premium-glow-card p-6 text-left relative overflow-hidden transition-all duration-300 transform hover:scale-[1.02] border border-white/5 bg-slate-900/40 whitespace-normal group"
+                animate={{
+                  backgroundColor: isDark ? "rgba(15, 23, 42, 0.4)" : "rgba(255, 255, 255, 0.8)",
+                  borderColor: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(226, 232, 240, 0.8)"
+                }}
+                className="inline-block w-[350px] shrink-0 p-6 text-left relative overflow-hidden transition-all duration-[900ms] border rounded-2xl whitespace-normal group shadow-md"
                 style={{
                   transform: `rotate(${idx % 2 === 0 ? "0.6" : "-0.6"}deg)`
                 }}
@@ -1574,22 +1690,22 @@ export default function Home() {
                 </div>
                 
                 {/* Quote */}
-                <p className="text-slate-300 text-sm leading-relaxed font-semibold italic z-10 relative">
+                <p className={`text-sm leading-relaxed font-semibold italic z-10 relative ${isDark ? "text-slate-300" : "text-[#475569]"}`}>
                   "{item.quote}"
                 </p>
 
                 {/* Author Info */}
-                <div className="flex items-center gap-3.5 mt-6 border-t border-white/5 pt-4 z-10 relative">
+                <div className="flex items-center gap-3.5 mt-6 border-t border-slate-200/20 dark:border-white/5 pt-4 z-10 relative">
                   {/* Rotating avatar on card hover */}
                   <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${item.avatarBg} flex items-center justify-center text-white text-xs font-black border border-white/10 transition-transform duration-300 group-hover:rotate-12`}>
                     {item.initials}
                   </div>
                   <div>
-                    <h4 className="font-extrabold text-xs text-white leading-tight">{item.name}</h4>
+                    <h4 className={`font-extrabold text-xs leading-tight ${isDark ? "text-white" : "text-[#0F172A]"}`}>{item.name}</h4>
                     <p className="text-[9px] text-[#94A3B8] font-bold uppercase tracking-wider mt-0.5">{item.role} &bull; {item.location}</p>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -1606,10 +1722,10 @@ export default function Home() {
             <div className="inline-flex items-center gap-2 bg-[#2563EB]/10 border border-blue-500/20 text-blue-400 px-3.5 py-1.5 rounded-full text-xs font-semibold tracking-wide w-fit mb-5">
               Information Directory
             </div>
-            <h2 className="text-3xl md:text-5xl font-black tracking-tight text-white leading-tight">
+            <h2 className="text-3xl md:text-5xl font-black tracking-tight leading-tight">
               Frequently Asked Questions
             </h2>
-            <p className="text-slate-400 text-lg md:text-xl mt-4 font-medium">
+            <p className={`text-lg md:text-xl mt-4 font-medium ${mutedTheme}`}>
               Clear answers to common questions about reporting, data privacy, and municipal operations.
             </p>
           </div>
@@ -1752,6 +1868,6 @@ export default function Home() {
           </div>
         </div>
       </footer>
-    </div>
+    </motion.div>
   );
 }
