@@ -350,44 +350,42 @@ function FAQItem({ question, answer }) {
   const { isDark } = useTheme();
 
   return (
-    <PremiumGlowCard 
-      hoverTilt={false}
-      className={`transition-all duration-300 border p-5 ${
-        isOpen 
-          ? (isDark ? "border-blue-500/25 bg-slate-950/60 shadow-[0_0_20px_rgba(37,99,235,0.06)]" : "border-blue-500/20 bg-blue-50/20 shadow-[0_0_20px_rgba(37,99,235,0.04)]")
-          : (isDark ? "border-white/5" : "border-slate-200/80")
+    <div
+      className={`rounded-2xl border p-5 backdrop-blur-md transition-all duration-300 text-left ${
+        isOpen
+          ? (isDark ? "border-blue-500/35 bg-slate-950/60 shadow-[0_0_20px_rgba(37,99,235,0.06)]" : "border-blue-500/20 bg-blue-50/20 shadow-[0_0_20px_rgba(37,99,235,0.04)]")
+          : (isDark ? "border-white/5 bg-[#111827]/40" : "border-slate-200/80 bg-white/80")
       }`}
     >
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex justify-between items-center text-left font-bold text-base md:text-lg hover:text-blue-400 transition-colors focus:outline-none cursor-pointer group"
       >
-        <motion.span 
-          className={`relative z-10 inline-block font-bold ${isDark ? "text-white" : "text-[#0F172A]"}`}
-          whileHover={{ x: 6 }}
-          transition={{ type: "spring", stiffness: 400, damping: 10 }}
-        >
+        <span className={`relative z-10 inline-block font-bold transition-transform duration-200 group-hover:translate-x-1.5 ${isDark ? "text-white" : "text-[#0F172A]"}`}>
           {question}
-        </motion.span>
-        <motion.span
-          animate={{ rotate: isOpen ? 180 : 0 }}
-          transition={{ duration: 0.2 }}
-          className="text-blue-400 font-bold"
+        </span>
+        <span
+          className={`text-blue-400 font-bold transition-transform duration-200 ${isOpen ? "rotate-180" : "rotate-0"}`}
         >
           ▼
-        </motion.span>
+        </span>
       </button>
-      <motion.div
-        initial={false}
-        animate={{ height: isOpen ? "auto" : 0, opacity: isOpen ? 1 : 0 }}
-        transition={{ duration: 0.3, ease: "easeInOut" }}
-        className="overflow-hidden"
-      >
-        <p className={`mt-3 text-sm leading-relaxed font-medium pb-1 ${isDark ? "text-slate-400" : "text-[#475569]"}`}>
-          {answer}
-        </p>
-      </motion.div>
-    </PremiumGlowCard>
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: "easeInOut" }}
+            className="overflow-hidden"
+          >
+            <p className={`mt-3 text-sm leading-relaxed font-medium pb-1 ${isDark ? "text-slate-400" : "text-[#475569]"}`}>
+              {answer}
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
