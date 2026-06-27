@@ -6,6 +6,7 @@ import { verifyInProgressImage, verifyResolvedImage, analyzeWorkPhoto } from "..
 import { sendStatusNotification, createInAppNotification } from "../lib/notifications";
 import IssueMap from "../components/IssueMap";
 import { useTheme } from "../context/ThemeContext";
+import CityHealthScore from "../components/CityHealthScore";
 
 export default function OfficerDashboard() {
   const { userProfile } = useAuth();
@@ -60,6 +61,24 @@ export default function OfficerDashboard() {
   useEffect(() => {
     const timer = setInterval(() => setLiveTime(new Date()), 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  const [notifications, setNotifications] = useState([]);
+  const [notifOpen, setNotifOpen] = useState(false);
+
+  useEffect(() => {
+    const q = query(
+      collection(db, "notifications"),
+      orderBy("createdAt", "desc")
+    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list = snapshot.docs.map(docSnap => ({ docId: docSnap.id, ...docSnap.data() }));
+      const officerNotifs = list.filter(n => n.userEmail === "officer");
+      setNotifications(officerNotifs);
+    }, (error) => {
+      console.error("Failed to load officer notifications:", error);
+    });
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -544,15 +563,75 @@ export default function OfficerDashboard() {
                         </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-white text-sm font-semibold">
-                        {liveTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                    <div className="flex items-center gap-4 text-right">
+                      {/* Notification Bell */}
+                      <div className="relative">
+                        <button
+                          onClick={() => setNotifOpen(!notifOpen)}
+                          className="relative w-10 h-10 flex items-center justify-center rounded-xl border border-[#374151] hover:border-amber-500/50 bg-[#111827] text-white transition cursor-pointer font-medium"
+                        >
+                          <span className="text-lg">&#x1F514;</span>
+                          {notifications.filter(n => !n.read).length > 0 && (
+                            <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow">
+                              {notifications.filter(n => !n.read).length}
+                            </span>
+                          )}
+                        </button>
+                        {notifOpen && (
+                          <div className="absolute right-0 mt-2 w-80 bg-[#111827] border border-[#374151] rounded-2xl p-4 shadow-2xl z-50 text-left">
+                            <div className="flex items-center justify-between mb-3 border-b border-[#1F2937] pb-2">
+                              <span className="font-bold text-sm text-white">Verification Alerts</span>
+                              {notifications.filter(n => !n.read).length > 0 && (
+                                <button
+                                  onClick={async () => {
+                                    for (const n of notifications.filter(n => !n.read)) {
+                                      await updateDoc(doc(db, "notifications", n.docId), { read: true });
+                                    }
+                                  }}
+                                  className="text-amber-400 text-xs font-semibold hover:text-amber-300 cursor-pointer"
+                                >
+                                  Mark all read
+                                </button>
+                              )}
+                            </div>
+                            <div className="max-h-72 overflow-y-auto space-y-2">
+                              {notifications.length === 0 ? (
+                                <p className="text-xs text-center py-4 text-[#9CA3AF]">No notifications yet</p>
+                              ) : (
+                                notifications.map(notif => (
+                                  <div
+                                    key={notif.docId}
+                                    onClick={async () => {
+                                      await updateDoc(doc(db, "notifications", notif.docId), { read: true });
+                                    }}
+                                    className={`rounded-xl p-3 cursor-pointer transition bg-[#1F2937] hover:bg-[#374151]/50 ${
+                                      !notif.read ? 'border-l-4 border-amber-500' : ''
+                                    }`}
+                                  >
+                                    <p className="text-xs leading-relaxed text-white">{notif.message}</p>
+                                    <p className="text-[10px] mt-1 text-[#6B7280]">
+                                      {new Date(notif.createdAt).toLocaleString()}
+                                    </p>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      <div className="text-[#9CA3AF] text-xs mt-0.5">
-                        {liveTime.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
+
+                      <div>
+                        <div className="text-white text-sm font-semibold">
+                          {liveTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                        </div>
+                        <div className="text-[#9CA3AF] text-xs mt-0.5">
+                          {liveTime.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
+                        </div>
                       </div>
                     </div>
                   </div>
+
+                  <CityHealthScore />
 
                   {/* ── STATS CARDS ── */}
                   <div className="grid grid-cols-4 gap-4 mb-6">

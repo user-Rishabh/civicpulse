@@ -122,3 +122,34 @@ Provide a concise, helpful, and polite response (max 3 sentences) addressing the
   const result = await model.generateContent(prompt);
   return result.response.text().trim();
 }
+
+export async function compareImagesForVerification(originalBase64, originalMimeType, verificationBase64, verificationMimeType, category) {
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  const prompt = `You are an AI assistant verifying if a newly uploaded verification photo matches an originally reported civic issue.
+Issue category: ${category}
+
+Compare the two images provided:
+1. First image: Originally reported photo of the civic issue.
+2. Second image: Verification photo uploaded by a community member to verify the issue exists.
+
+Perform the following checks:
+- Do both photos show the same type of civic issue? (e.g. pothole, garbage dumping, etc.)
+- Do the photos share similar environmental traits (e.g. same road, similar pavement, buildings, trees, background structures, same location feel) indicating they are likely at the same location?
+
+Return ONLY raw JSON, no markdown, no backticks:
+{
+  "verified": true or false,
+  "confidence": "High" or "Medium" or "Low",
+  "reason": "A 1-2 sentence explanation of your comparison results, detailing matching landmarks, road markings, or discrepancies."
+}`;
+
+  const result = await model.generateContent([
+    { inlineData: { data: originalBase64, mimeType: originalMimeType } },
+    { inlineData: { data: verificationBase64, mimeType: verificationMimeType } },
+    { text: prompt }
+  ]);
+
+  const text = result.response.text();
+  const clean = text.replace(/```json|```/g, "").trim();
+  return JSON.parse(clean);
+}

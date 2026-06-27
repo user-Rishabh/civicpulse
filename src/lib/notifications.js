@@ -1,4 +1,6 @@
 import emailjs from '@emailjs/browser';
+import { db } from './firebase';
+import { collection, addDoc } from 'firebase/firestore';
 
 emailjs.init(import.meta.env.VITE_EMAILJS_PUBLIC_KEY);
 
@@ -23,7 +25,8 @@ export async function sendStatusNotification({ citizenEmail, citizenName, locati
   }
 }
 
-export function createInAppNotification(issueId, message, type) {
+export async function createInAppNotification(issueId, message, type, userEmail = null) {
+  // 1. Local Storage Fallback
   const notifications = JSON.parse(localStorage.getItem('civicpulse_notifications') || '[]');
   notifications.unshift({
     id: Date.now(),
@@ -31,7 +34,23 @@ export function createInAppNotification(issueId, message, type) {
     message,
     type,
     read: false,
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    userEmail
   });
   localStorage.setItem('civicpulse_notifications', JSON.stringify(notifications.slice(0, 50)));
+
+  // 2. Save to Firestore notifications collection
+  try {
+    await addDoc(collection(db, 'notifications'), {
+      id: Date.now(),
+      issueId: String(issueId),
+      message,
+      type,
+      read: false,
+      createdAt: new Date().toISOString(),
+      userEmail: userEmail || 'all'
+    });
+  } catch (err) {
+    console.error('Failed to create Firestore notification:', err);
+  }
 }

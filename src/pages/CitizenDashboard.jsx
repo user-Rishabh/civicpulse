@@ -1,10 +1,10 @@
 import { useEffect, useState, useRef } from "react";
-import { collection, onSnapshot, doc, updateDoc, query, where, getDoc, setDoc, arrayUnion } from "firebase/firestore";
+import { collection, onSnapshot, doc, updateDoc, query, where, getDoc, setDoc, arrayUnion, orderBy, addDoc } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
 import { Link } from "react-router-dom";
 import Report from "./Report";
-import { generateSupportReply } from "../lib/gemini";
+import { generateSupportReply, compareImagesForVerification } from "../lib/gemini";
 import IssueMap from "../components/IssueMap";
 import { useTheme } from "../context/ThemeContext";
 
@@ -40,7 +40,100 @@ export default function CitizenDashboard() {
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [mapFilter, setMapFilter] = useState("all");
 
+  const [verifyLoading, setVerifyLoading] = useState(false);
+  const [verifyStatus, setVerifyStatus] = useState(null);
+
+  useEffect(() => {
+    setVerifyStatus(null);
+    setVerifyLoading(false);
+  }, [selectedIssue]);
+
+  const handleVerifyUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setVerifyLoading(true);
+    setVerifyStatus(null);
+
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onloadend = async () => {
+      try {
+        const dataUrl = reader.result;
+        const mimeType = dataUrl.split(";")[0].split(":")[1];
+        const base64Data = dataUrl.split(",")[1];
+
+        const origUrl = selectedIssue.imagePreview;
+        if (!origUrl) {
+          throw new Error("Original issue photo is missing.");
+        }
+        const origMimeType = origUrl.split(";")[0].split(":")[1];
+        const origBase64 = origUrl.split(",")[1];
+
+        const comparison = await compareImagesForVerification(
+          origBase64,
+          origMimeType,
+          base64Data,
+          mimeType,
+          selectedIssue.category
+        );
+
+        if (comparison.verified) {
+          setVerifyStatus({ success: true, reason: comparison.reason });
+
+          const bumpSeverity = (current) => {
+            if (current === "Low") return "Medium";
+            if (current === "Medium") return "High";
+            return "Critical";
+          };
+          const newSeverity = bumpSeverity(selectedIssue.severity);
+          const newCount = (selectedIssue.verificationCount || 0) + 1;
+
+          const issueRef = doc(db, "issues", selectedIssue.docId || selectedIssue.id);
+          await updateDoc(issueRef, {
+            isCommunityVerified: true,
+            verificationCount: newCount,
+            verifiedBy: arrayUnion(user.email),
+            severity: newSeverity
+          });
+
+          // Update points
+          const userRef = doc(db, "users", user.uid);
+          await updateDoc(userRef, {
+            points: (userProfile?.points || 0) + 200
+          });
+
+          // Create notification for officer
+          await addDoc(collection(db, "notifications"), {
+            id: Date.now(),
+            issueId: selectedIssue.docId || selectedIssue.id,
+            message: `${newCount} citizens verified the ${selectedIssue.category} issue at ${selectedIssue.location}.`,
+            type: "verification",
+            read: false,
+            createdAt: new Date().toISOString(),
+            userEmail: "officer"
+          });
+
+          // Fetch the updated issue to refresh modal view
+          const updatedDoc = await getDoc(issueRef);
+          if (updatedDoc.exists()) {
+            setSelectedIssue({ docId: updatedDoc.id, ...updatedDoc.data() });
+          }
+
+        } else {
+          setVerifyStatus({ success: false, reason: comparison.reason });
+        }
+      } catch (err) {
+        console.error("Verification error:", err);
+        setVerifyStatus({ success: false, reason: err.message || "Failed to analyze verification photo." });
+      } finally {
+        setVerifyLoading(false);
+      }
+    };
+  };
+
   // Notification bell state
+  const [leaderboardOpen, setLeaderboardOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState(() => {
     try { return JSON.parse(localStorage.getItem('civicpulse_notifications') || '[]'); } catch { return []; }
@@ -57,6 +150,27 @@ export default function CitizenDashboard() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages, geminiLoading]);
+
+  useEffect(() => {
+    if (!user?.email) return;
+    const q = query(
+      collection(db, "notifications"),
+      orderBy("createdAt", "desc")
+    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list = snapshot.docs.map(docSnap => ({ docId: docSnap.id, ...docSnap.data() }));
+      const myIssueIds = new Set(myIssues.map(i => String(i.id)));
+      const filtered = list.filter(n => 
+        n.userEmail === user.email || 
+        n.userEmail === "all" ||
+        (!n.userEmail && myIssueIds.has(String(n.issueId)))
+      );
+      setNotifications(filtered);
+    }, (error) => {
+      console.error("Failed to load notifications from Firestore:", error);
+    });
+    return () => unsubscribe();
+  }, [user, issues]);
 
   useEffect(() => {
     if (!selectedChatIssue?.id) {
@@ -211,15 +325,20 @@ export default function CitizenDashboard() {
   const totalUpvotes = myIssues.reduce((sum, issue) => sum + (issue.upvotes || 0), 0);
 
   const getLeaderboard = (issuesList) => {
-    const counts = {};
+    const userStats = {};
     issuesList.forEach(i => {
       const email = i.userEmail;
       if (email) {
-        counts[email] = (counts[email] || 0) + 1;
+        if (!userStats[email]) {
+          userStats[email] = {
+            name: i.reporterName || i.reporter || email.split("@")[0],
+            count: 0
+          };
+        }
+        userStats[email].count += 1;
       }
     });
-    return Object.entries(counts)
-      .map(([email, count]) => ({ email, count }))
+    return Object.values(userStats)
       .sort((a, b) => b.count - a.count)
       .slice(0, 3);
   };
@@ -362,68 +481,131 @@ export default function CitizenDashboard() {
       <div className="flex-1 ml-64 pt-20 px-8 pb-20 min-w-0 relative">
         {/* NOTIFICATION BELL */}
         {(() => {
-          const myIssueIds = new Set(myIssues.map(i => String(i.id)));
-          const myNotifs = notifications.filter(n => myIssueIds.has(String(n.issueId)));
-          const unreadCount = myNotifs.filter(n => !n.read).length;
-          const markAllRead = () => {
-            const updated = notifications.map(n =>
-              myIssueIds.has(String(n.issueId)) ? { ...n, read: true } : n
-            );
-            setNotifications(updated);
-            localStorage.setItem('civicpulse_notifications', JSON.stringify(updated));
+          const unreadCount = notifications.filter(n => !n.read).length;
+          const markAllRead = async () => {
+            const unread = notifications.filter(n => !n.read);
+            for (const n of unread) {
+              if (n.docId) {
+                await updateDoc(doc(db, "notifications", n.docId), { read: true });
+              }
+            }
           };
-          const markOneRead = (id) => {
-            const updated = notifications.map(n => n.id === id ? { ...n, read: true } : n);
-            setNotifications(updated);
-            localStorage.setItem('civicpulse_notifications', JSON.stringify(updated));
+          const markOneRead = async (notif) => {
+            if (notif.docId) {
+              await updateDoc(doc(db, "notifications", notif.docId), { read: true });
+            }
             setNotifOpen(false);
-            setActiveTab('track');
+            if (notif.issueId) {
+              try {
+                const issueDoc = await getDoc(doc(db, "issues", String(notif.issueId)));
+                if (issueDoc.exists()) {
+                  setSelectedIssue({ docId: issueDoc.id, ...issueDoc.data() });
+                  setActiveTab('community');
+                }
+              } catch (e) {
+                console.error("Failed to load issue from notification:", e);
+                setActiveTab('track');
+              }
+            } else {
+              setActiveTab('track');
+            }
           };
           return (
-            <div className="fixed top-20 right-8 z-50">
-              <button
-                onClick={() => setNotifOpen(o => !o)}
-                className={`relative w-10 h-10 flex items-center justify-center rounded-xl hover:border-blue-500/50 transition cursor-pointer ${bgSurface} ${borderTheme} ${textTheme}`}
-              >
-                <span className="text-lg">&#x1F514;</span>
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
+            <div className="fixed top-20 right-8 z-50 flex items-center gap-3">
+              {/* Leaderboard Dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => {
+                    setLeaderboardOpen(!leaderboardOpen);
+                    setNotifOpen(false);
+                  }}
+                  className={`w-10 h-10 flex items-center justify-center rounded-xl hover:border-blue-500/50 transition cursor-pointer ${bgSurface} ${borderTheme} ${textTheme}`}
+                >
+                  <span className="text-lg">🏆</span>
+                </button>
+                {leaderboardOpen && (
+                  <div className={`absolute right-0 mt-2 w-80 rounded-2xl p-4 shadow-2xl shadow-black/50 ${bgSurface} ${borderTheme} z-50`}>
+                    <div className="flex items-center justify-between mb-3 border-b border-[#1F2937]/50 pb-2">
+                      <span className={`font-bold text-sm ${textTheme}`}>Top Contributors This Week</span>
+                    </div>
+                    <div className="space-y-2">
+                      {leaderboard.length === 0 ? (
+                        <p className={`text-xs text-center py-4 ${textMuted}`}>No contributors yet</p>
+                      ) : (
+                        leaderboard.map((contrib, index) => {
+                          const rankStyles = [
+                            { badge: "bg-yellow-500 text-black", emoji: "🥇" },
+                            { badge: "bg-gray-400 text-black", emoji: "🥈" },
+                            { badge: "bg-amber-600 text-white", emoji: "🥉" }
+                          ];
+                          const style = rankStyles[index] || { badge: "bg-gray-700 text-white", emoji: `${index + 1}` };
+                          return (
+                            <div key={contrib.name} className="flex items-center gap-3 bg-[#1F2937] rounded-xl p-3">
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${style.badge}`}>
+                                {style.emoji}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="text-white text-sm font-semibold truncate">{contrib.name}</div>
+                                <div className="text-[#9CA3AF] text-xs">{contrib.count} reports</div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
                 )}
-              </button>
-              {notifOpen && (
-                <div className={`absolute right-0 mt-2 w-80 rounded-2xl p-4 shadow-2xl shadow-black/50 ${bgSurface} ${borderTheme}`}>
-                  <div className="flex items-center justify-between mb-3">
-                    <span className={`font-bold text-sm ${textTheme}`}>Notifications</span>
-                    {unreadCount > 0 && (
-                      <button onClick={markAllRead} className="text-blue-400 text-xs font-semibold hover:text-blue-300 cursor-pointer">
-                        Mark all as read
-                      </button>
-                    )}
+              </div>
+
+              {/* Notification Bell Dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => {
+                    setNotifOpen(!notifOpen);
+                    setLeaderboardOpen(false);
+                  }}
+                  className={`relative w-10 h-10 flex items-center justify-center rounded-xl hover:border-blue-500/50 transition cursor-pointer ${bgSurface} ${borderTheme} ${textTheme}`}
+                >
+                  <span className="text-lg">&#x1F514;</span>
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+                {notifOpen && (
+                  <div className={`absolute right-0 mt-2 w-80 rounded-2xl p-4 shadow-2xl shadow-black/50 ${bgSurface} ${borderTheme} z-50`}>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className={`font-bold text-sm ${textTheme}`}>Notifications</span>
+                      {unreadCount > 0 && (
+                        <button onClick={markAllRead} className="text-blue-400 text-xs font-semibold hover:text-blue-300 cursor-pointer">
+                          Mark all as read
+                        </button>
+                      )}
+                    </div>
+                    <div className="max-h-72 overflow-y-auto space-y-2">
+                      {notifications.length === 0 ? (
+                        <p className={`text-xs text-center py-4 ${textMuted}`}>No notifications yet</p>
+                      ) : (
+                        notifications.map(notif => (
+                          <div
+                            key={notif.docId || notif.id}
+                            onClick={() => markOneRead(notif)}
+                            className={`rounded-xl p-3 cursor-pointer transition ${bgSurface2} ${isDark ? 'hover:bg-[#374151]/50' : 'hover:bg-[#E2E8F0]/50'} ${
+                              !notif.read ? 'border-l-4 border-blue-500' : ''
+                            }`}
+                          >
+                            <p className={`text-xs leading-relaxed ${textTheme}`}>{notif.message}</p>
+                            <p className={`text-[10px] mt-1 ${textSubtle}`}>
+                              {new Date(notif.createdAt).toLocaleString()}
+                            </p>
+                          </div>
+                        ))
+                      )}
+                    </div>
                   </div>
-                  <div className="max-h-72 overflow-y-auto space-y-2">
-                    {myNotifs.length === 0 ? (
-                      <p className={`text-xs text-center py-4 ${textMuted}`}>No notifications yet</p>
-                    ) : (
-                      myNotifs.map(notif => (
-                        <div
-                          key={notif.id}
-                          onClick={() => markOneRead(notif.id)}
-                          className={`rounded-xl p-3 cursor-pointer transition ${bgSurface2} ${isDark ? 'hover:bg-[#374151]/50' : 'hover:bg-[#E2E8F0]/50'} ${
-                            !notif.read ? 'border-l-4 border-blue-500' : ''
-                          }`}
-                        >
-                          <p className={`text-xs leading-relaxed ${textTheme}`}>{notif.message}</p>
-                          <p className={`text-[10px] mt-1 ${textSubtle}`}>
-                            {new Date(notif.createdAt).toLocaleString()}
-                          </p>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           );
         })()}
@@ -441,9 +623,14 @@ export default function CitizenDashboard() {
                 {/* Header */}
                 <div className="flex items-center justify-between mb-8">
                   <div>
-                    <h1 className={`text-3xl font-black ${textTheme}`}>
-                      {getGreeting()}
-                    </h1>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <h1 className={`text-3xl font-black ${textTheme}`}>
+                        {getGreeting()}
+                      </h1>
+                      <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-md flex items-center gap-1 shrink-0">
+                        ⭐ {userProfile?.points || 0} pts
+                      </div>
+                    </div>
                     <p className={`${textMuted} text-sm mt-1`}>
                       {getFormattedDate()}
                     </p>
@@ -1061,31 +1248,7 @@ export default function CitizenDashboard() {
                   <p className={`${textMuted} text-sm mt-1`}>See what your neighbors are reporting</p>
                 </div>
 
-                {/* Leaderboard */}
-                {leaderboard.length > 0 && (
-                  <div className="mb-4">
-                    <div className="text-sm font-bold text-white mb-3">Top Contributors This Week</div>
-                    {leaderboard.map((contrib, index) => {
-                      const rankStyles = [
-                        { badge: "bg-yellow-500 text-black", emoji: "🥇" },
-                        { badge: "bg-gray-400 text-black", emoji: "🥈" },
-                        { badge: "bg-amber-600 text-white", emoji: "🥉" }
-                      ];
-                      const style = rankStyles[index] || { badge: "bg-gray-700 text-white", emoji: `${index + 1}` };
-                      return (
-                        <div key={contrib.email} className="flex items-center gap-3 bg-[#1F2937] rounded-xl p-3 mb-2">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${style.badge}`}>
-                            {style.emoji}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="text-white text-sm font-semibold truncate">{truncateEmail(contrib.email)}</div>
-                            <div className="text-[#9CA3AF] text-xs">{contrib.count} reports</div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+
 
                 {/* Filter Bar */}
                 <div className="flex gap-3 flex-wrap mt-4">
@@ -1138,6 +1301,11 @@ export default function CitizenDashboard() {
                               <span className={getSeverityBadgeClass(issue.severity)}>
                                 {issue.severity}
                               </span>
+                              {issue.isCommunityVerified && (
+                                <span className="bg-green-500/10 text-green-400 text-[10px] px-2 py-0.5 rounded-md border border-green-500/20 font-bold uppercase tracking-wider flex items-center gap-1 shrink-0">
+                                  ✅ Verified
+                                </span>
+                              )}
                             </div>
                             <p className={`${textTheme} text-sm line-clamp-2 mt-1 font-medium leading-relaxed`}>
                               {issue.description}
@@ -1215,6 +1383,11 @@ export default function CitizenDashboard() {
                             {selectedIssue.department}
                           </span>
                         )}
+                        {selectedIssue.isCommunityVerified && (
+                          <span className="bg-green-500/10 text-green-400 text-[10px] px-2 py-0.5 rounded-md border border-green-500/20 font-bold uppercase tracking-wider flex items-center gap-1 shrink-0">
+                            ✅ Community Verified
+                          </span>
+                        )}
                       </div>
 
                       {/* Description */}
@@ -1241,6 +1414,49 @@ export default function CitizenDashboard() {
                         <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
                           <div className="text-xs font-semibold text-blue-400">Department Update</div>
                           <p className={`text-xs mt-1 leading-relaxed ${textTheme}`}>{selectedIssue.officerNote}</p>
+                        </div>
+                      )}
+
+                      {/* Verification Section */}
+                      {selectedIssue.userId !== user?.uid && selectedIssue.status === "Pending" && (
+                        <div className="bg-[#111827] border border-[#374151] rounded-xl p-4 mt-2">
+                          <div className="text-sm font-bold text-white mb-1">Verify this Issue</div>
+                          <p className="text-[#9CA3AF] text-xs leading-relaxed mb-3">
+                            Is this issue really at this location? Upload a photo from the site to verify and earn +200 points.
+                          </p>
+                          
+                          {selectedIssue.verifiedBy && selectedIssue.verifiedBy.includes(user?.email) ? (
+                            <div className="text-green-400 text-xs font-semibold flex items-center gap-1.5">
+                              <span>✓</span> You have verified this issue.
+                            </div>
+                          ) : (
+                            <div>
+                              {verifyLoading ? (
+                                <div className="flex items-center gap-2 text-blue-400 text-xs font-semibold py-2">
+                                  <div className="animate-spin border-2 border-blue-500 border-t-transparent rounded-full w-4 h-4"></div>
+                                  <span>Gemini is comparing photos...</span>
+                                </div>
+                              ) : verifyStatus ? (
+                                <div className={`text-xs p-3 rounded-lg flex flex-col gap-1 ${
+                                  verifyStatus.success ? "bg-green-500/10 text-green-400 border border-green-500/20" : "bg-red-500/10 text-red-400 border border-red-500/20"
+                                }`}>
+                                  <div className="font-bold">{verifyStatus.success ? "✓ Verification Successful" : "✗ Verification Failed"}</div>
+                                  <div>{verifyStatus.reason}</div>
+                                  {verifyStatus.success && <div className="font-bold mt-1 text-green-400">+200 Points added!</div>}
+                                </div>
+                              ) : (
+                                <label className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-xl text-xs transition cursor-pointer text-center">
+                                  <span>📷 Upload Photo to Verify</span>
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={handleVerifyUpload}
+                                  />
+                                </label>
+                              )}
+                            </div>
+                          )}
                         </div>
                       )}
 

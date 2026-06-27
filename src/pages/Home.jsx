@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { motion } from "framer-motion";
 import { useTheme } from "../context/ThemeContext";
+import CityHealthScore from "../components/CityHealthScore";
 
 const phrases = [
   "Upload a photo — AI categorizes it instantly.",
@@ -326,6 +327,7 @@ export default function Home() {
 
       {/* STATS SECTION */}
       <section className="relative z-10 py-16 px-8 max-w-5xl mx-auto w-full">
+        <CityHealthScore />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className={`${t.surface} rounded-2xl p-8 border ${t.border} border-t-2 border-t-blue-500 text-center shadow-xl relative overflow-hidden`}>
             <div className="text-6xl font-black text-blue-500 drop-shadow-[0_0_15px_rgba(59,130,246,0.4)]">{stats.total}</div>

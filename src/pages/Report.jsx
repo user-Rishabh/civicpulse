@@ -334,7 +334,38 @@ export default function Report({ onViewReports }) {
 
     try {
       // 1. Save to Firestore
-      await addDoc(collection(db, "issues"), newIssue);
+      const docRef = await addDoc(collection(db, "issues"), newIssue);
+
+      // Find nearby citizens (same location) and notify them
+      try {
+        const querySnapshot = await getDocs(collection(db, "issues"));
+        const uniqueEmails = new Set();
+        querySnapshot.forEach((docSnap) => {
+          const issueData = docSnap.data();
+          if (
+            issueData.location && 
+            newIssue.location &&
+            issueData.location.trim().toLowerCase() === newIssue.location.trim().toLowerCase() &&
+            issueData.userEmail !== user.email
+          ) {
+            uniqueEmails.add(issueData.userEmail);
+          }
+        });
+
+        for (const email of uniqueEmails) {
+          await addDoc(collection(db, "notifications"), {
+            id: Date.now(),
+            issueId: docRef.id,
+            message: `A ${newIssue.category} was reported near you at ${newIssue.location}. Can you verify it? Upload a photo to confirm.`,
+            type: "verify",
+            read: false,
+            createdAt: new Date().toISOString(),
+            userEmail: email
+          });
+        }
+      } catch (notifyErr) {
+        console.error("Failed to notify nearby citizens:", notifyErr);
+      }
 
       // 2. Save to localStorage as fallback
       const stored = localStorage.getItem("civicpulse_issues");
