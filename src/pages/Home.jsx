@@ -140,7 +140,7 @@ function CountUp({ to, duration = 1.5, decimals = 0, suffix = "" }) {
   );
 }
 
-// Particle system for CTA background
+// Particle system for background (Layer 7 & Layer 9 react)
 function Particles() {
   const [items, setItems] = useState([]);
   useEffect(() => {
@@ -149,9 +149,9 @@ function Particles() {
         id: i,
         left: `${Math.random() * 100}%`,
         top: `${Math.random() * 100}%`,
-        size: Math.random() * 4 + 2,
-        duration: Math.random() * 6 + 5,
-        delay: Math.random() * 2
+        size: Math.random() * 4 + 1.5,
+        duration: Math.random() * 8 + 6,
+        delay: Math.random() * 3
       }))
     );
   }, []);
@@ -162,9 +162,9 @@ function Particles() {
         <motion.div
           key={p.id}
           animate={{
-            y: [0, -90, 0],
-            x: [0, Math.random() * 30 - 15, 0],
-            opacity: [0, 0.6, 0]
+            y: [0, -100, 0],
+            x: [0, Math.random() * 40 - 20, 0],
+            opacity: [0, 0.45, 0]
           }}
           transition={{
             duration: p.duration,
@@ -179,8 +179,8 @@ function Particles() {
             width: `${p.size}px`,
             height: `${p.size}px`,
             borderRadius: "50%",
-            background: "rgba(6, 182, 212, 0.4)",
-            boxShadow: "0 0 10px rgba(6, 182, 212, 0.8)"
+            background: "rgba(6, 182, 212, 0.35)",
+            boxShadow: "0 0 8px rgba(6, 182, 212, 0.6)"
           }}
         />
       ))}
@@ -461,7 +461,7 @@ function Skyline() {
   );
 }
 
-// AI Node Network Layer
+// AI Node Network Layer (Layer 3)
 function AINetwork() {
   return (
     <svg className="absolute inset-0 w-full h-full opacity-[0.05] pointer-events-none z-0" xmlns="http://www.w3.org/2000/svg">
@@ -492,7 +492,7 @@ function AINetwork() {
   );
 }
 
-// Curved data flow path guides
+// Curved data flow path guides (Layer 6)
 function DataFlowParticles() {
   return (
     <svg className="absolute top-[25%] left-0 w-full h-[50%] opacity-[0.035] pointer-events-none z-0" viewBox="0 0 1000 400">
@@ -561,6 +561,98 @@ function LiveSmartCityFeed() {
           </div>
         </motion.div>
       </AnimatePresence>
+    </div>
+  );
+}
+
+// Dedicated 10-Layer AI Smart City Background Component
+function LivingCityBackground() {
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    
+    const handleMouseMove = (e) => {
+      setMousePos({ x: e.clientX, y: e.clientY });
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => {
+      window.removeEventListener("resize", checkMobile);
+      window.removeEventListener("mousemove", handleMouseMove);
+    };
+  }, []);
+
+  return (
+    <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0">
+      {/* LAYER 1: Aurora morphing gradient blobs */}
+      {!isMobile && (
+        <div className="absolute inset-0 filter blur-[90px] opacity-[0.15] z-0">
+          <div className="absolute top-[10%] left-[20%] w-[40vw] h-[40vw] rounded-full bg-blue-600/35 animate-blob-1" />
+          <div className="absolute bottom-[20%] right-[15%] w-[45vw] h-[45vw] rounded-full bg-purple-600/25 animate-blob-2" />
+          <div className="absolute top-[45%] left-[45%] w-[35vw] h-[35vw] rounded-full bg-cyan-600/30 animate-blob-1" />
+        </div>
+      )}
+
+      {/* LAYER 2: Hexagonal smart grid repeat backdrop */}
+      <div className="absolute inset-0 hex-grid-bg opacity-[0.06] z-0" />
+      
+      {/* LAYER 2 EXTRA: Random illuminating hexagons */}
+      <div className="absolute inset-0 opacity-[0.07] z-0">
+        {[
+          { top: "15%", left: "25%", delay: 0 },
+          { top: "45%", left: "75%", delay: 1.5 },
+          { top: "70%", left: "35%", delay: 3 },
+          { top: "30%", left: "60%", delay: 4.5 }
+        ].map((h, i) => (
+          <motion.svg
+            key={i}
+            style={{ position: "absolute", top: h.top, left: h.left, width: 28, height: 49 }}
+            viewBox="0 0 28 49"
+            animate={{ opacity: [0.1, 1, 0.1] }}
+            transition={{ duration: 4, repeat: Infinity, delay: h.delay, ease: "easeInOut" }}
+          >
+            <path d="M14 0 L28 8 L28 24 L14 32 L0 24 L0 8 Z" fill="rgba(37,99,235,0.4)" stroke="#3b82f6" strokeWidth="1" />
+          </motion.svg>
+        ))}
+      </div>
+
+      {/* LAYER 3: AI Neural Network connected SVG nodes */}
+      <AINetwork />
+
+      {/* LAYER 4: Motherboard Circuit traces */}
+      <svg className="absolute inset-0 w-full h-full opacity-[0.045] z-0" xmlns="http://www.w3.org/2000/svg">
+        <path d="M 50,0 L 50,150 L 150,250 L 450,250 L 500,300 M 800,200 L 900,300 L 900,600" fill="none" stroke="#06b6d4" strokeWidth="2.5" className="animate-circuit" />
+        <path d="M 200,600 L 200,450 L 300,350 L 600,350 L 650,400" fill="none" stroke="#2563eb" strokeWidth="2.5" className="animate-circuit" style={{ animationDelay: "4s" }} />
+      </svg>
+
+      {/* LAYER 5: Satellite radar sweep bar */}
+      <div className="absolute inset-y-0 left-0 w-[180px] bg-gradient-to-r from-transparent via-cyan-500/10 to-transparent pointer-events-none z-[2] animate-radar border-r border-cyan-400/20 shadow-[5px_0_20px_rgba(6,182,212,0.1)]" />
+
+      {/* LAYER 6: Curved path Data streams */}
+      <DataFlowParticles />
+
+      {/* LAYER 7: Ambient floating particles drifting upward */}
+      <Particles />
+
+      {/* LAYER 8: Faint diagonal drifting light rays */}
+      <div className="absolute inset-0 overflow-hidden opacity-[0.06] z-0">
+        <div className="absolute -top-[50%] -left-[20%] w-[150%] h-[200%] bg-gradient-to-tr from-transparent via-cyan-500/30 to-transparent pointer-events-none animate-ray transform -rotate-12" />
+      </div>
+
+      {/* LAYER 9: Mouse cursor reactive spotlight overlay */}
+      {!isMobile && (
+        <div 
+          className="absolute inset-0 z-[1] transition-opacity duration-300 opacity-100"
+          style={{
+            background: `radial-gradient(450px circle at ${mousePos.x}px ${mousePos.y}px, transparent 40%, rgba(3, 7, 18, 0.45) 85%)`
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -692,22 +784,13 @@ export default function Home() {
   const words = "Report Civic Issues. Create Real Change.".split(" ");
 
   return (
-    <div className="bg-[#030712] mesh-bg min-h-screen text-[#F8FAFC] relative overflow-hidden flex flex-col pt-16">
+    <div className="bg-[#030712] min-h-screen text-[#F8FAFC] relative overflow-hidden flex flex-col pt-16">
       
       {/* Subtle Noise Filter Backdrop Overlay */}
       <div className="noise-overlay" />
 
-      {/* Grid Drift Blueprint Overlay */}
-      <div className="absolute inset-0 opacity-[0.06] pointer-events-none z-0 animate-grid-drift"
-        style={{
-          backgroundImage: "linear-gradient(rgba(59,130,246,0.15) 1.5px, transparent 1.5px), linear-gradient(90deg, rgba(59,130,246,0.15) 1.5px, transparent 1.5px)",
-          backgroundSize: "50px 50px",
-        }}
-      />
-
-      {/* AI Node Network Layer & Data Flow Lines */}
-      <AINetwork />
-      <DataFlowParticles />
+      {/* Futuristic 10-Layer AI Smart City Background */}
+      <LivingCityBackground />
 
       {/* Global Mouse Pointer Glowing dot and ring trailing wrapper */}
       <CustomCursor />

@@ -271,6 +271,56 @@ html {
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
 }
 
+/* Hexagonal Smart Grid Repeat Pattern */
+.hex-grid-bg {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='49' viewBox='0 0 28 49'%3E%3Cpath d='M14 0 L28 8 L28 24 L14 32 L0 24 L0 8 Z M14 49 L28 41 L28 25 L14 17 L0 25 L0 41 Z' fill='none' stroke='rgba(37,99,235,0.045)' stroke-width='1'/%3E%3C/svg%3E");
+  background-size: 28px 49px;
+}
+
+/* Aurora Morph keyframe loops */
+@keyframes blob-morph-1 {
+  0%, 100% { transform: translate(0px, 0px) scale(1) rotate(0deg); }
+  33% { transform: translate(30px, -50px) scale(1.1) rotate(120deg); }
+  66% { transform: translate(-20px, 20px) scale(0.95) rotate(240deg); }
+}
+@keyframes blob-morph-2 {
+  0%, 100% { transform: translate(0px, 0px) scale(1) rotate(0deg); }
+  33% { transform: translate(-40px, 30px) scale(0.9) rotate(-120deg); }
+  66% { transform: translate(40px, -20px) scale(1.1) rotate(-240deg); }
+}
+.animate-blob-1 { animation: blob-morph-1 30s infinite ease-in-out; }
+.animate-blob-2 { animation: blob-morph-2 36s infinite ease-in-out; }
+
+/* Circuit traces offset animation */
+@keyframes circuit-pulse {
+  0% { stroke-dashoffset: 240; }
+  100% { stroke-dashoffset: 0; }
+}
+.animate-circuit {
+  stroke-dasharray: 80 160;
+  animation: circuit-pulse 11s linear infinite;
+}
+
+/* Satellite scan line sweep */
+@keyframes radar-sweep {
+  0% { transform: translateX(-100%); opacity: 0; }
+  5% { opacity: 0.12; }
+  95% { opacity: 0.12; }
+  100% { transform: translateX(100%); opacity: 0; }
+}
+.animate-radar {
+  animation: radar-sweep 10s cubic-bezier(0.1, 0.8, 0.3, 1) infinite;
+}
+
+/* Diagonal light rays drift animation */
+@keyframes ray-drift {
+  0%, 100% { transform: translateX(-8%) rotate(-12deg); opacity: 0.04; }
+  50% { transform: translateX(8%) rotate(-12deg); opacity: 0.1; }
+}
+.animate-ray {
+  animation: ray-drift 20s ease-in-out infinite;
+}
+
 /* Drifting grid coordinate path */
 @keyframes grid-drift {
   0% { background-position: 0px 0px; }
