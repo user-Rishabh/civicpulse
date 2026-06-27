@@ -50,7 +50,8 @@ function Particles() {
             height: `${p.size}px`,
             borderRadius: "50%",
             background: isDark ? "rgba(6, 182, 212, 0.3)" : "rgba(37, 99, 235, 0.2)",
-            boxShadow: isDark ? "0 0 6px rgba(6, 182, 212, 0.5)" : "0 0 6px rgba(37, 99, 235, 0.25)"
+            boxShadow: isDark ? "0 0 6px rgba(6, 182, 212, 0.5)" : "0 0 6px rgba(37, 99, 235, 0.25)",
+            willChange: "transform"
           }}
         />
       ))}
@@ -116,13 +117,18 @@ function LivingCityBackground() {
     checkMobile();
     window.addEventListener("resize", checkMobile);
     
+    let frameId = null;
     const handleMouseMove = (e) => {
-      setMousePos({ x: e.clientX, y: e.clientY });
+      if (frameId) cancelAnimationFrame(frameId);
+      frameId = requestAnimationFrame(() => {
+        setMousePos({ x: e.clientX, y: e.clientY });
+      });
     };
     window.addEventListener("mousemove", handleMouseMove);
     return () => {
       window.removeEventListener("resize", checkMobile);
       window.removeEventListener("mousemove", handleMouseMove);
+      if (frameId) cancelAnimationFrame(frameId);
     };
   }, []);
 
@@ -195,30 +201,44 @@ function PremiumGlowCard({ children, className = "", hoverTilt = true }) {
   const [isHovered, setIsHovered] = useState(false);
   const { isDark } = useTheme();
 
+  const frameRef = useRef(null);
+
   const handleMouseMove = (e) => {
     if (!cardRef.current) return;
-    const rect = cardRef.current.getBoundingClientRect();
-    const width = rect.width;
-    const height = rect.height;
-    
-    // Coordinates from card center
-    const xVal = e.clientX - rect.left - width / 2;
-    const yVal = e.clientY - rect.top - height / 2;
+    const clientX = e.clientX;
+    const clientY = e.clientY;
 
-    // Angle rotation limits (-12 to 12 deg)
-    const rotX = hoverTilt ? -(yVal / (height / 2)) * 10 : 0;
-    const rotY = hoverTilt ? (xVal / (width / 2)) * 10 : 0;
+    if (frameRef.current) cancelAnimationFrame(frameRef.current);
+    frameRef.current = requestAnimationFrame(() => {
+      if (!cardRef.current) return;
+      const rect = cardRef.current.getBoundingClientRect();
+      const width = rect.width;
+      const height = rect.height;
+      
+      const xVal = clientX - rect.left - width / 2;
+      const yVal = clientY - rect.top - height / 2;
 
-    setRotateX(rotX);
-    setRotateY(rotY);
-    setCoords({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+      const rotX = hoverTilt ? -(yVal / (height / 2)) * 10 : 0;
+      const rotY = hoverTilt ? (xVal / (width / 2)) * 10 : 0;
+
+      setRotateX(rotX);
+      setRotateY(rotY);
+      setCoords({ x: clientX - rect.left, y: clientY - rect.top });
+    });
   };
 
   const handleMouseLeave = () => {
+    if (frameRef.current) cancelAnimationFrame(frameRef.current);
     setRotateX(0);
     setRotateY(0);
     setIsHovered(false);
   };
+
+  useEffect(() => {
+    return () => {
+      if (frameRef.current) cancelAnimationFrame(frameRef.current);
+    };
+  }, []);
 
   return (
     <motion.div
@@ -333,9 +353,18 @@ function CustomCursor() {
   const { isDark } = useTheme();
 
   useEffect(() => {
-    const move = (e) => setPos({ x: e.clientX, y: e.clientY });
+    let frameId = null;
+    const move = (e) => {
+      if (frameId) cancelAnimationFrame(frameId);
+      frameId = requestAnimationFrame(() => {
+        setPos({ x: e.clientX, y: e.clientY });
+      });
+    };
     window.addEventListener("mousemove", move);
-    return () => window.removeEventListener("mousemove", move);
+    return () => {
+      window.removeEventListener("mousemove", move);
+      if (frameId) cancelAnimationFrame(frameId);
+    };
   }, []);
 
   if (typeof window !== "undefined" && window.innerWidth < 768) return null;
@@ -1704,13 +1733,27 @@ function CommunityIssueCard({ issue, onClick, onUpvote, isDark, textTheme, textM
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const [hovered, setHovered] = useState(false);
 
+  const frameRef = useRef(null);
+
   const handleMouseMove = (e) => {
-    const rect = cardRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const x = ((e.clientX - rect.left) / rect.width - 0.5) * 10;
-    const y = -((e.clientY - rect.top) / rect.height - 0.5) * 10;
-    setTilt({ x, y });
+    const clientX = e.clientX;
+    const clientY = e.clientY;
+    
+    if (frameRef.current) cancelAnimationFrame(frameRef.current);
+    frameRef.current = requestAnimationFrame(() => {
+      const rect = cardRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const x = ((clientX - rect.left) / rect.width - 0.5) * 10;
+      const y = -((clientY - rect.top) / rect.height - 0.5) * 10;
+      setTilt({ x, y });
+    });
   };
+
+  useEffect(() => {
+    return () => {
+      if (frameRef.current) cancelAnimationFrame(frameRef.current);
+    };
+  }, []);
 
   return (
     <motion.div
@@ -1728,9 +1771,13 @@ function CommunityIssueCard({ issue, onClick, onUpvote, isDark, textTheme, textM
       transition={{ duration: 0.4, delay: index * 0.06, ease: "easeOut" }}
       onMouseMove={handleMouseMove}
       onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => { setHovered(false); setTilt({ x: 0, y: 0 }); }}
+      onMouseLeave={() => { 
+        if (frameRef.current) cancelAnimationFrame(frameRef.current);
+        setHovered(false); 
+        setTilt({ x: 0, y: 0 }); 
+      }}
       onClick={onClick}
-      style={{ transformStyle: "preserve-3d" }}
+      style={{ transformStyle: "preserve-3d", willChange: "transform" }}
       className={`relative rounded-2xl border overflow-hidden cursor-pointer group flex flex-col ${
         isDark ? "bg-[#111827]/90 border-white/5 hover:border-blue-500/30" : "bg-white/95 border-slate-200 hover:border-blue-400/40"
       }`}
