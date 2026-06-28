@@ -95,21 +95,47 @@ export default function Report({ onViewReports }) {
   };
 
   const extractVideoFrame = (videoFile) => {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const video = document.createElement('video');
       const canvas = document.createElement('canvas');
-      video.src = URL.createObjectURL(videoFile);
+      
       video.muted = true;
-      video.addEventListener('loadeddata', () => {
-        video.currentTime = 1; // grab frame at 1 second
+      video.playsInline = true;
+      video.crossOrigin = 'anonymous';
+      
+      const objectUrl = URL.createObjectURL(videoFile);
+      video.src = objectUrl;
+      
+      const cleanup = () => URL.revokeObjectURL(objectUrl);
+      
+      video.addEventListener('error', (e) => {
+        cleanup();
+        reject(new Error('Video load failed'));
       });
+      
+      video.addEventListener('loadedmetadata', () => {
+        video.currentTime = Math.min(1, video.duration * 0.1);
+      });
+      
       video.addEventListener('seeked', () => {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        canvas.getContext('2d').drawImage(video, 0, 0);
-        const base64 = canvas.toDataURL('image/jpeg').split(',')[1];
-        resolve(base64);
+        try {
+          canvas.width = Math.min(video.videoWidth, 1280);
+          canvas.height = Math.min(video.videoHeight, 720);
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const base64 = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+          cleanup();
+          if (base64 && base64.length > 100) {
+            resolve(base64);
+          } else {
+            reject(new Error('Empty frame extracted'));
+          }
+        } catch (err) {
+          cleanup();
+          reject(err);
+        }
       });
+      
       video.load();
     });
   };
@@ -134,9 +160,38 @@ export default function Report({ onViewReports }) {
         const videoUrl = URL.createObjectURL(selectedFile);
         setPreview(videoUrl);
         
-        base64Data = await extractVideoFrame(selectedFile);
-        mimeType = 'image/jpeg';
-        setThumbnail('data:image/jpeg;base64,' + base64Data);
+        try {
+          base64Data = await extractVideoFrame(selectedFile);
+          mimeType = 'image/jpeg';
+          setThumbnail('data:image/jpeg;base64,' + base64Data);
+        } catch (err) {
+          console.error('Frame extraction failed:', err);
+          // fallback - skip Gemini
+          setAnalysis({
+            is_valid_issue: true,
+            category: "Other",
+            severity: "Medium",
+            description: "Video evidence uploaded by citizen.",
+            department: "BMC General", 
+            suggested_action: "Officer to review video and take appropriate action.",
+            estimated_resolution_days: 7,
+            estimated_days: 7,
+            isVideoUpload: true
+          });
+          setFormData({
+            category: "Other",
+            severity: "Medium",
+            department: "BMC General",
+            description: "Video evidence uploaded by citizen.",
+            suggested_action: "Officer to review video and take appropriate action.",
+            location: "",
+            reporter: "",
+            estimated_resolution_days: 7,
+          });
+          setCurrentStep(3);
+          setLoading(false);
+          return;
+        }
       } else {
         const dataUrl = await new Promise((resolve, reject) => {
           const reader = new FileReader();
