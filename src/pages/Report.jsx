@@ -38,6 +38,7 @@ export default function Report({ onViewReports }) {
   const [isDragging, setIsDragging] = useState(false);
   const [loadingStepIdx, setLoadingStepIdx] = useState(0);
   const [reportedId, setReportedId] = useState(null);
+  const [reportedTrackerId, setReportedTrackerId] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
   // Duplicate detection states
@@ -294,6 +295,7 @@ export default function Report({ onViewReports }) {
     setShowWarning(false);
     setCurrentStep(1);
     setReportedId(null);
+    setReportedTrackerId("");
     setFormData({
       category: "",
       severity: "",
@@ -328,9 +330,11 @@ export default function Report({ onViewReports }) {
 
     setIsSaving(true);
     const id = Date.now();
+    const generatedTrackerId = "CP-" + Math.floor(100000 + Math.random() * 900000);
     const newIssue = {
       ...formData,
       id: id,
+      trackerId: generatedTrackerId,
       userId: user.uid,
       userEmail: user.email,
       reporterName: formData.reporter || userProfile?.name || "Anonymous",
@@ -389,6 +393,7 @@ export default function Report({ onViewReports }) {
       localStorage.setItem("civicpulse_issues", JSON.stringify(issues));
 
       setReportedId(id);
+      setReportedTrackerId(generatedTrackerId);
       setSubmitted(true);
     } catch (err) {
       console.error("Failed to save report:", err);
@@ -480,9 +485,31 @@ export default function Report({ onViewReports }) {
           <p className={`${t.muted} text-base mt-3 max-w-md mx-auto leading-relaxed`}>
             Your report has been logged. The community and municipal department have been notified.
           </p>
+          {reportedTrackerId && (
+            <div className={`mt-5 p-4 rounded-xl border ${t.border} ${t.surface2} flex flex-col items-center justify-center max-w-sm mx-auto`}>
+              <span className="text-[10px] font-black uppercase tracking-widest text-[#9CA3AF] mb-1">Your Tracker ID</span>
+              <div className="flex items-center gap-2">
+                <span className={`text-2xl font-black ${t.text} select-all`}>{reportedTrackerId}</span>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(reportedTrackerId);
+                    setToast("Tracker ID copied to clipboard!");
+                    setTimeout(() => setToast(""), 3000);
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white p-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center cursor-pointer"
+                  title="Copy Tracker ID"
+                >
+                  📋 Copy
+                </button>
+              </div>
+              <p className="text-[10px] text-[#6B7280] font-semibold mt-2 text-center">
+                Keep this safe! Use it under "Track My Reports" to view this issue's live progress anonymously.
+              </p>
+            </div>
+          )}
           {reportedId && (
-            <p className="text-[#6B7280] text-sm mt-4 font-semibold uppercase tracking-wider">
-              Report ID: #{reportedId}
+            <p className="text-[#6B7280] text-[10px] mt-4 font-semibold uppercase tracking-wider">
+              Internal ID: #{reportedId}
             </p>
           )}
           <div className="mt-8 flex flex-col sm:flex-row gap-4 w-full justify-center">

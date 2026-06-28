@@ -931,160 +931,449 @@ function ReportImage({ src, isDark }) {
   );
 }
 
-// Full Track My Reports component
+// Full Track My Reports component with Tracker ID & Captcha support
 function TrackMyReports({ myIssues, allIssues = [], isDark, textTheme, textMuted, textSubtle, bgSurface, bgSurface2, borderTheme, getSeverityBadgeClass, setActiveTab }) {
-  const cardRef = useRef(null);
+  const [activeTabMode, setActiveTabMode] = useState("direct"); // "direct" or "saved"
+  const [trackerIdInput, setTrackerIdInput] = useState("");
+  const [captchaInput, setCaptchaInput] = useState("");
+  const [captchaCode, setCaptchaCode] = useState("");
+  const [captchaError, setCaptchaError] = useState("");
+  const [searchError, setSearchError] = useState("");
+  const [trackedIssue, setTrackedIssue] = useState(null);
+  const [copiedId, setCopiedId] = useState("");
+
+  const generateCaptcha = () => {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // Omit ambiguous characters like 0, O, 1, I
+    let result = "";
+    for (let i = 0; i < 4; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  };
+
+  useEffect(() => {
+    if (!captchaCode) {
+      setCaptchaCode(generateCaptcha());
+    }
+  }, [captchaCode]);
+
+  const handleRefreshCaptcha = () => {
+    setCaptchaCode(generateCaptcha());
+    setCaptchaInput("");
+    setCaptchaError("");
+  };
+
+  const handleTrackSubmit = (e) => {
+    e.preventDefault();
+    setCaptchaError("");
+    setSearchError("");
+    setTrackedIssue(null);
+
+    // 1. Verify captcha
+    if (captchaInput.trim().toUpperCase() !== captchaCode) {
+      setCaptchaError("Incorrect Captcha code. Please try again.");
+      handleRefreshCaptcha();
+      return;
+    }
+
+    // 2. Search issue
+    const searchId = trackerIdInput.trim().toUpperCase();
+    if (!searchId) {
+      setSearchError("Please enter a valid Tracker ID.");
+      return;
+    }
+
+    const found = allIssues.find(
+      (iss) =>
+        (iss.trackerId && iss.trackerId.toUpperCase() === searchId) ||
+        (String(iss.id) === searchId) ||
+        (`CP-${String(iss.id).slice(-6)}` === searchId) ||
+        (`CP-${iss.id}` === searchId)
+    );
+
+    if (found) {
+      setTrackedIssue(found);
+      setCaptchaInput("");
+      setCaptchaError("");
+      setSearchError("");
+    } else {
+      setSearchError(`No report found matching Tracker ID "${searchId}". Please verify the code.`);
+      handleRefreshCaptcha();
+    }
+  };
+
+  const handleQuickTrack = (issue) => {
+    const targetId = issue.trackerId || `CP-${String(issue.id).slice(-6)}`;
+    setTrackerIdInput(targetId);
+    setTrackedIssue(null);
+    setSearchError("");
+    setCaptchaError("");
+    setCaptchaInput("");
+    setCaptchaCode(generateCaptcha());
+    setActiveTabMode("direct");
+  };
+
+  const handleCopyId = (e, id) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(id);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(""), 2000);
+  };
+
+  const tabClass = (isActive) =>
+    `px-5 py-2.5 rounded-xl text-xs font-black border transition-all duration-200 cursor-pointer ${
+      isActive
+        ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/20"
+        : isDark
+        ? "bg-[#111827] border-slate-700/60 text-slate-400 hover:border-blue-500/40 hover:text-blue-400"
+        : "bg-white border-slate-200 text-slate-500 hover:border-blue-400 hover:text-blue-600"
+    }`;
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className={`text-2xl font-black ${textTheme}`}>Track My Reports</h1>
-          <p className={`text-xs font-bold mt-1 ${textMuted}`}>Live municipal workflow tracker · {myIssues.length} active report{myIssues.length !== 1 ? "s" : ""}</p>
+          <h1 className={`text-2xl font-black ${textTheme}`}>Track Reports</h1>
+          <p className={`text-xs font-bold mt-1 ${textMuted}`}>Monitor resolution milestones and municipal work proof</p>
         </div>
-        {myIssues.length > 0 && (
-          <div className="flex items-center gap-2">
-            <motion.div animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1, repeat: Infinity }} className="w-2 h-2 rounded-full bg-green-400" />
-            <span className="text-xs font-black text-green-400 uppercase tracking-widest">Live</span>
-          </div>
-        )}
+        
+        {/* Toggle option tabs */}
+        <div className="flex gap-2">
+          <button onClick={() => { setActiveTabMode("direct"); setSearchError(""); setCaptchaError(""); }} className={tabClass(activeTabMode === "direct")}>
+            🔍 Track via Tracker ID
+          </button>
+          <button onClick={() => { setActiveTabMode("saved"); setSearchError(""); setCaptchaError(""); }} className={tabClass(activeTabMode === "saved")}>
+            📋 My Saved Reports
+          </button>
+        </div>
       </div>
 
-      {myIssues.length === 0 ? (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className={`flex flex-col items-center justify-center ${bgSurface} border ${borderTheme} rounded-2xl p-16 text-center`}
-        >
-          <motion.span animate={{ y: [0, -8, 0] }} transition={{ duration: 2, repeat: Infinity }} className="text-5xl mb-3">📋</motion.span>
-          <h3 className={`${textTheme} font-bold text-lg`}>No reports yet</h3>
-          <button onClick={() => setActiveTab("Report an Issue")} className="mt-6 bg-blue-600 hover:bg-blue-700 text-white font-extrabold px-6 py-3 rounded-xl transition text-sm shadow-md shadow-blue-500/10 cursor-pointer">
-            Report an Issue →
-          </button>
-        </motion.div>
-      ) : (
-        <div className="space-y-8">
-          {myIssues.map((issue, cardIdx) => (
+      {/* Mode A: Track via Tracker ID */}
+      {activeTabMode === "direct" && (
+        <div className="space-y-6">
+          {!trackedIssue ? (
             <motion.div
-              key={issue.docId || issue.id}
-              initial={{ opacity: 0, y: 30 }}
+              initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: cardIdx * 0.08 }}
-              className={`relative rounded-2xl border backdrop-blur-sm overflow-hidden ${
-                issue.status === "Resolved" ? "border-green-500/30" :
-                issue.status === "In Progress" ? "border-blue-500/30" :
-                (isDark ? "border-[#374151]" : "border-slate-200")
-              } ${isDark ? "bg-[#111827]/80" : "bg-white/90"}`}
-              style={{ boxShadow: issue.status === "In Progress" ? "0 0 30px rgba(37,99,235,0.06)" : undefined }}
+              className={`max-w-md mx-auto rounded-2xl border p-6 ${isDark ? "bg-[#111827] border-[#374151]" : "bg-white border-slate-200"} shadow-xl`}
             >
-              {/* Gradient border indicator */}
-              <div className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl ${
-                issue.status === "Resolved" ? "bg-green-500" :
-                issue.status === "In Progress" ? "bg-blue-500" :
-                "bg-slate-500"
-              }`} />
+              <h3 className={`text-base font-black ${textTheme} mb-4 flex items-center gap-2`}>
+                <span>🔍</span> Enter Tracker details
+              </h3>
+              
+              <form onSubmit={handleTrackSubmit} className="space-y-4">
+                {/* Tracker ID Input */}
+                <div>
+                  <label className={`block text-[10px] font-black uppercase tracking-widest ${textMuted} mb-1.5`}>
+                    Tracker ID (e.g. CP-829104)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="CP-XXXXXX"
+                    value={trackerIdInput}
+                    onChange={(e) => setTrackerIdInput(e.target.value)}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm font-bold transition focus:outline-none focus:border-blue-500 ${
+                      isDark ? "bg-[#1F2937] border-[#374151] text-white" : "bg-[#F8FAFC] border-slate-200 text-[#1E293B]"
+                    }`}
+                  />
+                </div>
 
-              <div className="p-6 pl-8">
-                {/* TOP ROW */}
-                <div className="flex gap-5 items-start">
-                  <ReportImage src={issue.imagePreview} isDark={isDark} />
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-3 flex-wrap">
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap mb-2">
-                          <span className="bg-blue-500/10 text-blue-400 text-[10px] px-2.5 py-1 rounded-md border border-blue-500/20 font-black uppercase tracking-wider">
-                            {issue.category}
-                          </span>
-                          <span className={getSeverityBadgeClass(issue.severity)}>{issue.severity}</span>
-                        </div>
-                        <p className={`text-sm font-semibold ${textTheme} leading-relaxed line-clamp-2`}>{issue.description}</p>
-                        <div className={`text-xs ${textMuted} mt-1.5 flex items-center gap-1`}>
-                          <span>📍</span><span className="font-semibold">{issue.location}</span>
-                        </div>
-                        <div className={`text-xs ${textSubtle} mt-0.5`}>
-                          Reported: {issue.date}
-                        </div>
+                {/* Captcha Block */}
+                <div>
+                  <label className={`block text-[10px] font-black uppercase tracking-widest ${textMuted} mb-1.5`}>
+                    Security Verification (Captcha)
+                  </label>
+                  
+                  <div className="flex gap-2 items-center mb-2">
+                    {/* Stylized captcha render box */}
+                    <div
+                      className={`flex-1 h-11 rounded-xl flex items-center justify-center font-mono text-xl font-bold tracking-widest select-none select-none relative overflow-hidden border ${
+                        isDark ? "bg-gradient-to-r from-[#0F172A] to-[#1E293B] border-slate-700 text-cyan-400" : "bg-gradient-to-r from-slate-100 to-slate-200 border-slate-300 text-blue-600"
+                      }`}
+                      style={{
+                        textShadow: "2px 2px 4px rgba(0,0,0,0.2)",
+                        letterSpacing: "0.4em"
+                      }}
+                    >
+                      {/* background noise lines */}
+                      <div className="absolute inset-0 pointer-events-none opacity-20 flex flex-col justify-between p-1">
+                        <div className="w-full h-[1px] bg-red-400 rotate-3 transform origin-center" />
+                        <div className="w-full h-[1px] bg-blue-400 -rotate-3 transform origin-center" />
                       </div>
-                      <div className="shrink-0">
-                        <LiveStatusBadge status={issue.status} />
-                      </div>
+                      <span className="italic transform -rotate-2 inline-block">{captchaCode}</span>
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={handleRefreshCaptcha}
+                      className={`w-11 h-11 rounded-xl border flex items-center justify-center hover:bg-opacity-80 transition cursor-pointer shrink-0 ${
+                        isDark ? "bg-[#1F2937] border-[#374151]" : "bg-slate-50 border-slate-200"
+                      }`}
+                      title="Refresh Captcha"
+                    >
+                      🔄
+                    </button>
                   </div>
+
+                  <input
+                    type="text"
+                    required
+                    placeholder="Enter captcha text"
+                    value={captchaInput}
+                    onChange={(e) => setCaptchaInput(e.target.value)}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm font-bold uppercase transition focus:outline-none focus:border-blue-500 ${
+                      isDark ? "bg-[#1F2937] border-[#374151] text-white" : "bg-[#F8FAFC] border-slate-200 text-[#1E293B]"
+                    }`}
+                  />
                 </div>
 
-                {/* ANALYTICS ROW */}
-                <div className="mt-5 grid grid-cols-3 gap-3">
-                  {[
-                    { label: "Upvotes", val: issue.upvotes || 0, emoji: "👍", color: "text-blue-400" },
-                    { label: "Verified By", val: issue.verifiedBy?.length || 0, emoji: "✅", color: "text-green-400" },
-                    { label: "Priority", val: issue.severity === "Critical" ? "🔴" : issue.severity === "High" ? "🟠" : issue.severity === "Medium" ? "🟡" : "🟢", emoji: "⚡", color: "text-amber-400", isText: true },
-                  ].map((stat, i) => (
-                    <div key={i} className={`rounded-xl border px-3 py-2.5 text-center ${isDark ? "bg-[#0A0F1E]/60 border-[#374151]/40" : "bg-slate-50 border-slate-200"}`}>
-                      <div className={`text-lg font-black ${stat.color}`}>
-                        {stat.isText ? stat.val : <CountUp to={stat.val} />}
-                      </div>
-                      <div className={`text-[10px] font-bold mt-0.5 ${textMuted}`}>{stat.label}</div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* LIVE WORKFLOW TIMELINE */}
-                <div className={`mt-5 p-4 rounded-xl border ${isDark ? "bg-[#0A0F1E]/50 border-[#1E3A5F]/60" : "bg-slate-50 border-slate-200"}`}>
-                  <div className={`text-[10px] font-black uppercase tracking-widest mb-4 ${textMuted}`}>Live Workflow</div>
-                  <LiveTimeline status={issue.status} isDark={isDark} />
-                </div>
-
-                {/* MAIN CONTENT GRID */}
-                <div className="mt-5 grid grid-cols-1 lg:grid-cols-3 gap-4">
-                  {/* Left: Ward & Resolution Details Pathway (2 cols) */}
-                  <div className="lg:col-span-2">
-                    <ResolutionPathway
-                      issue={issue}
-                      isDark={isDark}
-                      textTheme={textTheme}
-                      textMuted={textMuted}
-                      borderTheme={borderTheme}
-                      bgSurface2={bgSurface2}
-                    />
-                  </div>
-                  {/* Right: AI Monitor (1 col) */}
-                  <div>
-                    <AIMonitorPanel issue={issue} isDark={isDark} allIssues={allIssues} />
-                  </div>
-                </div>
-
-                {/* RESOLUTION COUNTDOWN */}
-                <ResolutionCountdown estimatedDays={issue.estimatedDays} status={issue.status} isDark={isDark} />
-
-                {/* WORK PROOF PHOTOS */}
-                <ProgressPhotoGallery workPhotos={issue.workPhotos} isDark={isDark} borderTheme={borderTheme} />
-
-                {/* RESOLVED CELEBRATION */}
-                {issue.status === "Resolved" && (
-                  <motion.div
-                    initial={{ scale: 0.95, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    className="mt-5 bg-gradient-to-r from-green-500/10 via-emerald-500/10 to-green-500/10 border border-green-500/30 rounded-2xl p-5"
-                  >
-                    <div className="flex items-center gap-3">
-                      <motion.span animate={{ rotate: [0, 15, -15, 0] }} transition={{ duration: 0.8, repeat: Infinity, repeatDelay: 3 }} className="text-3xl">🎊</motion.span>
-                      <div>
-                        <p className="text-green-400 font-black text-base">Issue Resolved!</p>
-                        <p className={`text-xs font-semibold mt-0.5 ${textMuted}`}>Thank you for making your city better. Your report made a difference.</p>
-                      </div>
-                    </div>
-                  </motion.div>
+                {captchaError && (
+                  <p className="text-red-400 text-xs font-bold bg-red-500/10 border border-red-500/20 p-2.5 rounded-xl text-center">
+                    ⚠️ {captchaError}
+                  </p>
                 )}
+
+                {searchError && (
+                  <p className="text-red-400 text-xs font-bold bg-red-500/10 border border-red-500/20 p-2.5 rounded-xl text-center">
+                    ⚠️ {searchError}
+                  </p>
+                )}
+
+                <button
+                  type="submit"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold py-3 rounded-xl transition text-sm shadow-lg shadow-blue-500/15 cursor-pointer mt-2"
+                >
+                  Locate &amp; Track Issue →
+                </button>
+              </form>
+            </motion.div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="space-y-4"
+            >
+              {/* Back / Reset button */}
+              <div className="flex justify-between items-center bg-[#2563eb]/10 border border-blue-500/20 rounded-xl p-3">
+                <p className="text-blue-400 text-xs font-bold">
+                  📍 Tracking Issue: <span className="font-extrabold select-all">{trackedIssue.trackerId || `CP-${String(trackedIssue.id).slice(-6)}`}</span>
+                </p>
+                <button
+                  onClick={() => { setTrackedIssue(null); handleRefreshCaptcha(); }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-black px-3.5 py-1.5 rounded-lg transition cursor-pointer"
+                >
+                  ← Track another issue
+                </button>
+              </div>
+
+              {/* RENDER COMPREHENSIVE STATUS WORKFLOW CARD */}
+              <div
+                className={`relative rounded-2xl border backdrop-blur-sm overflow-hidden border-l-4 ${
+                  trackedIssue.status === "Resolved" ? "border-green-500/30 border-l-green-500" :
+                  trackedIssue.status === "In Progress" ? "border-blue-500/30 border-l-blue-500" :
+                  (isDark ? "border-[#374151] border-l-slate-500" : "border-slate-200 border-l-slate-500")
+                } ${isDark ? "bg-[#111827]/85" : "bg-white/95"}`}
+                style={{ boxShadow: trackedIssue.status === "In Progress" ? "0 0 35px rgba(37,99,235,0.06)" : undefined }}
+              >
+                <div className="p-6 pl-8">
+                  {/* TOP ROW */}
+                  <div className="flex gap-5 items-start">
+                    <ReportImage src={trackedIssue.imagePreview} isDark={isDark} />
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-3 flex-wrap">
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap mb-2">
+                            <span className="bg-blue-500/10 text-blue-400 text-[10px] px-2.5 py-1 rounded-md border border-blue-500/20 font-black uppercase tracking-wider">
+                              {trackedIssue.category}
+                            </span>
+                            <span className={getSeverityBadgeClass(trackedIssue.severity)}>{trackedIssue.severity}</span>
+                          </div>
+                          <p className={`text-sm font-semibold ${textTheme} leading-relaxed line-clamp-2`}>{trackedIssue.description}</p>
+                          <div className={`text-xs ${textMuted} mt-1.5 flex items-center gap-1`}>
+                            <span>📍</span><span className="font-semibold">{trackedIssue.location}</span>
+                          </div>
+                          <div className={`text-xs ${textSubtle} mt-0.5`}>
+                            Reported: {trackedIssue.date}
+                          </div>
+                        </div>
+                        <div className="shrink-0">
+                          <LiveStatusBadge status={trackedIssue.status} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ANALYTICS ROW */}
+                  <div className="mt-5 grid grid-cols-3 gap-3">
+                    {[
+                      { label: "Upvotes", val: trackedIssue.upvotes || 0, emoji: "👍", color: "text-blue-400" },
+                      { label: "Verified By", val: trackedIssue.verificationCount || (trackedIssue.verifications || []).length || 0, emoji: "✅", color: "text-green-400" },
+                      { label: "Priority", val: trackedIssue.severity === "Critical" ? "🔴" : trackedIssue.severity === "High" ? "🟠" : trackedIssue.severity === "Medium" ? "🟡" : "🟢", emoji: "⚡", color: "text-amber-400", isText: true },
+                    ].map((stat, i) => (
+                      <div key={i} className={`rounded-xl border px-3 py-2.5 text-center ${isDark ? "bg-[#0A0F1E]/60 border-[#374151]/40" : "bg-slate-50 border-slate-200"}`}>
+                        <div className={`text-lg font-black ${stat.color}`}>
+                          {stat.isText ? stat.val : <CountUp to={stat.val} />}
+                        </div>
+                        <div className={`text-[10px] font-bold mt-0.5 ${textMuted}`}>{stat.label}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* LIVE WORKFLOW TIMELINE */}
+                  <div className={`mt-5 p-4 rounded-xl border ${isDark ? "bg-[#0A0F1E]/50 border-[#1E3A5F]/60" : "bg-slate-50 border-slate-200"}`}>
+                    <div className={`text-[10px] font-black uppercase tracking-widest mb-4 ${textMuted}`}>Live Workflow</div>
+                    <LiveTimeline status={trackedIssue.status} isDark={isDark} />
+                  </div>
+
+                  {/* MAIN CONTENT GRID */}
+                  <div className="mt-5 grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    {/* Left: Resolution Pathway */}
+                    <div className="lg:col-span-2">
+                      <ResolutionPathway
+                        issue={trackedIssue}
+                        isDark={isDark}
+                        textTheme={textTheme}
+                        textMuted={textMuted}
+                        borderTheme={borderTheme}
+                        bgSurface2={bgSurface2}
+                      />
+                    </div>
+                    {/* Right: AI Monitor */}
+                    <div>
+                      <AIMonitorPanel issue={trackedIssue} isDark={isDark} allIssues={allIssues} />
+                    </div>
+                  </div>
+
+                  {/* RESOLUTION COUNTDOWN */}
+                  <ResolutionCountdown estimatedDays={trackedIssue.estimatedDays} status={trackedIssue.status} isDark={isDark} />
+
+                  {/* WORK PROOF PHOTOS */}
+                  <ProgressPhotoGallery workPhotos={trackedIssue.workPhotos} isDark={isDark} borderTheme={borderTheme} />
+
+                  {/* RESOLVED CELEBRATION */}
+                  {trackedIssue.status === "Resolved" && (
+                    <motion.div
+                      initial={{ scale: 0.95, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className="mt-5 bg-gradient-to-r from-green-500/10 via-emerald-500/10 to-green-500/10 border border-green-500/30 rounded-2xl p-5"
+                    >
+                      <div className="flex items-center gap-3">
+                        <motion.span animate={{ rotate: [0, 15, -15, 0] }} transition={{ duration: 0.8, repeat: Infinity, repeatDelay: 3 }} className="text-3xl">🎊</motion.span>
+                        <div>
+                          <p className="text-green-400 font-black text-base">Issue Resolved!</p>
+                          <p className={`text-xs font-semibold mt-0.5 ${textMuted}`}>Thank you for making your city better. Your report made a difference.</p>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </div>
               </div>
             </motion.div>
-          ))}
+          )}
+        </div>
+      )}
+
+      {/* Mode B: Saved Reports list (Forgot Tracker ID) */}
+      {activeTabMode === "saved" && (
+        <div className="space-y-4">
+          {myIssues.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`flex flex-col items-center justify-center ${bgSurface} border ${borderTheme} rounded-2xl p-16 text-center`}
+            >
+              <motion.span animate={{ y: [0, -8, 0] }} transition={{ duration: 2, repeat: Infinity }} className="text-5xl mb-3">📋</motion.span>
+              <h3 className={`${textTheme} font-bold text-lg`}>No saved reports found</h3>
+              <p className={`text-xs ${textMuted} mt-2 max-w-sm`}>
+                You haven't reported any issues from this account. File a new report to get a Tracker ID.
+              </p>
+              <button onClick={() => setActiveTab("Report an Issue")} className="mt-6 bg-blue-600 hover:bg-blue-700 text-white font-extrabold px-6 py-3 rounded-xl transition text-sm shadow-md shadow-blue-500/10 cursor-pointer">
+                Report an Issue →
+              </button>
+            </motion.div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4">
+              <div className={`rounded-xl border p-4 ${isDark ? "bg-[#111827] border-[#374151]" : "bg-slate-50 border-slate-200"}`}>
+                <p className={`text-xs font-bold ${textMuted} mb-3`}>
+                  Below are the reports logged under your account. Copy the Tracker ID or click Quick Track to load details.
+                </p>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className={`border-b ${isDark ? "border-slate-800 text-slate-400" : "border-slate-200 text-slate-500"}`}>
+                        <th className="py-2.5 px-3 font-black uppercase">Report Details</th>
+                        <th className="py-2.5 px-3 font-black uppercase">Tracker ID</th>
+                        <th className="py-2.5 px-3 font-black uppercase">Location</th>
+                        <th className="py-2.5 px-3 font-black uppercase">Status</th>
+                        <th className="py-2.5 px-3 font-black uppercase text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/20">
+                      {myIssues.map((issue) => {
+                        const targetId = issue.trackerId || `CP-${String(issue.id).slice(-6)}`;
+                        return (
+                          <tr key={issue.docId || issue.id} className={`hover:${isDark ? "bg-[#1F2937]/50" : "bg-slate-100/50"} transition`}>
+                            <td className="py-3 px-3 font-semibold text-left">
+                              <div className="flex items-center gap-2">
+                                <img src={issue.imagePreview} alt="" className="w-8 h-8 rounded object-cover" />
+                                <div>
+                                  <span className={`text-[10px] font-black ${textTheme}`}>{issue.category}</span>
+                                  <p className={`text-[10px] ${textMuted} line-clamp-1`}>{issue.description}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-3 px-3 font-bold">
+                              <div className="flex items-center gap-1.5">
+                                <span className={`bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded border border-blue-500/20 font-black select-all`}>
+                                  {targetId}
+                                </span>
+                                <button
+                                  onClick={(e) => handleCopyId(e, targetId)}
+                                  className="text-[10px] text-blue-400 hover:underline cursor-pointer"
+                                >
+                                  {copiedId === targetId ? "Copied!" : "📋 Copy"}
+                                </button>
+                              </div>
+                            </td>
+                            <td className={`py-3 px-3 font-medium ${textMuted} truncate max-w-[120px]`}>
+                              {issue.location}
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${
+                                issue.status === "Resolved" ? "bg-green-500/10 text-green-400 border-green-500/20" :
+                                issue.status === "In Progress" ? "bg-blue-500/10 text-blue-400 border-blue-500/20" :
+                                "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                              }`}>
+                                {issue.status}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 text-right">
+                              <button
+                                onClick={() => handleQuickTrack(issue)}
+                                className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black px-2.5 py-1 rounded-md transition cursor-pointer"
+                              >
+                                ⚡ Track Milestones
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </motion.div>
   );
 }
+
 
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -3422,6 +3711,7 @@ export default function CitizenDashboard() {
             {activeTab === "track" && (
               <TrackMyReports
                 myIssues={myIssues}
+                allIssues={allIssues}
                 isDark={isDark}
                 textTheme={textTheme}
                 textMuted={textMuted}
@@ -3514,20 +3804,11 @@ export default function CitizenDashboard() {
                 </div>
 
                 <div className="relative">
-                  <IssueMap issues={filteredMapIssues} height="500px" />
-                </div>
-
-                {/* Legend */}
-                <div className="flex gap-6 mt-4 justify-start">
-                  {[['Critical','#EF4444'],['High','#F97316'],['Medium','#F59E0B'],['Low','#10B981']].map(([label, color]) => (
-                    <div key={label} className="flex items-center gap-2">
-                      <div style={{ background: color }} className="w-3 h-3 rounded-full" />
-                      <span className={`${textMuted} text-xs font-bold`}>{label}</span>
-                    </div>
-                  ))}
+                  <IssueMap issues={filteredMapIssues} height="580px" />
                 </div>
               </div>
             )}
+
           </>
         )}
       </div>

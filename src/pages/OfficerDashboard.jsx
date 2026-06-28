@@ -704,6 +704,7 @@ export default function OfficerDashboard() {
 
   const tabs = [
     { id: "Dashboard", label: "Dashboard" },
+    { id: "priority", label: "AI Priority" },
     { id: "analyze", label: "Analyze Reports" },
     { id: "messages", label: "Messages" },
     { id: "submit", label: "Submit Review" },
@@ -712,11 +713,77 @@ export default function OfficerDashboard() {
 
   const tabIcons = {
     Dashboard: "⊞",
+    priority: "🔥",
     analyze: "🔍",
     messages: "✉",
     submit: "✓",
     map: "🗺️",
   };
+
+  // ── Officer AI Priority Agent ───────────────────────────────────────────
+  const computeAIPriority = (issue, allIssues) => {
+    const severity = issue.severity || 'Low';
+    const status   = issue.status   || 'Pending';
+    const verCount = issue.verificationCount || (issue.verifications || []).length || 0;
+    const upvotes  = issue.upvotes  || 0;
+    const isComVerified = issue.communityVerified || false;
+
+    // Age in days
+    let ageDays = 0;
+    if (issue.date) {
+      const parts = issue.date.split('-');
+      if (parts.length === 3) {
+        const d = new Date(parts[0], parts[1] - 1, parts[2]);
+        ageDays = Math.max(0, Math.round((Date.now() - d.getTime()) / 86400000));
+      }
+    }
+
+    // Severity weight
+    const sevScore = { Critical: 40, High: 28, Medium: 16, Low: 8 }[severity] || 8;
+
+    // Community verification bonus
+    const cvScore = isComVerified ? 20 : Math.min(verCount * 5, 15);
+
+    // Upvote score (logarithmic)
+    const upvoteScore = Math.min(Math.floor(Math.log(upvotes + 1) * 5), 10);
+
+    // Age urgency — older pending issues get higher score
+    const ageScore = status === 'Pending' ? Math.min(ageDays * 2, 20) : Math.min(ageDays, 10);
+
+    // Status penalty for already-resolved
+    const statusPenalty = status === 'Resolved' ? 20 : 0;
+
+    // Nearby sensitive location heuristic (keyword-based on location)
+    const loc = (issue.location || '').toLowerCase();
+    const sensitiveBonus = (loc.includes('school') || loc.includes('hospital') || loc.includes('clinic') || loc.includes('market')) ? 8 : 0;
+
+    const score = Math.max(0, Math.min(100,
+      sevScore + cvScore + upvoteScore + ageScore + sensitiveBonus - statusPenalty
+    ));
+
+    // Generate reasoning
+    const reasons = [];
+    if (severity === 'Critical') reasons.push('critical severity');
+    if (isComVerified) reasons.push(`verified by ${verCount} citizens`);
+    else if (verCount > 0) reasons.push(`${verCount} community verification${verCount > 1 ? 's' : ''}`);
+    if (upvotes >= 5) reasons.push(`${upvotes} upvotes`);
+    if (ageDays >= 3 && status === 'Pending') reasons.push(`${ageDays} days unresolved`);
+    if (sensitiveBonus > 0) reasons.push('near sensitive location');
+
+    const reasonText = reasons.length > 0
+      ? `${severity} severity issue${reasons.length > 0 ? ' — ' + reasons.join(', ') : ''}.`
+      : `${severity} severity issue awaiting resolution.`;
+
+    const impact = score >= 70 ? 'High' : score >= 45 ? 'Medium' : 'Low';
+    const suggestedDays = { Critical: 1, High: 3, Medium: 7, Low: 14 }[severity] || 7;
+
+    return { score, reasoning: reasonText, impact, suggestedDays };
+  };
+
+  const rankedIssues = [...assignedIssues]
+    .filter(i => i.status !== 'Resolved')
+    .map(issue => ({ ...issue, _priority: computeAIPriority(issue, assignedIssues) }))
+    .sort((a, b) => b._priority.score - a._priority.score);
 
   return (
     <motion.div
@@ -1180,6 +1247,137 @@ export default function OfficerDashboard() {
             })()}
 
 
+            {/* ── AI PRIORITY TAB ── */}
+            {activeTab === "priority" && (
+              <div className="max-w-4xl mx-auto space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h1 className={`text-2xl font-black ${textTheme} flex items-center gap-2`}>
+                      <span>🔥</span> AI Priority Rankings
+                    </h1>
+                    <p className={`${textMuted} text-xs font-bold mt-1`}>
+                      Issues ranked by AI score — severity, community verification, upvotes, age &amp; location
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 rounded-xl px-3 py-2">
+                    <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                    <span className="text-green-400 text-xs font-black uppercase tracking-wider">Agent Active</span>
+                  </div>
+                </div>
+
+                {/* Community Verified summary */}
+                {assignedIssues.filter(i => i.communityVerified).length > 0 && (
+                  <div className={`flex items-center gap-3 p-4 rounded-2xl border ${isDark ? 'bg-amber-500/8 border-amber-500/25' : 'bg-amber-50 border-amber-200'}`}>
+                    <span className="shield-pulse text-2xl">🛡</span>
+                    <div>
+                      <div className="text-amber-400 font-black text-sm">
+                        {assignedIssues.filter(i => i.communityVerified).length} Community Verified Issues — Auto-escalated to Critical
+                      </div>
+                      <div className={`${textMuted} text-xs mt-0.5`}>These have been independently confirmed by 3+ citizens and are highest priority.</div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  {rankedIssues.length === 0 ? (
+                    <div className={`flex flex-col items-center justify-center ${bgSurface} border ${borderTheme} rounded-2xl p-16 text-center`}>
+                      <span className="text-5xl mb-3">🎉</span>
+                      <h3 className={`${textTheme} font-bold text-lg`}>All issues resolved!</h3>
+                      <p className={`${textMuted} text-sm mt-1`}>No pending or in-progress issues.</p>
+                    </div>
+                  ) : (
+                    rankedIssues.map((issue, idx) => {
+                      const p = issue._priority;
+                      const verCount = issue.verificationCount || (issue.verifications || []).length || 0;
+                      const verifiers = (issue.verifications || []).map(v => v.verifierName);
+                      const isCritVerified = issue.communityVerified && issue.severity === 'Critical';
+
+                      return (
+                        <motion.div
+                          key={issue.docId || issue.id}
+                          layout
+                          initial={{ opacity: 0, y: 12 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: idx * 0.05, type: 'spring', stiffness: 260, damping: 24 }}
+                          className={`rounded-2xl border p-5 text-left ${
+                            isCritVerified
+                              ? (isDark ? 'bg-amber-500/5 border-amber-500/30 critical-verified-glow community-verified-card' : 'bg-amber-50 border-amber-300')
+                              : issue.severity === 'Critical'
+                              ? (isDark ? 'bg-[#111827] border-red-500/25' : 'bg-white border-red-200')
+                              : (isDark ? 'bg-[#111827] border-white/5' : 'bg-white border-slate-200')
+                          }`}
+                        >
+                          <div className="flex gap-4 items-start">
+                            {/* Rank badge */}
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-base font-black shrink-0 priority-badge-in ${
+                              idx === 0 ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' :
+                              idx === 1 ? 'bg-slate-400/20 text-slate-300 border border-slate-400/30' :
+                              idx === 2 ? 'bg-orange-700/20 text-orange-600 border border-orange-700/30' :
+                              isDark ? 'bg-[#1F2937] text-slate-400 border border-slate-700/50' : 'bg-slate-100 text-slate-500 border border-slate-200'
+                            }`}>#{idx + 1}</div>
+
+                            <img src={issue.imagePreview} alt="" className={`w-20 h-20 object-cover rounded-xl shrink-0 border ${borderTheme} hidden sm:block`} />
+
+                            <div className="flex-1 min-w-0 space-y-2">
+                              {/* Title row */}
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className={getSeverityBadgeClass(issue.severity)}>{issue.severity}</span>
+                                <span className="bg-blue-500/10 text-blue-400 text-[10px] px-2 py-0.5 rounded-md border border-blue-500/20 font-black uppercase tracking-wider">{issue.category}</span>
+                                {issue.communityVerified && (
+                                  <div className="flex items-center gap-1 bg-amber-500/15 border border-amber-500/40 rounded-full px-2 py-0.5">
+                                    <span className="shield-pulse text-xs">🛡</span>
+                                    <span className="text-amber-400 text-[9px] font-black">Community Verified</span>
+                                  </div>
+                                )}
+                              </div>
+
+                              <p className={`${textTheme} text-sm font-semibold leading-relaxed`}>{issue.description}</p>
+                              <p className={`${textMuted} text-xs`}>📍 {issue.location}</p>
+
+                              {/* AI Metric row */}
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
+                                {[
+                                  { icon: '⚡', label: 'AI Score', value: `${p.score}/100`, color: p.score >= 70 ? 'text-red-400' : p.score >= 45 ? 'text-amber-400' : 'text-blue-400' },
+                                  { icon: '📈', label: 'Impact', value: p.impact, color: p.impact === 'High' ? 'text-red-400' : p.impact === 'Medium' ? 'text-amber-400' : 'text-green-400' },
+                                  { icon: '👥', label: 'Verified', value: verCount > 0 ? `${verCount} citizens` : 'None', color: verCount >= 3 ? 'text-amber-400' : verCount > 0 ? 'text-blue-400' : textMuted },
+                                  { icon: '⏱', label: 'Est. Fix', value: `${p.suggestedDays}d`, color: textMuted },
+                                ].map(m => (
+                                  <div key={m.label} className={`rounded-xl p-2.5 text-center ${isDark ? 'bg-[#1F2937]/80 border border-white/5' : 'bg-slate-50 border border-slate-200'}`}>
+                                    <div className={`text-sm font-black ${m.color}`}>{m.icon} {m.value}</div>
+                                    <div className={`text-[9px] font-bold ${textMuted} mt-0.5 uppercase tracking-wider`}>{m.label}</div>
+                                  </div>
+                                ))}
+                              </div>
+
+                              {/* Dept + verifiers */}
+                              <div className="flex items-center gap-3 flex-wrap mt-1">
+                                <span className={`text-[10px] font-black px-2 py-0.5 rounded ${isDark ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-blue-100 text-blue-700'}`}>
+                                  🏢 {issue.department || 'BMC'}
+                                </span>
+                                {verifiers.length > 0 && (
+                                  <span className={`text-[10px] font-semibold ${textMuted}`}>
+                                    {verifiers.slice(0, 3).join(', ')}{verifiers.length > 3 ? ` +${verifiers.length - 3}` : ''}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* AI Reasoning */}
+                              <div className={`ai-reasoning-text flex items-start gap-1.5 text-[11px] p-2.5 rounded-xl mt-1 ${
+                                isDark ? 'bg-blue-500/5 border border-blue-500/10' : 'bg-blue-50 border border-blue-100'
+                              }`}>
+                                <span className="shrink-0 mt-0.5">💡</span>
+                                <span className={isDark ? 'text-blue-300/80' : 'text-blue-700'}>{p.reasoning}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* 2. ANALYZE REPORTS TAB */}
             {activeTab === "analyze" && (
               <div className="max-w-4xl mx-auto space-y-6">
@@ -1247,6 +1445,18 @@ export default function OfficerDashboard() {
                               <span className={getSeverityBadgeClass(issue.severity)}>
                                 {issue.severity}
                               </span>
+                              {issue.communityVerified && (
+                                <div className="flex items-center gap-1 bg-amber-500/15 border border-amber-500/40 rounded-full px-2 py-0.5">
+                                  <span className="shield-pulse text-xs">🛡</span>
+                                  <span className="text-amber-400 text-[9px] font-black">Verified</span>
+                                  <span className="text-amber-400 text-[9px] font-black">{issue.verificationCount || (issue.verifications||[]).length}</span>
+                                </div>
+                              )}
+                              {!issue.communityVerified && (issue.verificationCount || (issue.verifications||[]).length) > 0 && (
+                                <span className="text-blue-400 text-[9px] font-bold bg-blue-500/10 border border-blue-500/20 rounded-full px-2 py-0.5">
+                                  👥 {issue.verificationCount || (issue.verifications||[]).length} verif.
+                                </span>
+                              )}
                             </div>
                             <p className={`${textTheme} text-sm font-semibold leading-relaxed`}>
                               {issue.description}
@@ -2003,25 +2213,16 @@ export default function OfficerDashboard() {
             )}
 
             {activeTab === "map" && (
-              <div className="space-y-6">
+              <div className="space-y-4">
                 <div>
-                  <h2 className="text-2xl font-bold text-white mb-2">Issue Map</h2>
-                  <p className="text-[#9CA3AF] mb-6">All civic issues reported across Mumbai</p>
+                  <h2 className={`text-2xl font-black ${textTheme} mb-1`}>Smart City Operations Center</h2>
+                  <p className={`${textMuted} text-sm font-semibold`}>Live civic intelligence across Mumbai — AI-powered heatmap, real-time markers & pulse tracking</p>
                 </div>
 
-                <IssueMap issues={issues} height="500px" />
-
-                {/* Legend */}
-                <div className="flex gap-6 mt-4">
-                  {[['Critical','#EF4444'],['High','#F97316'],['Medium','#F59E0B'],['Low','#10B981']].map(([label, color]) => (
-                    <div key={label} className="flex items-center gap-2">
-                      <div style={{ background: color }} className="w-3 h-3 rounded-full" />
-                      <span className="text-[#9CA3AF] text-xs">{label}</span>
-                    </div>
-                  ))}
-                </div>
+                <IssueMap issues={issues} height="600px" />
               </div>
             )}
+
           </>
         )}
       </div>
