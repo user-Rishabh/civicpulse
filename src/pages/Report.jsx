@@ -94,7 +94,27 @@ export default function Report({ onViewReports }) {
     }
   };
 
-  const processFile = (selectedFile) => {
+  const extractVideoFrame = (videoFile) => {
+    return new Promise((resolve) => {
+      const video = document.createElement('video');
+      const canvas = document.createElement('canvas');
+      video.src = URL.createObjectURL(videoFile);
+      video.muted = true;
+      video.addEventListener('loadeddata', () => {
+        video.currentTime = 1; // grab frame at 1 second
+      });
+      video.addEventListener('seeked', () => {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        const base64 = canvas.toDataURL('image/jpeg').split(',')[1];
+        resolve(base64);
+      });
+      video.load();
+    });
+  };
+
+  const processFile = async (selectedFile) => {
     setFile(selectedFile);
     setError("");
     setLoading(true);
@@ -107,136 +127,75 @@ export default function Report({ onViewReports }) {
       return;
     }
 
-    if (selectedFile.type.startsWith("video/")) {
-      const videoUrl = URL.createObjectURL(selectedFile);
-      setPreview(videoUrl);
-
-      const video = document.createElement('video');
-      video.muted = true;
-      video.playsInline = true;
-      video.src = videoUrl;
-      video.addEventListener('loadeddata', async () => {
-        try {
-          const canvas = document.createElement('canvas');
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.drawImage(video, 0, 0);
-          }
-          const thumbnailDataUrl = canvas.toDataURL('image/jpeg');
-          const thumbnailBase64 = thumbnailDataUrl.split(',')[1];
-          setThumbnail(thumbnailDataUrl);
-
-          // Use thumbnail for Gemini analysis
-          const result = await analyzeIssueImage(thumbnailBase64, 'image/jpeg');
-
-          if (!result) {
-            throw new Error("No response received from Gemini AI.");
-          }
-
-          // 1. Load ALL issues from Firestore 'issues' collection
-          let allIssues = [];
-          try {
-            const querySnapshot = await getDocs(collection(db, "issues"));
-            querySnapshot.forEach((doc) => {
-              allIssues.push({ docId: doc.id, ...doc.data() });
-            });
-          } catch (dbErr) {
-            console.error("Failed to load issues for duplicate check:", dbErr);
-          }
-
-          // 2. Check for duplicates
-          const foundDuplicates = checkDuplicates(allIssues, result, "");
-          if (foundDuplicates.length > 0) {
-            setDuplicates(foundDuplicates);
-            setShowWarning(true);
-          } else {
-            setDuplicates([]);
-            setShowWarning(false);
-          }
-
-          setAnalysis(result);
-
-          // Prefill form
-          setFormData({
-            category: result.category || "Other",
-            severity: result.severity || "Medium",
-            department: result.department || "Other",
-            description: result.description || "",
-            suggested_action: result.suggested_action || "",
-            location: "", // Required to be entered by user
-            reporter: "",
-            estimated_resolution_days: result.estimated_resolution_days || 7,
-          });
-        } catch (err) {
-          console.error("Analysis error:", err);
-          setError(err.message || "Failed to analyze video frame. Please try again.");
-          setCurrentStep(1); // Reset back to upload if error occurs
-        } finally {
-          setLoading(false);
-        }
-      });
-    } else {
-      const reader = new FileReader();
-      reader.readAsDataURL(selectedFile);
-      reader.onloadend = async () => {
-        const dataUrl = reader.result;
+    try {
+      let base64Data, mimeType;
+      
+      if (selectedFile.type.startsWith('video/')) {
+        const videoUrl = URL.createObjectURL(selectedFile);
+        setPreview(videoUrl);
+        
+        base64Data = await extractVideoFrame(selectedFile);
+        mimeType = 'image/jpeg';
+        setThumbnail('data:image/jpeg;base64,' + base64Data);
+      } else {
+        const dataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(selectedFile);
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = reject;
+        });
         setPreview(dataUrl);
+        mimeType = dataUrl.split(";")[0].split(":")[1];
+        base64Data = dataUrl.split(",")[1];
+      }
 
-        try {
-          const mimeType = dataUrl.split(";")[0].split(":")[1];
-          const base64Data = dataUrl.split(",")[1];
+      // Call Gemini Analysis
+      const result = await analyzeIssueImage(base64Data, mimeType);
 
-          // Call Gemini Analysis
-          const result = await analyzeIssueImage(base64Data, mimeType);
+      if (!result) {
+        throw new Error("No response received from Gemini AI.");
+      }
 
-          if (!result) {
-            throw new Error("No response received from Gemini AI.");
-          }
+      // 1. Load ALL issues from Firestore 'issues' collection
+      let allIssues = [];
+      try {
+        const querySnapshot = await getDocs(collection(db, "issues"));
+        querySnapshot.forEach((doc) => {
+          allIssues.push({ docId: doc.id, ...doc.data() });
+        });
+      } catch (dbErr) {
+        console.error("Failed to load issues for duplicate check:", dbErr);
+      }
 
-          // 1. Load ALL issues from Firestore 'issues' collection
-          let allIssues = [];
-          try {
-            const querySnapshot = await getDocs(collection(db, "issues"));
-            querySnapshot.forEach((doc) => {
-              allIssues.push({ docId: doc.id, ...doc.data() });
-            });
-          } catch (dbErr) {
-            console.error("Failed to load issues for duplicate check:", dbErr);
-          }
+      // 2. Check for duplicates
+      const foundDuplicates = checkDuplicates(allIssues, result, "");
+      if (foundDuplicates.length > 0) {
+        setDuplicates(foundDuplicates);
+        setShowWarning(true);
+      } else {
+        setDuplicates([]);
+        setShowWarning(false);
+      }
 
-          // 2. Check for duplicates
-          const foundDuplicates = checkDuplicates(allIssues, result, "");
-          if (foundDuplicates.length > 0) {
-            setDuplicates(foundDuplicates);
-            setShowWarning(true);
-          } else {
-            setDuplicates([]);
-            setShowWarning(false);
-          }
+      setAnalysis(result);
 
-          setAnalysis(result);
-
-          // Prefill form
-          setFormData({
-            category: result.category || "Other",
-            severity: result.severity || "Medium",
-            department: result.department || "Other",
-            description: result.description || "",
-            suggested_action: result.suggested_action || "",
-            location: "", // Required to be entered by user
-            reporter: "",
-            estimated_resolution_days: result.estimated_resolution_days || 7,
-          });
-        } catch (err) {
-          console.error("Analysis error:", err);
-          setError(err.message || "Failed to analyze image. Please try again.");
-          setCurrentStep(1); // Reset back to upload if error occurs
-        } finally {
-          setLoading(false);
-        }
-      };
+      // Prefill form
+      setFormData({
+        category: result.category || "Other",
+        severity: result.severity || "Medium",
+        department: result.department || "Other",
+        description: result.description || "",
+        suggested_action: result.suggested_action || "",
+        location: "", // Required to be entered by user
+        reporter: "",
+        estimated_resolution_days: result.estimated_resolution_days || 7,
+      });
+    } catch (err) {
+      console.error("Analysis error:", err);
+      setError(err.message || "Failed to analyze file. Please try again.");
+      setCurrentStep(1); // Reset back to upload if error occurs
+    } finally {
+      setLoading(false);
     }
   };
 
