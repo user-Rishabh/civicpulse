@@ -3404,8 +3404,17 @@ export default function CitizenDashboard() {
               {/* Notification Bell Dropdown */}
               <div className="relative">
                 <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                  animate={unreadCount > 0 ? {
+                    scale: [1, 1.06, 1],
+                    boxShadow: isDark
+                      ? ["0 0 0 rgba(59, 130, 246, 0)", "0 0 10px rgba(59, 130, 246, 0.4)", "0 0 0 rgba(59, 130, 246, 0)"]
+                      : ["0 0 0 rgba(59, 130, 246, 0)", "0 0 10px rgba(59, 130, 246, 0.25)", "0 0 0 rgba(59, 130, 246, 0)"]
+                  } : {}}
+                  transition={unreadCount > 0 ? {
+                    repeat: Infinity,
+                    duration: 1.8,
+                    ease: "easeInOut"
+                  } : {}}
                   onClick={() => {
                     setNotifOpen(!notifOpen);
                     setLeaderboardOpen(false);
@@ -3414,48 +3423,62 @@ export default function CitizenDashboard() {
                 >
                   <span className="text-lg">&#x1F514;</span>
                   {unreadCount > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow animate-bounce">
+                    <motion.span
+                      key={unreadCount}
+                      initial={{ scale: 0.5, y: -12 }}
+                      animate={{ scale: 1, y: [0, -10, 0] }}
+                      transition={{ duration: 0.6, ease: "easeOut" }}
+                      className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow"
+                    >
                       {unreadCount > 9 ? '9+' : unreadCount}
-                    </span>
+                    </motion.span>
                   )}
                 </motion.button>
-                {notifOpen && (
-                  <div className={`absolute right-0 mt-2 w-80 rounded-2xl p-4 shadow-2xl shadow-black/50 ${bgSurface} ${borderTheme} z-50`}>
-                    <div className="flex items-center justify-between mb-3">
-                      <span className={`font-bold text-sm ${textTheme}`}>Notifications</span>
-                      {unreadCount > 0 && (
-                        <motion.button
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                          onClick={markAllRead}
-                          className="text-blue-400 text-xs font-semibold hover:text-blue-300 cursor-pointer bg-transparent border-none"
-                        >
-                          Mark all as read
-                        </motion.button>
-                      )}
-                    </div>
-                    <div className="max-h-72 overflow-y-auto space-y-2">
-                      {notifications.length === 0 ? (
-                        <p className={`text-xs text-center py-4 ${textMuted}`}>No notifications yet</p>
-                      ) : (
-                        notifications.map(notif => (
-                          <div
-                            key={notif.docId || notif.id}
-                            onClick={() => markOneRead(notif)}
-                            className={`rounded-xl p-3 cursor-pointer transition ${bgSurface2} ${isDark ? 'hover:bg-[#374151]/50' : 'hover:bg-[#E2E8F0]/50'} ${
-                              !notif.read ? 'border-l-4 border-blue-500' : ''
-                            }`}
+                <AnimatePresence>
+                  {notifOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -15, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -15, scale: 0.95 }}
+                      transition={{ duration: 0.25, ease: "easeOut" }}
+                      className={`absolute right-0 mt-2 w-80 rounded-2xl p-4 shadow-2xl shadow-black/50 ${bgSurface} ${borderTheme} z-50`}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <span className={`font-bold text-sm ${textTheme}`}>Notifications</span>
+                        {unreadCount > 0 && (
+                          <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={markAllRead}
+                            className="text-blue-400 text-xs font-semibold hover:text-blue-300 cursor-pointer bg-transparent border-none"
                           >
-                            <p className={`text-xs leading-relaxed ${textTheme}`}>{notif.message}</p>
-                            <p className={`text-[10px] mt-1 ${textSubtle}`}>
-                              {new Date(notif.createdAt).toLocaleString()}
-                            </p>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )}
+                            Mark all as read
+                          </motion.button>
+                        )}
+                      </div>
+                      <div className="max-h-72 overflow-y-auto space-y-2">
+                        {notifications.length === 0 ? (
+                          <p className={`text-xs text-center py-4 ${textMuted}`}>No notifications yet</p>
+                        ) : (
+                          notifications.map(notif => (
+                            <div
+                              key={notif.docId || notif.id}
+                              onClick={() => markOneRead(notif)}
+                              className={`rounded-xl p-3 cursor-pointer transition ${bgSurface2} ${isDark ? 'hover:bg-[#374151]/50' : 'hover:bg-[#E2E8F0]/50'} ${
+                                !notif.read ? 'border-l-4 border-blue-500' : ''
+                              }`}
+                            >
+                              <p className={`text-xs leading-relaxed ${textTheme}`}>{notif.message}</p>
+                              <p className={`text-[10px] mt-1 ${textSubtle}`}>
+                                {new Date(notif.createdAt).toLocaleString()}
+                              </p>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
           );

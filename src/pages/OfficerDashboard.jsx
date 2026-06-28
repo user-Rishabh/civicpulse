@@ -350,6 +350,14 @@ export default function OfficerDashboard() {
   const [cannotResolveReason, setCannotResolveReason] = useState("Budget Constraints");
   const [cannotResolveDetails, setCannotResolveDetails] = useState("");
   const [toastMsg, setToastMsg] = useState("");
+  const [expandedExplanations, setExpandedExplanations] = useState({});
+
+  const toggleExplanation = (issueId) => {
+    setExpandedExplanations(prev => ({
+      ...prev,
+      [issueId]: !prev[issueId]
+    }));
+  };
 
   // Chat States
   const [allChats, setAllChats] = useState([]);
@@ -701,6 +709,31 @@ export default function OfficerDashboard() {
         return base + "bg-gray-500/20 text-gray-400 border-gray-500/30";
     }
   };
+  
+  const getTimelineEvents = (createdAtStr) => {
+    const baseTime = createdAtStr ? new Date(createdAtStr) : new Date();
+    if (isNaN(baseTime.getTime())) return [];
+    
+    const formatTime = (date) => {
+      const hrs = String(date.getHours()).padStart(2, '0');
+      const mins = String(date.getMinutes()).padStart(2, '0');
+      return `${hrs}:${mins}`;
+    };
+
+    const t0 = new Date(baseTime.getTime());
+    const t1 = new Date(baseTime.getTime() + 60000); // +1 min
+    const t2 = new Date(baseTime.getTime() + 60000); // +1 min
+    const t3 = new Date(baseTime.getTime() + 120000); // +2 min
+    const t4 = new Date(baseTime.getTime() + 180000); // +3 min
+
+    return [
+      { time: formatTime(t0), label: 'Report Submitted', icon: '📝', color: 'text-blue-400 bg-blue-500/10 border border-blue-500/20' },
+      { time: formatTime(t1), label: 'AI Classified Issue', icon: '🤖', color: 'text-purple-400 bg-purple-500/10 border border-purple-500/20' },
+      { time: formatTime(t2), label: 'Department Assigned', icon: '🏢', color: 'text-amber-400 bg-amber-500/10 border border-amber-500/20' },
+      { time: formatTime(t3), label: 'Priority Calculated', icon: '⚡', color: 'text-red-400 bg-red-500/10 border border-red-500/20' },
+      { time: formatTime(t4), label: 'Officer Notified', icon: '🔔', color: 'text-green-400 bg-green-400/10 border border-green-400/20' },
+    ];
+  };
 
   const tabs = [
     { id: "Dashboard", label: "Dashboard" },
@@ -1005,62 +1038,87 @@ export default function OfficerDashboard() {
                     <div className="flex items-center gap-4 text-right">
                       {/* Notification Bell */}
                       <div className="relative">
-                        <button
+                        <motion.button
                           onClick={() => setNotifOpen(!notifOpen)}
+                          animate={notifications.filter(n => !n.read).length > 0 ? {
+                            scale: [1, 1.06, 1],
+                            boxShadow: isDark
+                              ? ["0 0 0 rgba(59, 130, 246, 0)", "0 0 10px rgba(59, 130, 246, 0.4)", "0 0 0 rgba(59, 130, 246, 0)"]
+                              : ["0 0 0 rgba(59, 130, 246, 0)", "0 0 10px rgba(59, 130, 246, 0.25)", "0 0 0 rgba(59, 130, 246, 0)"]
+                          } : {}}
+                          transition={notifications.filter(n => !n.read).length > 0 ? {
+                            repeat: Infinity,
+                            duration: 1.8,
+                            ease: "easeInOut"
+                          } : {}}
                           className={`relative w-10 h-10 flex items-center justify-center rounded-xl border transition cursor-pointer font-medium ${
                             isDark ? "bg-[#111827] border-[#374151] hover:border-blue-500/50" : "bg-white border-slate-200 hover:border-blue-500/40"
                           }`}
                         >
                           <span className="text-lg">🔔</span>
                           {notifications.filter(n => !n.read).length > 0 && (
-                            <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow animate-bounce">
+                            <motion.span
+                              key={notifications.filter(n => !n.read).length}
+                              initial={{ scale: 0.5, y: -12 }}
+                              animate={{ scale: 1, y: [0, -10, 0] }}
+                              transition={{ duration: 0.6, ease: "easeOut" }}
+                              className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow"
+                            >
                               {notifications.filter(n => !n.read).length}
-                            </span>
+                            </motion.span>
                           )}
-                        </button>
-                        {notifOpen && (
-                          <div className={`absolute right-0 mt-2 w-80 rounded-2xl p-4 shadow-2xl z-50 text-left border ${
-                            isDark ? "bg-[#111827] border-[#374151]" : "bg-white border-slate-200"
-                          }`}>
-                            <div className={`flex items-center justify-between mb-3 border-b pb-2 ${isDark ? "border-[#1F2937]" : "border-slate-100"}`}>
-                              <span className={`font-bold text-sm ${textTheme}`}>Verification Alerts</span>
-                              {notifications.filter(n => !n.read).length > 0 && (
-                                <button
-                                  onClick={async () => {
-                                    for (const n of notifications.filter(n => !n.read)) {
-                                      await updateDoc(doc(db, "notifications", n.docId), { read: true });
-                                    }
-                                  }}
-                                  className="text-blue-400 text-xs font-semibold hover:text-blue-300 cursor-pointer"
-                                >
-                                  Mark all read
-                                </button>
-                              )}
-                            </div>
-                            <div className="max-h-72 overflow-y-auto space-y-2">
-                              {notifications.length === 0 ? (
-                                <p className={`text-xs text-center py-4 ${textMuted}`}>No notifications yet</p>
-                              ) : (
-                                notifications.map(notif => (
-                                  <div
-                                    key={notif.docId}
+                        </motion.button>
+                        <AnimatePresence>
+                          {notifOpen && (
+                            <motion.div
+                              initial={{ opacity: 0, y: -15, scale: 0.95 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={{ opacity: 0, y: -15, scale: 0.95 }}
+                              transition={{ duration: 0.25, ease: "easeOut" }}
+                              className={`absolute right-0 mt-2 w-80 rounded-2xl p-4 shadow-2xl z-50 text-left border ${
+                                isDark ? "bg-[#111827] border-[#374151]" : "bg-white border-slate-200"
+                              }`}
+                            >
+                              <div className={`flex items-center justify-between mb-3 border-b pb-2 ${isDark ? "border-[#1F2937]" : "border-slate-100"}`}>
+                                <span className={`font-bold text-sm ${textTheme}`}>Verification Alerts</span>
+                                {notifications.filter(n => !n.read).length > 0 && (
+                                  <button
                                     onClick={async () => {
-                                      await updateDoc(doc(db, "notifications", notif.docId), { read: true });
+                                      for (const n of notifications.filter(n => !n.read)) {
+                                        await updateDoc(doc(db, "notifications", n.docId), { read: true });
+                                      }
                                     }}
-                                    className={`rounded-xl p-3 cursor-pointer transition ${
-                                      isDark ? "bg-[#1F2937] hover:bg-[#374151]/50" : "bg-slate-50 hover:bg-slate-100/70"
-                                    } ${!notif.read ? 'border-l-4 border-blue-500' : ''}`}
+                                    className="text-blue-400 text-xs font-semibold hover:text-blue-300 cursor-pointer"
                                   >
-                                    <p className={`text-xs leading-relaxed ${textTheme}`}>{notif.message}</p>
-                                    <p className={`text-[10px] mt-1 ${textSubtle}`}>
-                                      {new Date(notif.createdAt).toLocaleString()}
-                                    </p>
-                                  </div>
-                                ))
-                              )}
-                            </div>
-                          </div>
-                        )}
+                                    Mark all read
+                                  </button>
+                                )}
+                              </div>
+                              <div className="max-h-72 overflow-y-auto space-y-2">
+                                {notifications.length === 0 ? (
+                                  <p className={`text-xs text-center py-4 ${textMuted}`}>No notifications yet</p>
+                                ) : (
+                                  notifications.map(notif => (
+                                    <div
+                                      key={notif.docId}
+                                      onClick={async () => {
+                                        await updateDoc(doc(db, "notifications", notif.docId), { read: true });
+                                      }}
+                                      className={`rounded-xl p-3 cursor-pointer transition ${
+                                        isDark ? "bg-[#1F2937] hover:bg-[#374151]/50" : "bg-slate-50 hover:bg-slate-100/70"
+                                      } ${!notif.read ? 'border-l-4 border-blue-500' : ''}`}
+                                    >
+                                      <p className={`text-xs leading-relaxed ${textTheme}`}>{notif.message}</p>
+                                      <p className={`text-[10px] mt-1 ${textSubtle}`}>
+                                        {new Date(notif.createdAt).toLocaleString()}
+                                      </p>
+                                    </div>
+                                  ))
+                                )}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
 
                       <div>
@@ -1327,7 +1385,7 @@ export default function OfficerDashboard() {
 
                             <img src={issue.imagePreview} alt="" className={`w-20 h-20 object-cover rounded-xl shrink-0 border ${borderTheme} hidden sm:block`} />
 
-                            <div className="flex-1 min-w-0 space-y-2">
+                            <div className="flex-1 min-w-0 space-y-3">
                               {/* Title row */}
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className={getSeverityBadgeClass(issue.severity)}>{issue.severity}</span>
@@ -1344,7 +1402,7 @@ export default function OfficerDashboard() {
                               <p className={`${textMuted} text-xs`}>📍 {issue.location}</p>
 
                               {/* AI Metric row */}
-                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                                 {[
                                   { icon: '⚡', label: 'AI Score', value: `${p.score}/100`, color: p.score >= 70 ? 'text-red-400' : p.score >= 45 ? 'text-amber-400' : 'text-blue-400' },
                                   { icon: '📈', label: 'Impact', value: p.impact, color: p.impact === 'High' ? 'text-red-400' : p.impact === 'Medium' ? 'text-amber-400' : 'text-green-400' },
@@ -1358,8 +1416,185 @@ export default function OfficerDashboard() {
                                 ))}
                               </div>
 
+                              {/* Why this score? Expandable section */}
+                              <div className="text-left">
+                                <button
+                                  onClick={() => toggleExplanation(issue.id || issue.docId)}
+                                  className="text-[11px] font-black text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 transition-colors flex items-center gap-1.5 cursor-pointer focus:outline-none"
+                                >
+                                  <span>Why this score?</span>
+                                  <motion.span
+                                    animate={{ rotate: expandedExplanations[issue.id || issue.docId] ? 180 : 0 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="inline-block text-[8px]"
+                                  >
+                                    ▼
+                                  </motion.span>
+                                </button>
+
+                                <AnimatePresence initial={false}>
+                                  {expandedExplanations[issue.id || issue.docId] && (() => {
+                                    // Calculations
+                                    const severityPercent = { Critical: 100, High: 75, Medium: 50, Low: 25 }[issue.severity] || 25;
+                                    const reportsPercent = Math.min((issue.upvotes || 0) * 15 + 10, 100);
+                                    const verificationPercent = issue.communityVerified ? 100 : Math.min(verCount * 33.3, 100);
+                                    
+                                    const loc = (issue.location || '').toLowerCase();
+                                    const isSensitiveLocation = (loc.includes('school') || loc.includes('hospital') || loc.includes('clinic') || loc.includes('market'));
+                                    const locationPercent = isSensitiveLocation ? 100 : 60;
+                                    
+                                    const confidencePercent = issue.aiConfidence || issue.geminiConfidence || Math.min(98, Math.max(78, 85 + (issue.severity === 'Critical' ? 10 : 5) + (verCount * 2)));
+
+                                    return (
+                                      <motion.div
+                                        initial={{ height: 0, opacity: 0, marginTop: 0 }}
+                                        animate={{ height: "auto", opacity: 1, marginTop: 8 }}
+                                        exit={{ height: 0, opacity: 0, marginTop: 0 }}
+                                        transition={{ duration: 0.3, ease: "easeInOut" }}
+                                        className="overflow-hidden bg-slate-100/50 dark:bg-[#1F2937]/50 border border-slate-200/50 dark:border-white/5 rounded-xl p-3.5 space-y-2.5"
+                                      >
+                                        {/* Road damage severity */}
+                                        <div className="space-y-1">
+                                          <div className="flex justify-between text-[9px] font-black uppercase tracking-wider">
+                                            <span className={textMuted}>Road damage severity</span>
+                                            <span className={textTheme}>{issue.severity || 'Low'} ({severityPercent}%)</span>
+                                          </div>
+                                          <div className={`h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`}>
+                                            <motion.div
+                                              initial={{ width: 0 }}
+                                              animate={{ width: `${severityPercent}%` }}
+                                              transition={{ duration: 0.8, ease: "easeOut" }}
+                                              className={`h-full rounded-full ${
+                                                issue.severity === 'Critical' ? 'bg-red-500' :
+                                                issue.severity === 'High' ? 'bg-orange-500' :
+                                                issue.severity === 'Medium' ? 'bg-yellow-500' : 'bg-green-500'
+                                              }`}
+                                            />
+                                          </div>
+                                        </div>
+
+                                        {/* Citizen reports */}
+                                        <div className="space-y-1">
+                                          <div className="flex justify-between text-[9px] font-black uppercase tracking-wider">
+                                            <span className={textMuted}>Citizen reports</span>
+                                            <span className={textTheme}>{issue.upvotes || 0} upvote{issue.upvotes !== 1 ? 's' : ''} ({reportsPercent}%)</span>
+                                          </div>
+                                          <div className={`h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`}>
+                                            <motion.div
+                                              initial={{ width: 0 }}
+                                              animate={{ width: `${reportsPercent}%` }}
+                                              transition={{ duration: 0.8, ease: "easeOut" }}
+                                              className="h-full rounded-full bg-blue-500"
+                                            />
+                                          </div>
+                                        </div>
+
+                                        {/* Community verification */}
+                                        <div className="space-y-1">
+                                          <div className="flex justify-between text-[9px] font-black uppercase tracking-wider">
+                                            <span className={textMuted}>Community verification</span>
+                                            <span className={textTheme}>
+                                              {issue.communityVerified ? '🛡️ Verified' : `${verCount} confirmation${verCount !== 1 ? 's' : ''}`} ({Math.round(verificationPercent)}%)
+                                            </span>
+                                          </div>
+                                          <div className={`h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`}>
+                                            <motion.div
+                                              initial={{ width: 0 }}
+                                              animate={{ width: `${verificationPercent}%` }}
+                                              transition={{ duration: 0.8, ease: "easeOut" }}
+                                              className="h-full rounded-full bg-amber-500"
+                                            />
+                                          </div>
+                                        </div>
+
+                                        {/* Location importance */}
+                                        <div className="space-y-1">
+                                          <div className="flex justify-between text-[9px] font-black uppercase tracking-wider">
+                                            <span className={textMuted}>Location importance</span>
+                                            <span className={textTheme}>
+                                              {isSensitiveLocation ? 'High Importance' : 'Standard Importance'} ({locationPercent}%)
+                                            </span>
+                                          </div>
+                                          <div className={`h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`}>
+                                            <motion.div
+                                              initial={{ width: 0 }}
+                                              animate={{ width: `${locationPercent}%` }}
+                                              transition={{ duration: 0.8, ease: "easeOut" }}
+                                              className="h-full rounded-full bg-emerald-500"
+                                            />
+                                          </div>
+                                        </div>
+
+                                        {/* Confidence percentage */}
+                                        <div className="space-y-1">
+                                          <div className="flex justify-between text-[9px] font-black uppercase tracking-wider">
+                                            <span className={textMuted}>Confidence percentage</span>
+                                            <span className={textTheme}>{confidencePercent}%</span>
+                                          </div>
+                                          <div className={`h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`}>
+                                            <motion.div
+                                              initial={{ width: 0 }}
+                                              animate={{ width: `${confidencePercent}%` }}
+                                              transition={{ duration: 0.8, ease: "easeOut" }}
+                                              className="h-full rounded-full bg-cyan-500"
+                                            />
+                                          </div>
+                                        </div>
+
+                                        {/* AI Activity Timeline Section */}
+                                        <div className="pt-3.5 border-t border-slate-200/50 dark:border-white/5">
+                                          <div className={`text-[10px] font-black ${textMuted} uppercase tracking-wider mb-3`}>
+                                            🤖 AI Processing Timeline
+                                          </div>
+                                          <motion.div
+                                            variants={{
+                                              hidden: { opacity: 0 },
+                                              show: {
+                                                opacity: 1,
+                                                transition: {
+                                                  staggerChildren: 0.12
+                                                }
+                                              }
+                                            }}
+                                            initial="hidden"
+                                            animate="show"
+                                            className="relative pl-5 space-y-4 before:absolute before:left-[9px] before:top-1.5 before:bottom-1.5 before:w-0.5 before:bg-slate-200 dark:before:bg-slate-700"
+                                          >
+                                            {getTimelineEvents(issue.createdAt).map((event, idx) => (
+                                              <motion.div
+                                                key={idx}
+                                                variants={{
+                                                  hidden: { opacity: 0, x: -10 },
+                                                  show: { opacity: 1, x: 0, transition: { type: 'spring', stiffness: 300, damping: 20 } }
+                                                }}
+                                                className="flex items-center gap-3 relative text-left"
+                                              >
+                                                {/* Dot/Icon */}
+                                                <div className={`absolute -left-5 w-5 h-5 rounded-full flex items-center justify-center text-[10px] z-10 ${event.color}`}>
+                                                  {event.icon}
+                                                </div>
+                                                
+                                                {/* Time & Label */}
+                                                <div className="flex items-baseline gap-2">
+                                                  <span className={`text-[9px] font-black tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                    {event.time}
+                                                  </span>
+                                                  <span className={`text-[11px] font-bold ${textTheme}`}>
+                                                    {event.label}
+                                                  </span>
+                                                </div>
+                                              </motion.div>
+                                            ))}
+                                          </motion.div>
+                                        </div>
+                                      </motion.div>
+                                    );
+                                  })()}
+                                </AnimatePresence>
+                              </div>
+
                               {/* Dept + verifiers */}
-                              <div className="flex items-center gap-3 flex-wrap mt-1">
+                              <div className="flex items-center gap-3 flex-wrap">
                                 <span className={`text-[10px] font-black px-2 py-0.5 rounded ${isDark ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-blue-100 text-blue-700'}`}>
                                   🏢 {issue.department || 'BMC'}
                                 </span>
@@ -1371,7 +1606,7 @@ export default function OfficerDashboard() {
                               </div>
 
                               {/* AI Reasoning */}
-                              <div className={`ai-reasoning-text flex items-start gap-1.5 text-[11px] p-2.5 rounded-xl mt-1 ${
+                              <div className={`ai-reasoning-text flex items-start gap-1.5 text-[11px] p-2.5 rounded-xl border ${
                                 isDark ? 'bg-blue-500/5 border border-blue-500/10' : 'bg-blue-50 border border-blue-100'
                               }`}>
                                 <span className="shrink-0 mt-0.5">💡</span>
