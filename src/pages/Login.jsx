@@ -128,7 +128,12 @@ export default function Login() {
   };
 
   return (
-    <div className="bg-[#0A0F1E] min-h-screen text-[#F9FAFB] flex relative overflow-hidden w-full">
+    <motion.div
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, ease: "easeOut" }}
+      className="bg-[#0A0F1E] min-h-screen text-[#F9FAFB] flex relative overflow-hidden w-full"
+    >
       {/* LEFT PANEL (hidden md:flex w-1/2 relative overflow-hidden) */}
       <div className="hidden md:flex md:w-1/2 relative overflow-hidden bg-gradient-to-br from-blue-900/50 via-[#0A0F1E] to-cyan-900/30 border-r border-[#374151] flex-col justify-center px-16">
         {/* Background orbs */}
@@ -192,7 +197,9 @@ export default function Login() {
 
           {/* Tabs */}
           <div className="flex bg-[#111827] rounded-2xl p-1 mt-8 border border-[#374151]/30">
-            <button
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => handleTabChange(true)}
               className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 cursor-pointer text-center bg-transparent border-none outline-none"
               style={{
@@ -201,8 +208,10 @@ export default function Login() {
               }}
             >
               Login
-            </button>
-            <button
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => handleTabChange(false)}
               className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 cursor-pointer text-center bg-transparent border-none outline-none"
               style={{
@@ -211,7 +220,7 @@ export default function Login() {
               }}
             >
               Sign Up
-            </button>
+            </motion.button>
           </div>
 
           {/* Error Message */}
@@ -411,7 +420,9 @@ export default function Login() {
           </div>
 
           {/* GOOGLE SIGN IN button (visual only, no functionality) */}
-          <button
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             type="button"
             className="w-full border border-[#374151] hover:border-[#6B7280] rounded-2xl py-3.5 flex items-center justify-center gap-3 text-white text-sm transition font-medium cursor-pointer bg-transparent"
           >
@@ -419,9 +430,9 @@ export default function Login() {
               G
             </div>
             <span>Continue with Google</span>
-          </button>
+          </motion.button>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

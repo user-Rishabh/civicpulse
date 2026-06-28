@@ -972,10 +972,13 @@ export default function Home() {
 
   return (
     <motion.div 
+      initial={{ opacity: 0, y: 15 }}
       animate={{
+        opacity: 1,
+        y: 0,
         color: isDark ? "#F8FAFC" : "#0F172A"
       }}
-      transition={{ duration: 0.9, ease: "easeInOut" }}
+      transition={{ duration: 0.6, ease: "easeOut" }}
       className="min-h-screen relative overflow-hidden flex flex-col pt-16"
     >
       

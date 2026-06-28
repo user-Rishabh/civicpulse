@@ -3183,11 +3183,14 @@ export default function CitizenDashboard() {
 
   return (
     <motion.div 
+      initial={{ opacity: 0, y: 15 }}
       animate={{
+        opacity: 1,
+        y: 0,
         color: isDark ? "#F8FAFC" : "#0F172A",
         backgroundColor: isDark ? "#030712" : "#FFFFFF"
       }}
-      transition={{ duration: 0.9, ease: "easeInOut" }}
+      transition={{ duration: 0.6, ease: "easeOut" }}
       className="min-h-screen flex relative overflow-hidden"
     >
       {/* Subtle Noise Filter Backdrop Overlay */}
@@ -3288,13 +3291,15 @@ export default function CitizenDashboard() {
         {/* BOTTOM of sidebar */}
         <div className="mt-auto px-3 pb-6">
           <div className={`border-t ${borderSidebar} pt-4`}>
-            <button
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               onClick={logout}
               className={`flex items-center gap-3 px-4 py-3 rounded-xl ${textMuted} hover:text-red-400 hover:bg-red-500/5 w-full transition text-sm font-medium bg-transparent border-none outline-none text-left cursor-pointer`}
             >
               <span className="text-base">⎋</span>
               <span>Sign Out</span>
-            </button>
+            </motion.button>
           </div>
         </div>
       </motion.div>
@@ -3351,7 +3356,9 @@ export default function CitizenDashboard() {
             <div className="fixed top-20 right-8 z-50 flex items-center gap-3">
               {/* Leaderboard Dropdown */}
               <div className="relative">
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                   onClick={() => {
                     setLeaderboardOpen(!leaderboardOpen);
                     setNotifOpen(false);
@@ -3359,7 +3366,7 @@ export default function CitizenDashboard() {
                   className={`w-10 h-10 flex items-center justify-center rounded-xl hover:border-blue-500/50 transition cursor-pointer ${bgSurface} ${borderTheme} ${textTheme}`}
                 >
                   <span className="text-lg">🏆</span>
-                </button>
+                </motion.button>
                 {leaderboardOpen && (
                   <div className={`absolute right-0 mt-2 w-80 rounded-2xl p-4 shadow-2xl shadow-black/50 ${bgSurface} ${borderTheme} z-50`}>
                     <div className="flex items-center justify-between mb-3 border-b border-[#1F2937]/50 pb-2">
@@ -3396,7 +3403,9 @@ export default function CitizenDashboard() {
 
               {/* Notification Bell Dropdown */}
               <div className="relative">
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                   onClick={() => {
                     setNotifOpen(!notifOpen);
                     setLeaderboardOpen(false);
@@ -3409,15 +3418,20 @@ export default function CitizenDashboard() {
                       {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                   )}
-                </button>
+                </motion.button>
                 {notifOpen && (
                   <div className={`absolute right-0 mt-2 w-80 rounded-2xl p-4 shadow-2xl shadow-black/50 ${bgSurface} ${borderTheme} z-50`}>
                     <div className="flex items-center justify-between mb-3">
                       <span className={`font-bold text-sm ${textTheme}`}>Notifications</span>
                       {unreadCount > 0 && (
-                        <button onClick={markAllRead} className="text-blue-400 text-xs font-semibold hover:text-blue-300 cursor-pointer">
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={markAllRead}
+                          className="text-blue-400 text-xs font-semibold hover:text-blue-300 cursor-pointer bg-transparent border-none"
+                        >
                           Mark all as read
-                        </button>
+                        </motion.button>
                       )}
                     </div>
                     <div className="max-h-72 overflow-y-auto space-y-2">

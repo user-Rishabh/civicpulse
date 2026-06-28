@@ -335,7 +335,12 @@ export default function Feed() {
   const filteredIssues = getFilteredIssues();
 
   return (
-    <div className="pt-28 px-8 max-w-6xl mx-auto pb-20">
+    <motion.div
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, ease: "easeOut" }}
+      className="pt-28 px-8 max-w-6xl mx-auto pb-20"
+    >
 
       {/* Header */}
       <div className="flex items-center gap-3">
@@ -357,7 +362,9 @@ export default function Feed() {
       <div className="mt-6 mb-8 flex gap-2 flex-wrap items-center">
         <span className={`${t.muted} text-xs font-semibold uppercase tracking-wider mr-2`}>Filter By:</span>
         {filterButtons.map((btn) => (
-          <button
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             key={btn.value}
             onClick={() => setSelectedFilter(btn.value)}
             className={`rounded-lg px-4 py-2 text-xs font-medium transition duration-200 border ${
@@ -367,7 +374,7 @@ export default function Feed() {
             }`}
           >
             {btn.label}
-          </button>
+          </motion.button>
         ))}
       </div>
 
@@ -389,7 +396,20 @@ export default function Feed() {
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <motion.div
+          variants={{
+            hidden: { opacity: 0 },
+            show: {
+              opacity: 1,
+              transition: {
+                staggerChildren: 0.05
+              }
+            }
+          }}
+          initial="hidden"
+          animate="show"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+        >
           {filteredIssues.map((issue) => {
             const verCount = issue.verificationCount || (issue.verifications || []).length;
             const isVerified = issue.communityVerified;
@@ -400,9 +420,18 @@ export default function Feed() {
               <motion.div
                 key={issue.docId || issue.id}
                 layout
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ type: "spring", stiffness: 260, damping: 24 }}
+                variants={{
+                  hidden: { opacity: 0, y: 15 },
+                  show: {
+                    opacity: 1,
+                    y: 0,
+                    transition: {
+                      type: "spring",
+                      stiffness: 260,
+                      damping: 24
+                    }
+                  }
+                }}
                 onClick={() => {
                   setSelectedIssue(issue);
                   setVerifyError("");
@@ -507,7 +536,7 @@ export default function Feed() {
               </motion.div>
             );
           })}
-        </div>
+        </motion.div>
       )}
 
       {/* ── Community Verify Modal ──────────────────────────────────────────── */}
@@ -926,6 +955,6 @@ export default function Feed() {
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }

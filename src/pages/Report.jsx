@@ -467,7 +467,12 @@ export default function Report({ onViewReports }) {
   };
 
   return (
-    <div className="pt-28 px-8 max-w-4xl mx-auto pb-20">
+    <motion.div
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, ease: "easeOut" }}
+      className="pt-28 px-8 max-w-4xl mx-auto pb-20"
+    >
       {/* Toast Notification */}
       {toast && (
         <div className="fixed bottom-10 right-10 bg-green-500 text-white px-6 py-3 rounded-xl shadow-2xl z-50 font-semibold flex items-center gap-2 animate-bounce">
@@ -1158,7 +1163,7 @@ export default function Report({ onViewReports }) {
           )}
         </>
       )}
-    </div>
+    </motion.div>
   );
 }
 

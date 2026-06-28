@@ -787,11 +787,14 @@ export default function OfficerDashboard() {
 
   return (
     <motion.div
+      initial={{ opacity: 0, y: 15 }}
       animate={{
+        opacity: 1,
+        y: 0,
         color: isDark ? "#F8FAFC" : "#0F172A",
         backgroundColor: isDark ? "#030712" : "#FFFFFF"
       }}
-      transition={{ duration: 0.9, ease: "easeInOut" }}
+      transition={{ duration: 0.6, ease: "easeOut" }}
       className="min-h-screen flex relative overflow-hidden"
     >
       {/* Subtle Noise Filter Backdrop Overlay */}
@@ -1116,10 +1119,13 @@ export default function OfficerDashboard() {
                           <div className={`text-xs ${isDark ? "text-red-400/60" : "text-red-600/70"}`}>Awaiting officer review</div>
                         </div>
                       </div>
-                      <button onClick={() => { setActiveTab('submit'); setSubTab('Pending'); }}
+                      <motion.button 
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => { setActiveTab('submit'); setSubTab('Pending'); }}
                         className="bg-red-600 hover:bg-red-700 text-white text-xs font-black px-4 py-2 rounded-xl transition cursor-pointer shrink-0 shadow-lg shadow-red-500/15">
                         Review →
-                      </button>
+                      </motion.button>
                     </div>
                     <div className={`border rounded-2xl p-4 flex items-center justify-between gap-3 text-left ${
                       isDark ? "bg-blue-500/5 border-blue-500/20" : "bg-blue-50 border-blue-200"
@@ -1133,10 +1139,13 @@ export default function OfficerDashboard() {
                           <div className={`text-xs ${isDark ? "text-blue-400/60" : "text-blue-600/70"}`}>Messages from citizens</div>
                         </div>
                       </div>
-                      <button onClick={() => setActiveTab('messages')}
+                      <motion.button 
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setActiveTab('messages')}
                         className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-black px-4 py-2 rounded-xl transition cursor-pointer shrink-0 shadow-lg shadow-blue-500/15">
                         Open →
-                      </button>
+                      </motion.button>
                     </div>
                   </div>
 
@@ -1420,16 +1429,21 @@ export default function OfficerDashboard() {
                       </p>
                     </div>
                   ) : (
-                    assignedIssues.map((issue) => (
-                      <PremiumGlowCard
+                    assignedIssues.map((issue, idx) => (
+                      <motion.div
                         key={issue.docId || issue.id}
-                        className={`p-5 relative ${
-                          issue.severity === 'Critical' ? 'border-l-4 border-l-red-500' :
-                          issue.severity === 'High' ? 'border-l-4 border-l-orange-500' :
-                          issue.severity === 'Medium' ? 'border-l-4 border-l-yellow-500' :
-                          'border-l-4 border-l-green-500'
-                        }`}
+                        initial={{ opacity: 0, y: 15 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: idx * 0.05, type: 'spring', stiffness: 260, damping: 24 }}
                       >
+                        <PremiumGlowCard
+                          className={`p-5 relative ${
+                            issue.severity === 'Critical' ? 'border-l-4 border-l-red-500' :
+                            issue.severity === 'High' ? 'border-l-4 border-l-orange-500' :
+                            issue.severity === 'Medium' ? 'border-l-4 border-l-yellow-500' :
+                            'border-l-4 border-l-green-500'
+                          }`}
+                        >
                         {/* TOP Section */}
                         <div className="flex gap-4 items-start text-left">
                           <img
@@ -1644,7 +1658,8 @@ export default function OfficerDashboard() {
                           </div>
                         )}
                       </PremiumGlowCard>
-                    ))
+                    </motion.div>
+                  ))
                   )}
                 </div>
               </div>
