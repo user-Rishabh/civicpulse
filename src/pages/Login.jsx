@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { auth, db } from "../lib/firebase";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc } from "firebase/firestore";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTheme } from "../context/ThemeContext";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -127,15 +128,70 @@ export default function Login() {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    setError("");
+    setIsSubmitting(true);
+    const provider = new GoogleAuthProvider();
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      // Check if user document exists in Firestore
+      const userDocRef = doc(db, "users", user.uid);
+      const userDocSnap = await getDoc(userDocRef);
+      if (!userDocSnap.exists()) {
+        // Create a new citizen profile
+        await setDoc(userDocRef, {
+          uid: user.uid,
+          email: user.email,
+          name: user.displayName || "Citizen",
+          role: "citizen",
+          createdAt: new Date().toISOString(),
+        });
+      }
+      navigate("/dashboard");
+    } catch (err) {
+      console.error("Google sign in error:", err);
+      let message = "Failed to sign in with Google. Please try again.";
+      if (err.code === "auth/popup-closed-by-user") {
+        message = "Sign in popup closed before completion.";
+      } else if (err.code === "auth/popup-blocked") {
+        message = "Pop-up blocked by the browser. Please enable pop-ups and try again.";
+      }
+      setError(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const { isDark } = useTheme();
+
+  const t = {
+    bg: isDark ? 'bg-[#0A0F1E]' : 'bg-[#EEF2FF]',
+    panelLeft: isDark 
+      ? 'bg-gradient-to-br from-blue-900/50 via-[#0A0F1E] to-cyan-900/30 border-r border-[#374151]' 
+      : 'bg-gradient-to-br from-blue-100/50 via-[#EEF2FF] to-cyan-100/30 border-r border-[#C7D7F9]',
+    panelRight: isDark ? 'bg-[#0A0F1E]' : 'bg-[#EEF2FF]',
+    text: isDark ? 'text-white' : 'text-[#1E293B]',
+    textMuted: isDark ? 'text-[#9CA3AF]' : 'text-[#475569]',
+    cardBg: isDark ? 'bg-white/5' : 'bg-white/40',
+    cardBorder: isDark ? 'border-white/5' : 'border-[#C7D7F9]',
+    inputBg: isDark ? 'bg-[#111827]' : 'bg-white',
+    inputBorder: isDark ? 'border-[#374151]' : 'border-[#C7D7F9]',
+    tabContainer: isDark ? 'bg-[#111827] border-[#374151]/30' : 'bg-slate-200/60 border-[#C7D7F9]/30',
+    dividerBorder: isDark ? 'border-[#374151]/50' : 'border-slate-300/60',
+    btnOutlineBorder: isDark ? 'border-[#374151] hover:border-[#6B7280]' : 'border-[#C7D7F9] hover:border-blue-400',
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45, ease: "easeOut" }}
-      className="bg-[#0A0F1E] min-h-screen text-[#F9FAFB] flex relative overflow-hidden w-full"
+      className={`${t.bg} min-h-screen ${t.text} flex relative overflow-hidden w-full`}
     >
       {/* LEFT PANEL (hidden md:flex w-1/2 relative overflow-hidden) */}
-      <div className="hidden md:flex md:w-1/2 relative overflow-hidden bg-gradient-to-br from-blue-900/50 via-[#0A0F1E] to-cyan-900/30 border-r border-[#374151] flex-col justify-center px-16">
+      <div className={`hidden md:flex md:w-1/2 relative overflow-hidden ${t.panelLeft} flex-col justify-center px-16`}>
         {/* Background orbs */}
         <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-cyan-600/10 rounded-full blur-3xl pointer-events-none" />
@@ -146,7 +202,7 @@ export default function Login() {
             <span>⚡</span> CivicPulse
           </div>
           
-          <h1 className="text-5xl font-black text-white leading-tight">
+          <h1 className={`text-5xl font-black ${t.text} leading-tight`}>
             Making Cities <br />
             Smarter, <br />
             One Report <br />
@@ -155,7 +211,7 @@ export default function Login() {
           
           <div className="w-16 h-1 bg-blue-500 rounded mt-6"></div>
           
-          <p className="text-[#9CA3AF] mt-6 text-lg max-w-sm leading-relaxed font-medium">
+          <p className={`${t.textMuted} mt-6 text-lg max-w-sm leading-relaxed font-medium`}>
             Join citizens across Maharashtra reporting and resolving civic issues with the power of AI.
           </p>
           
@@ -166,7 +222,7 @@ export default function Login() {
               { icon: "📍", text: "Real-time location tracking" },
               { icon: "🔔", text: "Instant status notifications" }
             ].map((feat, idx) => (
-              <div key={idx} className="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-3 border border-white/5 hover:bg-white/10 transition-colors duration-200 text-white text-sm font-semibold">
+              <div key={idx} className={`flex items-center gap-3 ${t.cardBg} rounded-xl px-4 py-3 border ${t.cardBorder} hover:bg-white/10 dark:hover:bg-white/10 transition-colors duration-200 ${t.text} text-sm font-semibold`}>
                 <span className="text-lg">{feat.icon}</span>
                 <span>{feat.text}</span>
               </div>
@@ -176,7 +232,7 @@ export default function Login() {
       </div>
 
       {/* RIGHT PANEL (w-full md:w-1/2 flex items-center justify-center px-8 py-12) */}
-      <div className="w-full md:w-1/2 flex items-center justify-center bg-[#0A0F1E] px-8 py-12 relative z-10 overflow-y-auto">
+      <div className={`w-full md:w-1/2 flex items-center justify-center ${t.panelRight} px-8 py-12 relative z-10 overflow-y-auto`}>
         <div className="w-full max-w-md">
           {/* Mobile brand header */}
           <div className="md:hidden flex justify-center mb-8">
@@ -186,17 +242,17 @@ export default function Login() {
           </div>
 
           {/* Heading */}
-          <h2 className="text-3xl font-black text-white">
+          <h2 className={`text-3xl font-black ${t.text}`}>
             {isLoginTab ? "Welcome back" : "Create account"}
           </h2>
-          <p className="text-[#9CA3AF] text-sm mt-2 font-medium">
+          <p className={`${t.textMuted} text-sm mt-2 font-medium`}>
             {isLoginTab 
               ? "Enter your details to access your account" 
               : "Register to start making your neighborhood cleaner and safer"}
           </p>
 
           {/* Tabs */}
-          <div className="flex bg-[#111827] rounded-2xl p-1 mt-8 border border-[#374151]/30">
+          <div className={`flex ${t.tabContainer} rounded-2xl p-1 mt-8`}>
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -204,7 +260,7 @@ export default function Login() {
               className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 cursor-pointer text-center bg-transparent border-none outline-none"
               style={{
                 backgroundColor: isLoginTab ? "#2563EB" : "transparent",
-                color: isLoginTab ? "#FFFFFF" : "#9CA3AF",
+                color: isLoginTab ? "#FFFFFF" : (isDark ? "#9CA3AF" : "#475569"),
               }}
             >
               Login
@@ -216,7 +272,7 @@ export default function Login() {
               className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 cursor-pointer text-center bg-transparent border-none outline-none"
               style={{
                 backgroundColor: !isLoginTab ? "#2563EB" : "transparent",
-                color: !isLoginTab ? "#FFFFFF" : "#9CA3AF",
+                color: !isLoginTab ? "#FFFFFF" : (isDark ? "#9CA3AF" : "#475569"),
               }}
             >
               Sign Up
@@ -236,7 +292,7 @@ export default function Login() {
             {!isLoginTab && (
               // SIGNUP FULL NAME
               <div>
-                <label className="text-[#9CA3AF] text-xs font-semibold uppercase tracking-wider mb-2 block">
+                <label className={`${t.textMuted} text-xs font-semibold uppercase tracking-wider mb-2 block`}>
                   Full Name
                 </label>
                 <input
@@ -246,13 +302,13 @@ export default function Login() {
                   value={formData.fullName}
                   onChange={handleInputChange}
                   placeholder="John Doe"
-                  className="w-full bg-[#111827] border border-[#374151] rounded-xl px-4 py-3.5 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition text-sm placeholder text-[#4B5563]"
+                  className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3.5 ${t.text} focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition text-sm placeholder-${isDark ? 'text-[#4B5563]' : 'text-slate-400'}`}
                 />
               </div>
             )}
 
             <div>
-              <label className="text-[#9CA3AF] text-xs font-semibold uppercase tracking-wider mb-2 block">
+              <label className={`${t.textMuted} text-xs font-semibold uppercase tracking-wider mb-2 block`}>
                 Email Address
               </label>
               <input
@@ -262,12 +318,12 @@ export default function Login() {
                 value={formData.email}
                 onChange={handleInputChange}
                 placeholder="you@example.com"
-                className="w-full bg-[#111827] border border-[#374151] rounded-xl px-4 py-3.5 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition text-sm placeholder text-[#4B5563]"
+                className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3.5 ${t.text} focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition text-sm placeholder-${isDark ? 'text-[#4B5563]' : 'text-slate-400'}`}
               />
             </div>
 
             <div>
-              <label className="text-[#9CA3AF] text-xs font-semibold uppercase tracking-wider mb-2 block">
+              <label className={`${t.textMuted} text-xs font-semibold uppercase tracking-wider mb-2 block`}>
                 Password
               </label>
               <input
@@ -277,7 +333,7 @@ export default function Login() {
                 value={formData.password}
                 onChange={handleInputChange}
                 placeholder="••••••••"
-                className="w-full bg-[#111827] border border-[#374151] rounded-xl px-4 py-3.5 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition text-sm placeholder text-[#4B5563]"
+                className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3.5 ${t.text} focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition text-sm placeholder-${isDark ? 'text-[#4B5563]' : 'text-slate-400'}`}
               />
             </div>
 
@@ -285,7 +341,7 @@ export default function Login() {
               // CONFIRM PASSWORD FOR SIGNUP
               <>
                 <div>
-                  <label className="text-[#9CA3AF] text-xs font-semibold uppercase tracking-wider mb-2 block">
+                  <label className={`${t.textMuted} text-xs font-semibold uppercase tracking-wider mb-2 block`}>
                     Confirm Password
                   </label>
                   <input
@@ -295,13 +351,13 @@ export default function Login() {
                     value={formData.confirmPassword}
                     onChange={handleInputChange}
                     placeholder="••••••••"
-                    className="w-full bg-[#111827] border border-[#374151] rounded-xl px-4 py-3.5 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition text-sm placeholder text-[#4B5563]"
+                    className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3.5 ${t.text} focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition text-sm placeholder-${isDark ? 'text-[#4B5563]' : 'text-slate-400'}`}
                   />
                 </div>
 
                 {/* SIGNUP ROLE CARDS */}
                 <div className="mt-4">
-                  <span className="text-[#9CA3AF] text-xs uppercase tracking-wider mb-3 block font-semibold">
+                  <span className={`${t.textMuted} text-xs uppercase tracking-wider mb-3 block font-semibold`}>
                     I am a...
                   </span>
                   <div className="grid grid-cols-2 gap-3">
@@ -311,15 +367,15 @@ export default function Login() {
                         setRole("citizen");
                         setError("");
                       }}
-                      className={`bg-[#111827] border-2 rounded-2xl p-4 cursor-pointer text-center transition-all duration-200 flex flex-col items-center justify-center ${
+                      className={`${t.inputBg} border-2 rounded-2xl p-4 cursor-pointer text-center transition-all duration-200 flex flex-col items-center justify-center ${
                         role === "citizen"
                           ? "border-blue-500 bg-blue-500/10"
-                          : "border-[#374151] hover:border-[#6B7280]"
+                          : `${t.inputBorder} hover:border-blue-400`
                       }`}
                     >
                       <span className="text-3xl">👤</span>
-                      <span className="text-white font-semibold text-sm mt-2">Citizen</span>
-                      <span className="text-[#9CA3AF] text-[11px] mt-1 leading-tight">
+                      <span className={`${t.text} font-semibold text-sm mt-2`}>Citizen</span>
+                      <span className={`${t.textMuted} text-[11px] mt-1 leading-tight`}>
                         Report civic issues
                       </span>
                     </div>
@@ -330,15 +386,15 @@ export default function Login() {
                         setRole("officer");
                         setError("");
                       }}
-                      className={`bg-[#111827] border-2 rounded-2xl p-4 cursor-pointer text-center transition-all duration-200 flex flex-col items-center justify-center ${
+                      className={`${t.inputBg} border-2 rounded-2xl p-4 cursor-pointer text-center transition-all duration-200 flex flex-col items-center justify-center ${
                         role === "officer"
                           ? "border-amber-500 bg-amber-500/10"
-                          : "border-[#374151] hover:border-[#6B7280]"
+                          : `${t.inputBorder} hover:border-blue-400`
                       }`}
                     >
                       <span className="text-3xl">🏛️</span>
-                      <span className="text-white font-semibold text-sm mt-2">Officer</span>
-                      <span className="text-[#9CA3AF] text-[11px] mt-1 leading-tight">
+                      <span className={`${t.text} font-semibold text-sm mt-2`}>Officer</span>
+                      <span className={`${t.textMuted} text-[11px] mt-1 leading-tight`}>
                         Manage & resolve
                       </span>
                     </div>
@@ -356,7 +412,7 @@ export default function Login() {
                       className="space-y-4 pt-2 overflow-hidden"
                     >
                       <div>
-                        <label className="text-[#9CA3AF] text-xs font-semibold uppercase tracking-wider mb-2 block">
+                        <label className={`${t.textMuted} text-xs font-semibold uppercase tracking-wider mb-2 block`}>
                           Officer Authorization Code
                         </label>
                         <input
@@ -365,18 +421,18 @@ export default function Login() {
                           value={officerCode}
                           onChange={(e) => setOfficerCode(e.target.value)}
                           placeholder="Enter officer authorization code"
-                          className="w-full bg-[#111827] border border-[#374151] rounded-xl px-4 py-3.5 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition text-sm placeholder text-[#4B5563]"
+                          className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3.5 ${t.text} focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition text-sm placeholder-${isDark ? 'text-[#4B5563]' : 'text-slate-400'}`}
                         />
                       </div>
 
                       <div>
-                        <label className="text-[#9CA3AF] text-xs font-semibold uppercase tracking-wider mb-2 block">
+                        <label className={`${t.textMuted} text-xs font-semibold uppercase tracking-wider mb-2 block`}>
                           Assigned Department
                         </label>
                         <select
                           value={department}
                           onChange={(e) => setDepartment(e.target.value)}
-                          className="w-full bg-[#111827] border border-[#374151] rounded-xl px-4 py-3.5 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition text-sm cursor-pointer"
+                          className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3.5 ${t.text} focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition text-sm cursor-pointer`}
                         >
                           <option value="BMC">BMC (Brihanmumbai Municipal Corporation)</option>
                           <option value="MSEDCL">MSEDCL (Electricity Board)</option>
@@ -412,19 +468,21 @@ export default function Login() {
 
           {/* DIVIDER */}
           <div className="relative flex py-5 items-center mt-6 select-none">
-            <div className="flex-grow border-t border-[#374151]/50"></div>
-            <span className="flex-shrink mx-4 text-[#6B7280] text-xs font-semibold uppercase tracking-wider">
+            <div className={`flex-grow border-t ${t.dividerBorder}`}></div>
+            <span className={`flex-shrink mx-4 ${t.textMuted} text-xs font-semibold uppercase tracking-wider`}>
               or continue with
             </span>
-            <div className="flex-grow border-t border-[#374151]/50"></div>
+            <div className={`flex-grow border-t ${t.dividerBorder}`}></div>
           </div>
 
-          {/* GOOGLE SIGN IN button (visual only, no functionality) */}
+          {/* GOOGLE SIGN IN button */}
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
+            onClick={handleGoogleSignIn}
+            disabled={isSubmitting}
             type="button"
-            className="w-full border border-[#374151] hover:border-[#6B7280] rounded-2xl py-3.5 flex items-center justify-center gap-3 text-white text-sm transition font-medium cursor-pointer bg-transparent"
+            className={`w-full border ${t.btnOutlineBorder} rounded-2xl py-3.5 flex items-center justify-center gap-3 ${t.text} text-sm transition font-medium cursor-pointer bg-transparent disabled:opacity-50`}
           >
             <div className="w-5 h-5 rounded-full bg-white flex items-center justify-center text-xs font-bold text-gray-800">
               G

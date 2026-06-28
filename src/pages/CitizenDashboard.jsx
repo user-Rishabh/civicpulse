@@ -3242,6 +3242,178 @@ export default function CitizenDashboard() {
               Citizen
             </span>
           </div>
+
+          {/* Quick Actions (Leaderboard & Notifications) */}
+          {(() => {
+            const unreadCount = notifications.filter(n => !n.read).length;
+            const markAllRead = async () => {
+              const unread = notifications.filter(n => !n.read);
+              for (const n of unread) {
+                if (n.docId) {
+                  await updateDoc(doc(db, "notifications", n.docId), { read: true });
+                }
+              }
+            };
+            const markOneRead = async (notif) => {
+              if (notif.docId) {
+                await updateDoc(doc(db, "notifications", notif.docId), { read: true });
+              }
+              setNotifOpen(false);
+              if (notif.issueId) {
+                try {
+                  const issueDoc = await getDoc(doc(db, "issues", String(notif.issueId)));
+                  if (issueDoc.exists()) {
+                    setSelectedIssue({ docId: issueDoc.id, ...issueDoc.data() });
+                    setActiveTab('community');
+                  }
+                } catch (e) {
+                  console.error("Failed to load issue from notification:", e);
+                  setActiveTab('track');
+                }
+              } else {
+                setActiveTab('track');
+              }
+            };
+
+            return (
+              <div className="flex justify-center items-center gap-3 mt-4">
+                {/* Leaderboard Dropdown */}
+                <div className="relative">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => {
+                      setLeaderboardOpen(!leaderboardOpen);
+                      setNotifOpen(false);
+                    }}
+                    className={`w-10 h-10 flex items-center justify-center rounded-xl hover:border-blue-500/50 transition cursor-pointer ${bgSurface} ${borderTheme} ${textTheme}`}
+                  >
+                    <span className="text-lg">🏆</span>
+                  </motion.button>
+                  <AnimatePresence>
+                    {leaderboardOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, x: -15, scale: 0.95 }}
+                        animate={{ opacity: 1, x: 0, scale: 1 }}
+                        exit={{ opacity: 0, x: -15, scale: 0.95 }}
+                        transition={{ duration: 0.25, ease: "easeOut" }}
+                        className={`absolute left-full top-0 ml-3 w-80 rounded-2xl p-4 shadow-2xl shadow-black/50 ${bgSurface} ${borderTheme} z-50`}
+                      >
+                        <div className="flex items-center justify-between mb-3 border-b border-[#1F2937]/50 pb-2">
+                          <span className={`font-bold text-sm ${textTheme}`}>Top Contributors This Week</span>
+                        </div>
+                        <div className="space-y-2">
+                          {leaderboard.length === 0 ? (
+                            <p className={`text-xs text-center py-4 ${textMuted}`}>No contributors yet</p>
+                          ) : (
+                            leaderboard.map((contrib, index) => {
+                              const rankStyles = [
+                                { badge: "bg-yellow-500 text-black", emoji: "🥇" },
+                                { badge: "bg-gray-400 text-black", emoji: "🥈" },
+                                { badge: "bg-amber-600 text-white", emoji: "🥉" }
+                              ];
+                              const style = rankStyles[index] || { badge: "bg-gray-700 text-white", emoji: `${index + 1}` };
+                              return (
+                                <div key={contrib.name} className="flex items-center gap-3 bg-[#1F2937] rounded-xl p-3">
+                                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${style.badge}`}>
+                                    {style.emoji}
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="text-white text-sm font-semibold truncate">{contrib.name}</div>
+                                    <div className="text-[#9CA3AF] text-xs">{contrib.count} reports</div>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* Notification Bell Dropdown */}
+                <div className="relative">
+                  <motion.button
+                    animate={unreadCount > 0 ? {
+                      scale: [1, 1.06, 1],
+                      boxShadow: isDark
+                        ? ["0 0 0 rgba(59, 130, 246, 0)", "0 0 10px rgba(59, 130, 246, 0.4)", "0 0 0 rgba(59, 130, 246, 0)"]
+                        : ["0 0 0 rgba(59, 130, 246, 0)", "0 0 10px rgba(59, 130, 246, 0.25)", "0 0 0 rgba(59, 130, 246, 0)"]
+                    } : {}}
+                    transition={unreadCount > 0 ? {
+                      repeat: Infinity,
+                      duration: 1.8,
+                      ease: "easeInOut"
+                    } : {}}
+                    onClick={() => {
+                      setNotifOpen(!notifOpen);
+                      setLeaderboardOpen(false);
+                    }}
+                    className={`relative w-10 h-10 flex items-center justify-center rounded-xl hover:border-blue-500/50 transition cursor-pointer ${bgSurface} ${borderTheme} ${textTheme}`}
+                  >
+                    <span className="text-lg">🔔</span>
+                    {unreadCount > 0 && (
+                      <motion.span
+                        key={unreadCount}
+                        initial={{ scale: 0.5, y: -12 }}
+                        animate={{ scale: 1, y: [0, -10, 0] }}
+                        transition={{ duration: 0.6, ease: "easeOut" }}
+                        className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow"
+                      >
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </motion.span>
+                    )}
+                  </motion.button>
+                  <AnimatePresence>
+                    {notifOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, x: -15, scale: 0.95 }}
+                        animate={{ opacity: 1, x: 0, scale: 1 }}
+                        exit={{ opacity: 0, x: -15, scale: 0.95 }}
+                        transition={{ duration: 0.25, ease: "easeOut" }}
+                        className={`absolute left-full top-0 ml-3 w-80 rounded-2xl p-4 shadow-2xl shadow-black/50 ${bgSurface} ${borderTheme} z-50 text-left`}
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <span className={`font-bold text-sm ${textTheme}`}>Notifications</span>
+                          {unreadCount > 0 && (
+                            <motion.button
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={markAllRead}
+                              className="text-blue-400 text-xs font-semibold hover:text-blue-300 cursor-pointer bg-transparent border-none"
+                            >
+                              Mark all as read
+                            </motion.button>
+                          )}
+                        </div>
+                        <div className="max-h-72 overflow-y-auto space-y-2">
+                          {notifications.length === 0 ? (
+                            <p className={`text-xs text-center py-4 ${textMuted}`}>No notifications yet</p>
+                          ) : (
+                            notifications.map(notif => (
+                              <div
+                                key={notif.docId || notif.id}
+                                onClick={() => markOneRead(notif)}
+                                className={`rounded-xl p-3 cursor-pointer transition ${bgSurface2} ${isDark ? 'hover:bg-[#374151]/50' : 'hover:bg-[#E2E8F0]/50'} ${
+                                  !notif.read ? 'border-l-4 border-blue-500' : ''
+                                }`}
+                              >
+                                <p className={`text-xs leading-relaxed ${textTheme}`}>{notif.message}</p>
+                                <p className={`text-[10px] mt-1 ${textSubtle}`}>
+                                  {new Date(notif.createdAt).toLocaleString()}
+                                </p>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
         {/* NAV ITEMS (Hover link slides & rotating icons) */}
@@ -3321,168 +3493,7 @@ export default function CitizenDashboard() {
           )}
         </AnimatePresence>
 
-        {/* NOTIFICATION BELL */}
-        {(() => {
-          const unreadCount = notifications.filter(n => !n.read).length;
-          const markAllRead = async () => {
-            const unread = notifications.filter(n => !n.read);
-            for (const n of unread) {
-              if (n.docId) {
-                await updateDoc(doc(db, "notifications", n.docId), { read: true });
-              }
-            }
-          };
-          const markOneRead = async (notif) => {
-            if (notif.docId) {
-              await updateDoc(doc(db, "notifications", notif.docId), { read: true });
-            }
-            setNotifOpen(false);
-            if (notif.issueId) {
-              try {
-                const issueDoc = await getDoc(doc(db, "issues", String(notif.issueId)));
-                if (issueDoc.exists()) {
-                  setSelectedIssue({ docId: issueDoc.id, ...issueDoc.data() });
-                  setActiveTab('community');
-                }
-              } catch (e) {
-                console.error("Failed to load issue from notification:", e);
-                setActiveTab('track');
-              }
-            } else {
-              setActiveTab('track');
-            }
-          };
-          return (
-            <div className="fixed top-20 right-8 z-50 flex items-center gap-3">
-              {/* Leaderboard Dropdown */}
-              <div className="relative">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => {
-                    setLeaderboardOpen(!leaderboardOpen);
-                    setNotifOpen(false);
-                  }}
-                  className={`w-10 h-10 flex items-center justify-center rounded-xl hover:border-blue-500/50 transition cursor-pointer ${bgSurface} ${borderTheme} ${textTheme}`}
-                >
-                  <span className="text-lg">🏆</span>
-                </motion.button>
-                {leaderboardOpen && (
-                  <div className={`absolute right-0 mt-2 w-80 rounded-2xl p-4 shadow-2xl shadow-black/50 ${bgSurface} ${borderTheme} z-50`}>
-                    <div className="flex items-center justify-between mb-3 border-b border-[#1F2937]/50 pb-2">
-                      <span className={`font-bold text-sm ${textTheme}`}>Top Contributors This Week</span>
-                    </div>
-                    <div className="space-y-2">
-                      {leaderboard.length === 0 ? (
-                        <p className={`text-xs text-center py-4 ${textMuted}`}>No contributors yet</p>
-                      ) : (
-                        leaderboard.map((contrib, index) => {
-                          const rankStyles = [
-                            { badge: "bg-yellow-500 text-black", emoji: "🥇" },
-                            { badge: "bg-gray-400 text-black", emoji: "🥈" },
-                            { badge: "bg-amber-600 text-white", emoji: "🥉" }
-                          ];
-                          const style = rankStyles[index] || { badge: "bg-gray-700 text-white", emoji: `${index + 1}` };
-                          return (
-                            <div key={contrib.name} className="flex items-center gap-3 bg-[#1F2937] rounded-xl p-3">
-                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${style.badge}`}>
-                                {style.emoji}
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <div className="text-white text-sm font-semibold truncate">{contrib.name}</div>
-                                <div className="text-[#9CA3AF] text-xs">{contrib.count} reports</div>
-                              </div>
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
 
-              {/* Notification Bell Dropdown */}
-              <div className="relative">
-                <motion.button
-                  animate={unreadCount > 0 ? {
-                    scale: [1, 1.06, 1],
-                    boxShadow: isDark
-                      ? ["0 0 0 rgba(59, 130, 246, 0)", "0 0 10px rgba(59, 130, 246, 0.4)", "0 0 0 rgba(59, 130, 246, 0)"]
-                      : ["0 0 0 rgba(59, 130, 246, 0)", "0 0 10px rgba(59, 130, 246, 0.25)", "0 0 0 rgba(59, 130, 246, 0)"]
-                  } : {}}
-                  transition={unreadCount > 0 ? {
-                    repeat: Infinity,
-                    duration: 1.8,
-                    ease: "easeInOut"
-                  } : {}}
-                  onClick={() => {
-                    setNotifOpen(!notifOpen);
-                    setLeaderboardOpen(false);
-                  }}
-                  className={`relative w-10 h-10 flex items-center justify-center rounded-xl hover:border-blue-500/50 transition cursor-pointer ${bgSurface} ${borderTheme} ${textTheme}`}
-                >
-                  <span className="text-lg">&#x1F514;</span>
-                  {unreadCount > 0 && (
-                    <motion.span
-                      key={unreadCount}
-                      initial={{ scale: 0.5, y: -12 }}
-                      animate={{ scale: 1, y: [0, -10, 0] }}
-                      transition={{ duration: 0.6, ease: "easeOut" }}
-                      className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow"
-                    >
-                      {unreadCount > 9 ? '9+' : unreadCount}
-                    </motion.span>
-                  )}
-                </motion.button>
-                <AnimatePresence>
-                  {notifOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -15, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -15, scale: 0.95 }}
-                      transition={{ duration: 0.25, ease: "easeOut" }}
-                      className={`absolute right-0 mt-2 w-80 rounded-2xl p-4 shadow-2xl shadow-black/50 ${bgSurface} ${borderTheme} z-50`}
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <span className={`font-bold text-sm ${textTheme}`}>Notifications</span>
-                        {unreadCount > 0 && (
-                          <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={markAllRead}
-                            className="text-blue-400 text-xs font-semibold hover:text-blue-300 cursor-pointer bg-transparent border-none"
-                          >
-                            Mark all as read
-                          </motion.button>
-                        )}
-                      </div>
-                      <div className="max-h-72 overflow-y-auto space-y-2">
-                        {notifications.length === 0 ? (
-                          <p className={`text-xs text-center py-4 ${textMuted}`}>No notifications yet</p>
-                        ) : (
-                          notifications.map(notif => (
-                            <div
-                              key={notif.docId || notif.id}
-                              onClick={() => markOneRead(notif)}
-                              className={`rounded-xl p-3 cursor-pointer transition ${bgSurface2} ${isDark ? 'hover:bg-[#374151]/50' : 'hover:bg-[#E2E8F0]/50'} ${
-                                !notif.read ? 'border-l-4 border-blue-500' : ''
-                              }`}
-                            >
-                              <p className={`text-xs leading-relaxed ${textTheme}`}>{notif.message}</p>
-                              <p className={`text-[10px] mt-1 ${textSubtle}`}>
-                                {new Date(notif.createdAt).toLocaleString()}
-                              </p>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </div>
-          );
-        })()}
 
         {loading ? (
           <div className="flex flex-col items-center justify-center py-32">
