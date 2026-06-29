@@ -28,12 +28,12 @@ async function generateContentWithFallback(contents) {
 }
 
 export async function analyzeIssueImage(base64Data, mimeType) {
-  const prompt = `You are a civic issue analyzer for Indian cities (Mumbai/Maharashtra focus).
+  const prompt = `You are a civic issue analyzer for Indian cities.
 Analyze this image and return ONLY raw JSON, no markdown, no backticks:
 {
   "category": "one of: Pothole, Water Leak, Broken Streetlight, Garbage Dumping, Damaged Road, Encroachment, Flooding, Other",
   "severity": "one of: Low, Medium, High, Critical",
-  "department": "one of: BMC, MSEDCL, NMMC, PWD, Traffic Police, Other",
+  "department": "one of: PWD, Water Department, Electricity, Garbage, Traffic Police, Health, Drainage, Environment, Other",
   "description": "2 sentence description of the civic issue visible",
   "suggested_action": "one specific actionable sentence for the municipal department",
   "is_valid_issue": true or false,

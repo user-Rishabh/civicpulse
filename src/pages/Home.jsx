@@ -555,7 +555,7 @@ function LiveSmartCityFeed() {
     "🚧 Water leakage detected at Dadar Market",
     "⚡ Streetlight repaired near Juhu Beach",
     "🚮 Garbage pile resolved in Ward 3",
-    "🤖 AI assigned issue to BMC Roads Div",
+    "🤖 AI assigned issue to PWD Div",
     "✓ AI verified manhole cover resolution"
   ]);
   const [index, setIndex] = useState(0);
@@ -572,7 +572,7 @@ function LiveSmartCityFeed() {
         const realEvents = dbIssues.map(issue => {
           const status = (issue.status || "").toLowerCase();
           const category = issue.category || "Issue";
-          const location = issue.location || "Mumbai";
+          const location = issue.location || "Local Area";
           const shortLoc = location.split(",")[0].trim();
           
           if (status === "resolved") {
@@ -596,7 +596,7 @@ function LiveSmartCityFeed() {
             const localEvents = issues.map(issue => {
               const status = (issue.status || "").toLowerCase();
               const category = issue.category || "Issue";
-              const location = issue.location || "Mumbai";
+              const location = issue.location || "Local Area";
               const shortLoc = location.split(",")[0].trim();
               if (status === "resolved") return `✅ ${category} resolved at ${shortLoc}`;
               if (status === "in progress") return `⚡ ${category} repair in progress at ${shortLoc}`;
@@ -772,11 +772,11 @@ function LivingCityBackground() {
 
 // Mock issues for Leaflet Map Preview
 const MOCK_ISSUES = [
-  { id: "mock-1", category: "Pothole", severity: "Critical", status: "In Progress", description: "Deep crater causing traffic gridlock on Linking Road.", location: "Linking Road, Bandra West", coordinates: [19.0596, 72.8295] },
-  { id: "mock-2", category: "Streetlight", severity: "Medium", status: "Resolved", description: "Streetlight flickering at night near the beach.", location: "Juhu Tara Road, Juhu", coordinates: [19.1136, 72.8697] },
+  { id: "mock-1", category: "Pothole", severity: "Critical", status: "In Progress", description: "Deep crater causing traffic gridlock.", location: "Linking Road", coordinates: [19.0596, 72.8295] },
+  { id: "mock-2", category: "Streetlight", severity: "Medium", status: "Resolved", description: "Streetlight flickering at night.", location: "Juhu Tara Road", coordinates: [19.1136, 72.8697] },
   { id: "mock-3", category: "Garbage", severity: "High", status: "Under Investigation", description: "Pile of plastic wastes clogging the drainage.", location: "Dadar West Market", coordinates: [19.0178, 72.8478] },
-  { id: "mock-4", category: "Water Leakage", severity: "High", status: "In Progress", description: "Water pipeline burst causing waste of drinking water.", location: "Colaba Causeway", coordinates: [19.0330, 72.8397] },
-  { id: "mock-5", category: "Manhole", severity: "Critical", status: "In Progress", description: "Open sewer manhole near the station exit.", location: "Andheri East Station", coordinates: [19.0760, 72.8777] }
+  { id: "mock-4", category: "Water Leakage", severity: "High", status: "In Progress", description: "Water pipeline burst causing waste.", location: "Colaba Causeway", coordinates: [19.0330, 72.8397] },
+  { id: "mock-5", category: "Manhole", severity: "Critical", status: "In Progress", description: "Open sewer manhole.", location: "Andheri East Station", coordinates: [19.0760, 72.8777] }
 ];
 
 export default function Home() {
@@ -836,7 +836,7 @@ export default function Home() {
       "📍 Water leakage reported near Dadar West",
       "🚧 Critical pothole reported in Bandra West",
       "⚡ Streetlight repair verified in Juhu tara",
-      "🚮 Garbage pile resolved by BMC sanitation crew"
+      "🚮 Garbage pile resolved by sanitation crew"
     ];
     const alertInterval = setInterval(() => {
       const randomAlert = alerts[Math.floor(Math.random() * alerts.length)];
@@ -1213,15 +1213,15 @@ export default function Home() {
 
               {/* Photo Area */}
               <div className={`h-44 w-full rounded-xl flex flex-col items-center justify-center relative overflow-hidden mb-3.5 border ${isDark ? "bg-gradient-to-br from-slate-900 to-[#0F172A] border-white/5" : "bg-gradient-to-br from-slate-100 to-slate-200 border-slate-300/30"}`}>
-                {/* Real Mumbai Pothole Image */}
+                {/* Real Pothole Image */}
                 <img
-                  src="/img_pothole_mumbai.png"
-                  alt="Mumbai Pothole"
+                  src="/img_pothole.png"
+                  alt="Infrastructure Issue"
                   className="absolute inset-0 w-full h-full object-cover z-0"
                 />
 
                 <div className="absolute top-2 left-2 bg-black/75 backdrop-blur-md text-white text-[9px] font-extrabold px-2.5 py-1 rounded-md border border-white/5 z-10">
-                  📍 19.0760° N, 72.8777° E
+                  📍 Reported Coordinates
                 </div>
                 
                 {/* Simulated Object Detection Box (Appears at step 3) */}
@@ -1246,7 +1246,7 @@ export default function Home() {
                     <svg className="w-10 h-10 text-white/90 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
-                    <span className="text-white/95 text-[10px] font-black tracking-wider uppercase">Loading img_pothole_mumbai.jpg</span>
+                    <span className="text-white/95 text-[10px] font-black tracking-wider uppercase">Loading image.jpg</span>
                   </div>
                 )}
               </div>
@@ -1264,9 +1264,9 @@ export default function Home() {
                   </div>
                 </div>
                 <div className={`rounded-xl p-3 border ${isDark ? "bg-[#030712] border-white/5" : "bg-white border-slate-200"}`}>
-                  <span className="text-[#64748B] font-extrabold uppercase text-[9px] tracking-wider">Assigned Ward</span>
+                  <span className="text-[#64748B] font-extrabold uppercase text-[9px] tracking-wider">Assigned Department</span>
                   <div className={`font-bold mt-0.5 ${isDark ? "text-white" : "text-[#0F172A]"}`}>
-                    {storyStep >= 6 ? "BMC H-West (Bandra)" : "Calculating..."}
+                    {storyStep >= 6 ? "Maintenance Division" : "Calculating..."}
                   </div>
                 </div>
                 <div className={`rounded-xl p-3 border ${isDark ? "bg-[#030712] border-white/5" : "bg-white border-slate-200"}`}>
@@ -1305,7 +1305,7 @@ export default function Home() {
               <div className="flex justify-between items-center text-[10px] text-slate-500 font-extrabold uppercase mt-2">
                 <span className={storyStep >= 1 ? "text-cyan-500 font-bold" : ""}>Upload</span>
                 <span className={storyStep >= 4 ? "text-cyan-500 font-bold" : ""}>AI verified</span>
-                <span className={storyStep >= 6 ? "text-cyan-500 font-bold" : ""}>BMC Dispatched</span>
+                <span className={storyStep >= 6 ? "text-cyan-500 font-bold" : ""}>Dispatched</span>
                 <span className={storyStep >= 7 ? "text-emerald-500 font-bold" : ""}>Resolved</span>
               </div>
             </div>
@@ -1359,7 +1359,7 @@ export default function Home() {
                   <div>
                     <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Pipeline Notification</div>
                     <div className={`text-xs font-black mt-0.5 ${isDark ? "text-white" : "text-[#0F172A]"}`}>
-                      {storyStep === 5 ? "Gemini detected Road Damage" : storyStep === 6 ? "Routed to BMC Roads Division" : "Issue Closed: Verified Fixed ✅"}
+                      {storyStep === 5 ? "Gemini detected Road Damage" : storyStep === 6 ? "Routed to Division" : "Issue Closed: Verified Fixed ✅"}
                     </div>
                   </div>
                 </motion.div>
@@ -1488,7 +1488,7 @@ export default function Home() {
             {
               icon: <TrendingUpIcon />,
               title: "Analytics Dashboard",
-              desc: "Track department resolution times, health scores, and open ticket frequencies across ward jurisdictions.",
+              desc: "Track department resolution times, health scores, and open ticket frequencies across jurisdictions.",
             },
             {
               icon: <BuildingIcon />,
@@ -1550,7 +1550,7 @@ export default function Home() {
             />
 
             {[
-              { step: "01", title: "Capture & Upload", desc: "Snap a photo of the pothole, trash, or leak in your ward and submit.", icon: <CameraIcon /> },
+              { step: "01", title: "Capture & Upload", desc: "Snap a photo of the pothole, trash, or leak in your locality and submit.", icon: <CameraIcon /> },
               { step: "02", title: "AI Analysis", desc: "Gemini AI scans, assigns category, severity, and proper department.", icon: <BrainIcon /> },
               { step: "03", title: "Official Intake", desc: "Municipal officers verify the ticket and assign a priority action plan.", icon: <SendIcon /> },
               { step: "04", title: "Track Progress", desc: "View the status bar go from Pending to In Progress. Upvote for urgency.", icon: <ClockIcon /> },
@@ -1584,7 +1584,7 @@ export default function Home() {
           {[
             { value: stats.total, label: "Reports Submitted", suffix: "+", desc: "Verifiable reports filed", icon: <CameraIcon />, chartD: "M0,15 C20,10 40,25 60,8 C80,10 90,5 100,12" },
             { value: stats.resolved, label: "Issues Resolved", suffix: "", desc: "AI-verified resolutions", icon: <CheckCircleIcon />, chartD: "M0,18 C15,10 30,5 50,15 C70,12 85,2 100,5" },
-            { value: stats.activeCitizens, label: "Active Citizens", suffix: "+", desc: "Contributing to ward improvements", icon: <UsersIcon />, chartD: "M0,15 Q25,8 50,12 T100,2" },
+            { value: stats.activeCitizens, label: "Active Citizens", suffix: "+", desc: "Contributing to local improvements", icon: <UsersIcon />, chartD: "M0,15 Q25,8 50,12 T100,2" },
             { value: stats.resolutionTime, label: "Resolution Time", suffix: " Days", decimals: 1, desc: "Average close-out delay", icon: <ClockIcon />, chartD: "M0,5 C30,15 70,5 100,18" }
           ].map((stat, idx) => {
             const [bursts, setBursts] = useState([]);
@@ -1685,10 +1685,10 @@ export default function Home() {
           {/* Map Info Block */}
           <div className="lg:col-span-4 text-left group">
             <div className="inline-flex items-center gap-2 bg-[#2563EB]/10 border border-blue-500/20 text-blue-400 px-3.5 py-1.5 rounded-full text-xs font-semibold tracking-wide w-fit mb-5">
-              Ward GIS Interface
+              GIS Interface
             </div>
             <h2 className="text-3xl md:text-4xl font-black tracking-tight leading-tight">
-              Visualise Issues Across Wards
+              Visualise Issues Locally
             </h2>
             <p className={`text-sm md:text-base mt-4 leading-relaxed font-semibold ${mutedTheme}`}>
               Track live pothole reports, broken streetlights, water leaks, and municipal activities mapped down to exact coordinates. Click on marker popups to inspect severity.
@@ -1735,7 +1735,7 @@ export default function Home() {
             Testimonials
           </div>
           <h2 className="text-3xl md:text-5xl font-black tracking-tight leading-tight">
-            Voices of Our Wards
+            Voices of Our Communities
           </h2>
           <p className={`text-lg md:text-xl mt-4 max-w-2xl mx-auto font-medium ${mutedTheme}`}>
             Hear how CivicPulse is helping communities and municipal bodies restore accountability.
@@ -1752,7 +1752,7 @@ export default function Home() {
               {
                 role: "Citizen",
                 name: "Rohan Deshmukh",
-                location: "Andheri West, Mumbai",
+                location: "Andheri West",
                 quote: "The speed is unbelievable. I snapped a photo of an open manhole near my local gym, Gemini identified the ward, and in 3 days it was covered. I've never seen such responsiveness.",
                 rating: 5,
                 avatarBg: "from-blue-500 to-indigo-600",
@@ -1761,7 +1761,7 @@ export default function Home() {
               {
                 role: "Municipal Officer",
                 name: "Officer A. K. Patil",
-                location: "BMC Road Dept",
+                location: "PWD Dept",
                 quote: "CivicPulse saves us hours of categorization. We get precise geo-tagged logs and severity ratings. Gemini photo-proof verification guarantees my ground team only submits verified fixes.",
                 rating: 5,
                 avatarBg: "from-emerald-500 to-teal-600",
@@ -1864,7 +1864,7 @@ export default function Home() {
               },
               {
                 q: "How does the AI auto-categorization work?",
-                a: "When you upload a photo, our backend routes it to Google Gemini 1.5 Flash. The model analyzes the image to identify the issue, determines its priority severity level, auto-detects your location details, and assigns it directly to the responsible municipal department (e.g. BMC Roads Div)."
+                a: "When you upload a photo, our backend routes it to Google Gemini 1.5 Flash. The model analyzes the image to identify the issue, determines its priority severity level, auto-detects your location details, and assigns it directly to the responsible municipal department (e.g. PWD)."
               },
               {
                 q: "How can I be sure the municipal officers are actually working on it?",
@@ -1898,7 +1898,7 @@ export default function Home() {
             Together We Build Better Cities
           </h2>
           <p className="text-blue-200/80 text-lg md:text-xl mt-6 max-w-2xl leading-relaxed font-semibold">
-            Join thousands of active citizens reporting issues and monitoring progress in Mumbai and Pune. Change starts in your street.
+            Join thousands of active citizens reporting issues and monitoring progress in your city. Change starts in your street.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 mt-10 w-full sm:w-auto justify-center">

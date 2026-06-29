@@ -263,7 +263,7 @@ export default function Report({ onViewReports }) {
             category: "Other",
             severity: "Medium",
             description: "Video evidence uploaded by citizen.",
-            department: "BMC General", 
+            department: "PWD", 
             suggested_action: "Officer to review video and take appropriate action.",
             estimated_resolution_days: 7,
             estimated_days: 7,
@@ -272,7 +272,7 @@ export default function Report({ onViewReports }) {
           setFormData({
             category: "Other",
             severity: "Medium",
-            department: "BMC General",
+            department: "PWD",
             description: "Video evidence uploaded by citizen.",
             suggested_action: "Officer to review video and take appropriate action.",
             location: "",
@@ -1252,11 +1252,14 @@ export default function Report({ onViewReports }) {
                         className={`${t.surface2} border ${t.border} rounded-xl px-4 py-3 ${t.text} focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none w-full text-sm transition cursor-pointer`}
                         required
                       >
-                        <option value="BMC">BMC (Brihanmumbai Municipal Corporation)</option>
-                        <option value="MSEDCL">MSEDCL (Electricity Board)</option>
-                        <option value="NMMC">NMMC (Navi Mumbai Municipal Corp.)</option>
-                        <option value="PWD">PWD (Public Works Department)</option>
+                        <option value="PWD">PWD</option>
+                        <option value="Water Department">Water Department</option>
+                        <option value="Electricity">Electricity</option>
+                        <option value="Garbage">Garbage</option>
                         <option value="Traffic Police">Traffic Police</option>
+                        <option value="Health">Health</option>
+                        <option value="Drainage">Drainage</option>
+                        <option value="Environment">Environment</option>
                         <option value="Other">Other</option>
                       </select>
                     </div>

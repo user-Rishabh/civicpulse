@@ -720,7 +720,7 @@ function ResolutionPathway({ issue, isDark, textTheme, textMuted, borderTheme, b
           <div>
             <div className={`text-[10px] font-black text-blue-400 uppercase tracking-wide`}>Citizen Advisory</div>
             <p className={`text-[11px] font-semibold mt-1 leading-relaxed ${isDark ? "text-slate-300" : "text-slate-600"}`}>
-              Your report has been matched to Mumbai's central database. You will receive an SMS notification as soon as the maintenance crew uploads the work verification photo.
+              Your report has been matched to the city's central database. You will receive an SMS notification as soon as the maintenance crew uploads the work verification photo.
             </p>
           </div>
         </div>
@@ -3831,7 +3831,7 @@ export default function CitizenDashboard() {
               <div className="space-y-6 animate-fade-in">
                 <div className="text-left">
                   <h2 className={`text-2xl font-bold ${textTheme} mb-2`}>Issue Map</h2>
-                  <p className={`${textMuted} mb-6`}>All civic issues reported across Mumbai</p>
+                  <p className={`${textMuted} mb-6`}>All civic issues reported across the city</p>
                 </div>
                 
                 {/* Filter buttons */}
@@ -3968,7 +3968,7 @@ export default function CitizenDashboard() {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <span className="text-slate-500 uppercase font-black text-[9px]">Department</span>
-                        <div className="font-semibold mt-0.5 text-purple-400">🏛 {verifyModalIssue.department || "BMC Roads Div"}</div>
+                        <div className="font-semibold mt-0.5 text-purple-400">🏛 {verifyModalIssue.department || "PWD"}</div>
                       </div>
                       <div>
                         <span className="text-slate-500 uppercase font-black text-[9px]">Current Trust</span>

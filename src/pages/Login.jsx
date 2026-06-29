@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail } from "firebase/auth";
 import { auth, db } from "../lib/firebase";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { motion, AnimatePresence } from "framer-motion";
@@ -11,10 +11,11 @@ export default function Login() {
   const [isLoginTab, setIsLoginTab] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   const [role, setRole] = useState("citizen");
   const [officerCode, setOfficerCode] = useState("");
-  const [department, setDepartment] = useState("BMC");
+  const [department, setDepartment] = useState("PWD");
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -34,9 +35,10 @@ export default function Login() {
   const handleTabChange = (loginTab) => {
     setIsLoginTab(loginTab);
     setError("");
+    setSuccessMessage("");
     setRole("citizen");
     setOfficerCode("");
-    setDepartment("BMC");
+    setDepartment("PWD");
     setFormData({
       fullName: "",
       email: "",
@@ -48,6 +50,7 @@ export default function Login() {
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setSuccessMessage("");
     setIsSubmitting(true);
 
     try {
@@ -72,6 +75,7 @@ export default function Login() {
   const handleSignUpSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setSuccessMessage("");
 
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match.");
@@ -128,8 +132,36 @@ export default function Login() {
     }
   };
 
+  const handleForgotPassword = async () => {
+    setError("");
+    setSuccessMessage("");
+    const email = formData.email.trim();
+    if (!email) {
+      setError("Please enter your email address in the field above to reset your password.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setSuccessMessage("Password reset email sent! Check your inbox.");
+    } catch (err) {
+      console.error("Password reset error:", err);
+      let message = "Failed to send password reset email.";
+      if (err.code === "auth/invalid-email") {
+        message = "Please enter a valid email address.";
+      } else if (err.code === "auth/user-not-found") {
+        message = "No user found with this email address.";
+      }
+      setError(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleGoogleSignIn = async () => {
     setError("");
+    setSuccessMessage("");
     setIsSubmitting(true);
     const provider = new GoogleAuthProvider();
     try {
@@ -287,6 +319,14 @@ export default function Login() {
             </div>
           )}
 
+          {/* Success Message */}
+          {successMessage && (
+            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl px-4 py-3 text-emerald-400 text-sm mt-4 font-medium text-center flex items-center justify-center gap-1.5">
+              <span>✅</span>
+              <span>{successMessage}</span>
+            </div>
+          )}
+
           {/* Form */}
           <form onSubmit={isLoginTab ? handleLoginSubmit : handleSignUpSubmit} className="mt-8 space-y-5">
             {!isLoginTab && (
@@ -323,9 +363,20 @@ export default function Login() {
             </div>
 
             <div>
-              <label className={`${t.textMuted} text-xs font-semibold uppercase tracking-wider mb-2 block`}>
-                Password
-              </label>
+              <div className="flex justify-between items-center mb-2">
+                <label className={`${t.textMuted} text-xs font-semibold uppercase tracking-wider block`}>
+                  Password
+                </label>
+                {isLoginTab && (
+                  <button
+                    type="button"
+                    onClick={handleForgotPassword}
+                    className="text-xs font-semibold text-blue-500 hover:text-blue-400 transition bg-transparent border-none outline-none cursor-pointer"
+                  >
+                    Forgot password?
+                  </button>
+                )}
+              </div>
               <input
                 type="password"
                 name="password"
@@ -434,11 +485,15 @@ export default function Login() {
                           onChange={(e) => setDepartment(e.target.value)}
                           className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3.5 ${t.text} focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition text-sm cursor-pointer`}
                         >
-                          <option value="BMC">BMC (Brihanmumbai Municipal Corporation)</option>
-                          <option value="MSEDCL">MSEDCL (Electricity Board)</option>
-                          <option value="NMMC">NMMC (Navi Mumbai Municipal Corp.)</option>
-                          <option value="PWD">PWD (Public Works Department)</option>
+                          <option value="PWD">PWD</option>
+                          <option value="Water Department">Water Department</option>
+                          <option value="Electricity">Electricity</option>
+                          <option value="Garbage">Garbage</option>
                           <option value="Traffic Police">Traffic Police</option>
+                          <option value="Health">Health</option>
+                          <option value="Drainage">Drainage</option>
+                          <option value="Environment">Environment</option>
+                          <option value="Other">Other</option>
                         </select>
                       </div>
                     </motion.div>

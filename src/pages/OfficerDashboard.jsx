@@ -476,7 +476,7 @@ export default function OfficerDashboard() {
     return () => unsubscribe();
   }, []);
 
-  const officerDepartment = userProfile?.department || "BMC";
+  const officerDepartment = userProfile?.department || "PWD";
 
   // Filter issues by officer's department - REMOVED department filter to show ALL issues
   const assignedIssues = issues;
@@ -1596,7 +1596,7 @@ export default function OfficerDashboard() {
                               {/* Dept + verifiers */}
                               <div className="flex items-center gap-3 flex-wrap">
                                 <span className={`text-[10px] font-black px-2 py-0.5 rounded ${isDark ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-blue-100 text-blue-700'}`}>
-                                  🏢 {issue.department || 'BMC'}
+                                  🏢 {issue.department || 'PWD'}
                                 </span>
                                 {verifiers.length > 0 && (
                                   <span className={`text-[10px] font-semibold ${textMuted}`}>
@@ -1728,7 +1728,7 @@ export default function OfficerDashboard() {
                                 Department
                               </div>
                               <div className="text-blue-400 text-xs font-black mt-1">
-                                {issue.department || "BMC"}
+                                {issue.department || "PWD"}
                               </div>
                             </div>
                             <div>
@@ -2466,7 +2466,7 @@ export default function OfficerDashboard() {
               <div className="space-y-4">
                 <div>
                   <h2 className={`text-2xl font-black ${textTheme} mb-1`}>Smart City Operations Center</h2>
-                  <p className={`${textMuted} text-sm font-semibold`}>Live civic intelligence across Mumbai — AI-powered heatmap, real-time markers & pulse tracking</p>
+                  <p className={`${textMuted} text-sm font-semibold`}>Live civic intelligence across the city — AI-powered heatmap, real-time markers & pulse tracking</p>
                 </div>
 
                 <IssueMap issues={issues} height="600px" />

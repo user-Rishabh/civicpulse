@@ -48,7 +48,7 @@ export default function CityHealthScore() {
     <div className="bg-[#111827] rounded-2xl border border-[#1F2937] p-6 mb-6">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-[#9CA3AF] text-xs uppercase tracking-widest mb-1">Mumbai City Health Score</p>
+          <p className="text-[#9CA3AF] text-xs uppercase tracking-widest mb-1">City Health Score</p>
           <div className="flex items-end gap-2">
             <span className="text-6xl font-black" style={{ color }}>{score}</span>
             <span className="text-[#9CA3AF] text-xl mb-2">/100</span>
