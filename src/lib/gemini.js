@@ -2,8 +2,32 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
 
+// Candidates ordered by preference.
+// This allows preview/experimental keys (which support 2.5/3.5) and standard keys
+// (which support 1.5/2.0) to work seamlessly, with automatic failover on 503 / 404 errors.
+const CANDIDATE_MODELS = [
+  "gemini-2.5-flash",
+  "gemini-3.5-flash",
+  "gemini-2.0-flash",
+  "gemini-1.5-flash"
+];
+
+async function generateContentWithFallback(contents) {
+  let lastError;
+  for (const modelName of CANDIDATE_MODELS) {
+    try {
+      const model = genAI.getGenerativeModel({ model: modelName });
+      const result = await model.generateContent(contents);
+      return result;
+    } catch (error) {
+      console.warn(`Model ${modelName} failed, trying fallback. Error:`, error);
+      lastError = error;
+    }
+  }
+  throw lastError;
+}
+
 export async function analyzeIssueImage(base64Data, mimeType) {
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
   const prompt = `You are a civic issue analyzer for Indian cities (Mumbai/Maharashtra focus).
 Analyze this image and return ONLY raw JSON, no markdown, no backticks:
 {
@@ -16,7 +40,7 @@ Analyze this image and return ONLY raw JSON, no markdown, no backticks:
   "estimated_resolution_days": number between 1 and 30
 }`;
 
-  const result = await model.generateContent([
+  const result = await generateContentWithFallback([
     { inlineData: { data: base64Data, mimeType } },
     { text: prompt }
   ]);
@@ -27,7 +51,6 @@ Analyze this image and return ONLY raw JSON, no markdown, no backticks:
 }
 
 export async function verifyInProgressImage(base64Data, mimeType, category) {
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
   const prompt = `You are an AI assistant verifying municipal progress on civic issues (Category: ${category}).
 Analyze this image and determine if it represents active construction, repairs, workers, scaffolding, barriers, or tools addressing the civic issue.
 Return ONLY raw JSON (no markdown, no backticks):
@@ -36,7 +59,7 @@ Return ONLY raw JSON (no markdown, no backticks):
   "reason": "a brief explanation of what is detected in the image (max 2 sentences)"
 }`;
 
-  const result = await model.generateContent([
+  const result = await generateContentWithFallback([
     { inlineData: { data: base64Data, mimeType } },
     { text: prompt }
   ]);
@@ -47,7 +70,6 @@ Return ONLY raw JSON (no markdown, no backticks):
 }
 
 export async function verifyResolvedImage(base64Data, mimeType, category) {
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
   const prompt = `You are an AI assistant verifying if a civic issue (Category: ${category}) has been successfully repaired or resolved.
 Analyze this image and determine if the issue has been cleared, fixed, or repaired (e.g. road is paved/flat, pothole is filled, leak is stopped, garbage is removed, streetlight is working).
 Return ONLY raw JSON (no markdown, no backticks):
@@ -56,7 +78,7 @@ Return ONLY raw JSON (no markdown, no backticks):
   "reason": "a brief explanation of what is detected in the image (max 2 sentences)"
 }`;
 
-  const result = await model.generateContent([
+  const result = await generateContentWithFallback([
     { inlineData: { data: base64Data, mimeType } },
     { text: prompt }
   ]);
@@ -67,7 +89,6 @@ Return ONLY raw JSON (no markdown, no backticks):
 }
 
 export async function analyzeWorkPhoto(base64Data, mimeType, issueCategory, stage) {
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
   const prompt = `You are verifying municipal work progress for a civic issue.
 Issue type: ${issueCategory}
 Stage: ${stage} (either "work_started" or "work_completed")
@@ -82,7 +103,7 @@ Analyze this photo and return ONLY raw JSON:
 If stage is "work_started": confirm workers/equipment/materials are present
 If stage is "work_completed": confirm the issue appears fixed/resolved`;
 
-  const result = await model.generateContent([
+  const result = await generateContentWithFallback([
     { inlineData: { data: base64Data, mimeType } },
     { text: prompt }
   ]);
@@ -92,7 +113,6 @@ If stage is "work_completed": confirm the issue appears fixed/resolved`;
 }
 
 export async function generateSupportReply({ userProfile, issue, chatHistory, userMessage }) {
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
   const prompt = `You are "Gemini", an AI support assistant for the municipal corporation (CivicPulse).
 Your goal is to answer a citizen's question about their reported issue, based on their account details and the specific issue status.
 
@@ -119,12 +139,11 @@ Citizen's New Message:
 
 Provide a concise, helpful, and polite response (max 3 sentences) addressing the citizen's question. Use the provided issue details to give concrete, real answers. Do not make up information. If estimated resolution or plan isn't set, politely let them know the department is reviewing it. Do not include any JSON or markdown formatting, just return the plain text response.`;
 
-  const result = await model.generateContent(prompt);
+  const result = await generateContentWithFallback(prompt);
   return result.response.text().trim();
 }
 
 export async function compareImagesForVerification(originalBase64, originalMimeType, verificationBase64, verificationMimeType, category) {
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
   const prompt = `You are an AI assistant verifying if a newly uploaded verification photo matches an originally reported civic issue.
 Issue category: ${category}
 
@@ -143,7 +162,7 @@ Return ONLY raw JSON, no markdown, no backticks:
   "reason": "A 1-2 sentence explanation of your comparison results, detailing matching landmarks, road markings, or discrepancies."
 }`;
 
-  const result = await model.generateContent([
+  const result = await generateContentWithFallback([
     { inlineData: { data: originalBase64, mimeType: originalMimeType } },
     { inlineData: { data: verificationBase64, mimeType: verificationMimeType } },
     { text: prompt }
