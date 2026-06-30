@@ -258,12 +258,12 @@ function PremiumGlowCard({ children, className = "", hoverTilt = true }) {
 // CountUp Animation
 function CountUp({ to, duration = 1.4 }) {
   const [count, setCount] = useState(0);
-  const hasRun = useRef(false);
 
   useEffect(() => {
-    if (hasRun.current) return;
-    hasRun.current = true;
-    if (to === 0) return;
+    if (to === 0) {
+      setCount(0);
+      return;
+    }
     const steps = 40;
     const inc = to / steps;
     let cur = 0;

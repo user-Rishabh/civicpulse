@@ -1215,7 +1215,7 @@ export default function Home() {
               <div className={`h-44 w-full rounded-xl flex flex-col items-center justify-center relative overflow-hidden mb-3.5 border ${isDark ? "bg-gradient-to-br from-slate-900 to-[#0F172A] border-white/5" : "bg-gradient-to-br from-slate-100 to-slate-200 border-slate-300/30"}`}>
                 {/* Real Pothole Image */}
                 <img
-                  src="/img_pothole.png"
+                  src="/img_pothole_mumbai.png"
                   alt="Infrastructure Issue"
                   className="absolute inset-0 w-full h-full object-cover z-0"
                 />
